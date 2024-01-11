@@ -242,6 +242,7 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
     c_hat <- fastLmPure(E_tilde, Y_tilde)$coefficients
 
     # check if loss decrease is larger than minimum loss decrease
+    # and if linear model could be estimated
     if((Losses_dec[loc] <= cp * loss_start) | (sum(is.na(c_hat)) > 0)){
       break
     }
@@ -329,6 +330,8 @@ evaluate_splitt <- function(branch, j, s, index, X, Y_tilde, Q = diag(length(Y))
   
   # check wether this split resolves in two reasnable partitions
   if(length(index_branch) < min_sample | length(index_n_branches) < min_sample){
+    # remove no longer needed objects from memory
+    rm(Q, index, index_branch, index_n_branches)
     return(list('loss' = Inf, j = j, s = s))
   }
   
