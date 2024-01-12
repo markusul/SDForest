@@ -4,21 +4,22 @@
 \alias{get_Q}
 \title{Estimation of spectral transformation}
 \usage{
-get_Q(X, type, q_hat = 0)
+get_Q(X, type, trim_quantile = 0.5, confounding_dim = 0)
 }
 \arguments{
 \item{X}{numerical covariates of class \code{matrix}}
 
-\item{type}{type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'}
+\item{type}{type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity}
 
-\item{q_hat}{assumed confounding dimension, only needed for pca}
+\item{trim_quantile}{quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim}
+
+\item{confounding_dim}{assumed confounding dimension, only needed for pca}
 }
 \value{
 Q of class \code{matrix}, the spectral transformation
 }
 \description{
-Estimates Q
-\insertCite{Breiman1996BaggingPredictors}{SDForest}
+Estimates the spectral transformation Q for spectral deconfounding by shrinking the leading singular values of the covariates.
 }
 \examples{
 X <- matrix(rnorm(100 * 20), nrow = 100)
@@ -28,5 +29,5 @@ get_Q(X, 'pca', q_hat = 5)
 get_Q(X, 'no_deconfounding')
 }
 \references{
-\insertRef{Breiman1996BaggingPredictors}{SDForest}
+\insertAllCited{}
 }

@@ -184,7 +184,7 @@ simulate_data_nonlinear_D <- function(q, p, n, m, d = 1){
 data <- simulate_data_nonlinear_D(1, 20, 100, 5, d = 0.1)
 data
 
-
+quantile(sv$d, 0.5)
 
 get_Q <- function(X, type, q_hat = 0){
     # X: covariates

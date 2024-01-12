@@ -2,10 +2,9 @@ library(parallel)
 library(data.tree)
 library(RcppEigen)
 library(data.table)
-library(Rdpack)
 #' @importFrom Rdpack reprompt
 
-# number of available cores
+# number of available cores #TODO: add option to freely choose number of cores
 n_cores <- detectCores()
 # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
 if(n_cores > 1 && n_cores <= 24){
@@ -14,13 +13,13 @@ if(n_cores > 1 && n_cores <= 24){
 
 #' Estimation of spectral transformation
 #' 
-#' Estimates Q
-#' \insertCite{Breiman1996BaggingPredictors}{SDForest}
+#' Estimates the spectral transformation Q for spectral deconfounding by shrinking the leading singular values of the covariates.
 #' @references
-#'   \insertRef{Breiman1996BaggingPredictors}{SDForest}
+#'   \insertAllCited{}
 #' @param X numerical covariates of class \code{matrix}
-#' @param type type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'
-#' @param q_hat assumed confounding dimension, only needed for pca
+#' @param type type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity
+#' @param trim_quantile quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim
+#' @param confounding_dim assumed confounding dimension, only needed for pca
 #' @return Q of class \code{matrix}, the spectral transformation
 #' @examples
 #' X <- matrix(rnorm(100 * 20), nrow = 100)
@@ -29,7 +28,7 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'pca', q_hat = 5)
 #' get_Q(X, 'no_deconfounding')
 #' @export
-get_Q <- function(X, type, q_hat = 0){
+get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
     # X: covariates
     # type: type of deconfounding
     modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
@@ -40,22 +39,22 @@ get_Q <- function(X, type, q_hat = 0){
 
     # calculate deconfounding matrix
     sv <- svd(X)
-    tau <- median(sv$d)
+    tau <- quantile(sv$d, trim_quantile)
     D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
 
     Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
                             diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                             { # pca
                                 d_pca <- sv$d
-                                if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
-                                d_pca[1:q_hat] <- 0
+                                if(confounding_dim <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                                d_pca[1:confounding_dim] <- 0
                                 sv$u %*% diag(d_pca) %*% t(sv$u)
                             },
                             diag(n)) # no_deconfounding
     return(Q)
 }
 
-cv.SDTree <- function(X, Y, m = 100, cp = 0.00001, min_sample = 5, deconfounding = T, multicore = F, n_cv = 3, Q_type = 1){
+cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, multicore = F, n_cv = 3, Q_type = 'trim'){
   # cross-validation to selecet optimal cp
   # m: maximum number of splits, maximum m + 1 leaves
   # cp: cost-complexity parameter
@@ -120,9 +119,10 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0.00001, min_sample = 5, deconfounding
   t.min <- t_seq[[which.min(perf)]]
   
   # return cp.min
-  return(t.min / loss_start)
+  return(t.min / loss_start) # TODO: return cp.min and all the cp values and losses
 }
 
+# TODO: change name of function
 val_loss <- function(tree, X_val, Y_val, Q_val, t){
   # funtion to prune tree using the minimum loss decrease t
   # and return spectral loss on the validation set
@@ -139,6 +139,8 @@ val_loss <- function(tree, X_val, Y_val, Q_val, t){
   return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
 }
 
+# TODO: add option to use predifined Q
+# TODO: remove validation and autoprune option
 SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T, mtry = F, fast = T, multicore = F, pruning = F, val_ratio = 0.3, Q_type = 1){
   # X: covariates
   # Y: outcome
@@ -462,6 +464,9 @@ predict.SDforest <- function(object, newdata){
   }
 }
 
+# TODO: use only one Q for all trees
+# TODO: add variable importance
+# TODO: add oob error
 SDForest <- function(X, Y, nTree, m = 20, cp = 0.005, min_sample = 5, deconfounding = T, mtry = F, multicore = T, pruning = F){
   # Spectral deconfounded random forest using SDTree
   # nTree: number of regression trees for the forest
