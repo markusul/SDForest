@@ -184,4 +184,59 @@ simulate_data_nonlinear_D <- function(q, p, n, m, d = 1){
 data <- simulate_data_nonlinear_D(1, 20, 100, 5, d = 0.1)
 data
 
-plot(svd(scale(data$X))$d)
+
+
+get_Q <- function(X, type, q_hat = 0){
+    # X: covariates
+    # type: type of deconfounding
+    modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+    if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
+
+    # number of observations
+    n <- dim(X)[1]
+
+    # calculate deconfounding matrix
+    sv <- svd(X)
+    tau <- median(sv$d)
+    D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+
+    Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
+                            diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
+                            { # pca
+                                d_pca <- sv$d
+                                if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                                d_pca[1:q_hat] <- 0
+                                print('aa')
+                                sv$u %*% diag(d_pca) %*% t(sv$u)
+                            },
+                            diag(n)) # no_deconfounding
+    return(Q)
+}
+
+print(paste(c(1, 2, 3, 4)))
+
+
+X <- matrix(rnorm(100 * 20), nrow = 100)
+get_Q(X, 'pa')
+
+paste(names(modes), collapse = ', ')
+
+sv <- svd(X)
+
+type <- 'pc'
+q_hat <- 0
+!(type %in% names(modes))
+
+
+modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+
+Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), 
+                         diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), 
+                         {
+                            d_pca <- sv$d
+                            if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                            d_pca[1:q_hat] <- 0
+                            print('aa')
+                            sv$u %*% diag(d_pca) %*% t(sv$u)
+                         },
+                         diag(n))

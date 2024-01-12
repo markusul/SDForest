@@ -7,34 +7,34 @@ library(data.table)
 n_cores <- detectCores()
 # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
 if(n_cores > 1 && n_cores <= 24){
-    n_cores <- n_cores - 2
+    n_cores <- n_cores - 1
 }
 
-get_Q <- function(X, type){
-  # X: covariates
-  # type: type of deconfounding
-  # 1: trim transform
-  # 2: DDL trim transform
+get_Q <- function(X, type, q_hat = 0){
+    # X: covariates
+    # type: type of deconfounding
+    modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+    if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
 
-  # number of observations
-  n <- dim(X)[1]
+    # number of observations
+    n <- dim(X)[1]
 
-  # calculate deconfounding matrix
-  sv <- svd(X)
-  tau <- median(sv$d)
-  D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+    # calculate deconfounding matrix
+    sv <- svd(X)
+    tau <- median(sv$d)
+    D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
 
-  if(type == 1){
-    # calculate trim transform
-    Q <- sv$u %*% diag(D_tilde) %*% t(sv$u)
-  }else if(type == 2){
-    # orthogonalize
-    Q <- diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u)
-  }else{
-    # no deconfounding
-    Q <- diag(n)
-  }
-  return(Q)
+    Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
+                            diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
+                            { # pca
+                                d_pca <- sv$d
+                                if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                                d_pca[1:q_hat] <- 0
+                                print('aa')
+                                sv$u %*% diag(d_pca) %*% t(sv$u)
+                            },
+                            diag(n)) # no_deconfounding
+    return(Q)
 }
 
 cv.SDTree <- function(X, Y, m = 100, cp = 0.00001, min_sample = 5, deconfounding = T, multicore = F, n_cv = 3, Q_type = 1){
