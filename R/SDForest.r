@@ -2,6 +2,8 @@ library(parallel)
 library(data.tree)
 library(RcppEigen)
 library(data.table)
+library(Rdpack)
+#' @importFrom Rdpack reprompt
 
 # number of available cores
 n_cores <- detectCores()
@@ -10,6 +12,23 @@ if(n_cores > 1 && n_cores <= 24){
     n_cores <- n_cores - 1
 }
 
+#' Estimation of spectral transformation
+#' 
+#' Estimates Q
+#' \insertCite{Breiman1996BaggingPredictors}{SDForest}
+#' @references
+#'   \insertRef{Breiman1996BaggingPredictors}{SDForest}
+#' @param X numerical covariates of class \code{matrix}
+#' @param type type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'
+#' @param q_hat assumed confounding dimension, only needed for pca
+#' @return Q of class \code{matrix}, the spectral transformation
+#' @examples
+#' X <- matrix(rnorm(100 * 20), nrow = 100)
+#' get_Q(X, 'trim')
+#' get_Q(X, 'DDL_trim')
+#' get_Q(X, 'pca', q_hat = 5)
+#' get_Q(X, 'no_deconfounding')
+#' @export
 get_Q <- function(X, type, q_hat = 0){
     # X: covariates
     # type: type of deconfounding
@@ -30,7 +49,6 @@ get_Q <- function(X, type, q_hat = 0){
                                 d_pca <- sv$d
                                 if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
                                 d_pca[1:q_hat] <- 0
-                                print('aa')
                                 sv$u %*% diag(d_pca) %*% t(sv$u)
                             },
                             diag(n)) # no_deconfounding

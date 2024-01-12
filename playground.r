@@ -17,7 +17,7 @@ sd_objective <- function(preds, dtrain) {
     hess <- Q_2
 }
 
-fit <- SDTree(Y = data[1:80, 1], X = data[1:80, -1],min_sample = 2, cp = 0)
+fit <- SDTree(Y = data[1:80, 1], X = data[1:80, -1],min_sample = 2, cp = 0, Q_type = 'pca', )
 fit$f_X_hat
 print(fit$tree, 'value', 's', 'j')
 data <- scale(data)
