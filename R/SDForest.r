@@ -29,29 +29,29 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'no_deconfounding')
 #' @export
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
-    # X: covariates
-    # type: type of deconfounding
-    modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
-    if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
+  # X: covariates
+  # type: type of deconfounding
+  modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+  if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
 
-    # number of observations
-    n <- dim(X)[1]
+  # number of observations
+  n <- dim(X)[1]
 
-    # calculate deconfounding matrix
-    sv <- svd(X)
-    tau <- quantile(sv$d, trim_quantile)
-    D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+  # calculate deconfounding matrix
+  sv <- svd(X)
+  tau <- quantile(sv$d, trim_quantile)
+  D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
 
-    Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
-                            diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
-                            { # pca
-                                d_pca <- sv$d
-                                if(confounding_dim <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
-                                d_pca[1:confounding_dim] <- 0
-                                sv$u %*% diag(d_pca) %*% t(sv$u)
-                            },
-                            diag(n)) # no_deconfounding
-    return(Q)
+  Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
+                          diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
+                          { # pca
+                              d_pca <- sv$d
+                              if(confounding_dim <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                              d_pca[1:confounding_dim] <- 0
+                              sv$u %*% diag(d_pca) %*% t(sv$u)
+                          },
+                         diag(n)) # no_deconfounding
+  return(Q)
 }
 
 cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, multicore = F, n_cv = 3, Q_type = 'trim'){
@@ -103,9 +103,9 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, 
     
     # validation performance if we prune with the different ts
     if(multicore){
-      perf <- mclapply(t_seq, function(t) val_loss(res$tree, X_cv, Y_cv, Q_cv, t), mc.cores = n_cores)
+      perf <- mclapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), mc.cores = n_cores)
     }else{
-      perf <- lapply(t_seq, function(t) val_loss(res$tree, X_cv, Y_cv, Q_cv, t))
+      perf <- lapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
     }
     
     return(perf)
@@ -122,8 +122,7 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, 
   return(t.min / loss_start) # TODO: return cp.min and all the cp values and losses
 }
 
-# TODO: change name of function
-val_loss <- function(tree, X_val, Y_val, Q_val, t){
+pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   # funtion to prune tree using the minimum loss decrease t
   # and return spectral loss on the validation set
   
@@ -139,56 +138,61 @@ val_loss <- function(tree, X_val, Y_val, Q_val, t){
   return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
 }
 
-# TODO: add option to use predifined Q
-# TODO: remove validation and autoprune option
-SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T, mtry = F, fast = T, multicore = F, pruning = F, val_ratio = 0.3, Q_type = 1){
+SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp = 0, min_sample = 5, mtry = NULL, fast = TRUE,
+                   multicore = F, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
   # X: covariates
   # Y: outcome
   # m: max number of splits
   # min_sample: min number of samples per leaf to split
   # cp: complexity parameter
   # mtry: if a number, only a random set of size mtry of the covariates are usable for a split
-  # pruning: if True the val ratio is used as a validation set and cps down to cp are compared and pruned using the test set
-  
-  if(pruning){
-    # dividing data into train and validation set
-    ind <- sample(1:length(Y), ceiling((length(Y)*val_ratio)), replace = F)
 
-    X_val <- X[ind, ]
-    Y_val <- Y[ind]
+  Call <- match.call()
 
-    X <- X[-ind, ]
-    Y <- Y[-ind]
+  indx <- match(c("formula", "data", "weights", "subset"),
+                names(Call), nomatch = 0L)
+  if (indx[1] == 0L) stop("a 'formula' argument is required")
+  temp <- Call[c(1L, indx)]      # only keep the arguments we wanted
 
-    if(deconfounding){
-        Q_val <- get_Q(X_val, Q_type)
-    }else{
-        Q_val <- diag(nrow(X_val))
-    }
-  }
+  temp[[1L]] <- quote(stats::model.frame) # change the function called
+  m <- eval.parent(temp)
+
+  Terms <- attr(m, "terms")
+  if (any(attr(Terms, "order") > 1L))
+	stop("Trees cannot handle interaction terms")
+
+  Y <- model.response(m)
+  print(m)
 
   # number of observations
   n <- dim(X)[1]
   # number of covariates
   p <- dim(X)[2]
 
-  # calculate deconfounding matrix
-  if(deconfounding){
-    # calculate trim transform
-    Q <- get_Q(X, Q_type)
+  # check validity of input
+  if(n != length(Y)) stop('X and Y must have the same number of observations')
+  if(m < 1) stop('m must be larger than 0')
+  if(min_sample < 1) stop('min_sample must be larger than 0')
+  if(cp < 0) stop('cp must be at least 0')
+  if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
+  if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
+
+  # estimate spectral transformation
+  if(is.null(Q)){
+    Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
   }else{
-    # no deconfounding
-    Q <- diag(n)
+    if(!is.matrix(Q)) stop('Q must be a matrix')
+    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
-    
+
   # calculate first estimate
   E <- matrix(1, n, 1)
   E_tilde <- matrix(rowSums(Q))
   Y_tilde <- Q %*% Y
-    
+
   # solve linear model
   c_hat <- fastLmPure(E_tilde, Y_tilde)$coefficients
-    
+
   loss_start <- sum((Y_tilde - c_hat) ** 2) / n
   loss_temp <- loss_start
 
@@ -198,58 +202,53 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
   # memory for optimal splits
   memory <- list(replicate(m + 1 , matrix(0, p, 2)))
   potential_splitts <- 1
-  
+
   #available covariates
-  if(mtry){
+  if(!is.null(mtry)){
     len_p <- mtry
   }else {
     len_p <- p
   }
 
   for(i in 1:m){
-    if(mtry){
-      # sample available covariates
-      available_j <- sample(1:p, mtry)
-    }else{
-      available_j <- 1:p
-    }
-    
-    # iterate over all possible splits every time 
+    available_j <- sample(1:p, len_p)
+
+    # iterate over all possible splits every time
     # for slow but slightly better solution
     if(!fast){
       potential_splitts <- 1:i
       to_small <- unlist(lapply(potential_splitts, function(x){sum(E[, x] == 1) < min_sample}))
       potential_splitts <- potential_splitts[!to_small]
     }
-    
-    #iterate over new to estimate splits  
+
+    #iterate over new to estimate splits
     for(branch in potential_splitts){
-      best_splitts <- get_all_splitt(branch, X, Y_tilde, Q, n, i+1, E, multicore, min_sample)
+      best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q = Q, 
+                                     n = n, n_branches = i+1, E = E, min_sample = min_sample, multicore = multicore)
       best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts[, c(1, 3)]
-      
+
       # if there is no available split fix loss decrease to zero
       if(dim(memory[[branch]])[1] == 0){
         memory[[branch]] <- matrix(0, p, 2)
       }
     }
-    
+
     # find best split and its loss decrease
     Losses_dec <- unlist(lapply(memory, function(branch){branch[available_j, 1]}))
     loc <- which.max(Losses_dec)
     best_branch <- ceiling(loc / len_p)
-    
+
     what_j <- loc %% len_p
     if(what_j == 0){
       what_j <- len_p
     }
-    
+
     j <- available_j[what_j]
     s <- memory[[best_branch]][j, 2]
 
     # divide observations in leave
     index <- which(E[, best_branch] == 1)
-    index_branch <- index[X[index, j] <= s]
     index_n_branches <- index[X[index, j] > s]
 
     # new indicator matrix
@@ -266,7 +265,7 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
     if((Losses_dec[loc] <= cp * loss_start) | (sum(is.na(c_hat)) > 0)){
       break
     }
-    
+
     # select leave to split
     if(tree$height == 1){
       leave <- tree
@@ -274,12 +273,11 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
       leaves <- tree$leaves
       leave <- leaves[[which(tree$Get('name', filterFun = isLeaf) == best_branch)]]
     }
-    
 
     # save split rule
     leave$j <- j
     leave$s <- s
-    
+
     # add new leaves
     leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc])
     leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc])
@@ -288,14 +286,14 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
     for(l in tree$leaves){
       l$value <- c_hat[as.numeric(l$name)]
     }
-  
+
     # new temporary loss
     loss_temp <- loss(Y_tilde, E_tilde %*% c_hat)
-    
+
     # the two new partitions need to be checked for optimal splits in next iteration
     potential_splitts <- c(best_branch, i + 1)
-    
-    # a partition with less than min_sample observations are not available for further splits
+
+    # a partition with less than min_sample observations or unique samples are not available for further splits
     to_small <- unlist(lapply(potential_splitts, function(x){(sum(E[, x] == 1) < min_sample)| length(unique(X[which(E[, x] == 1), 1])) == 1}))
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
@@ -305,53 +303,32 @@ SDTree <- function(X, Y, m = 50, cp = 0.00001, min_sample = 5, deconfounding = T
       potential_splitts <- potential_splitts[!to_small]
     }
   }
-  
+
   # print warning if maximum splitts was reached, one might want to increase m
   if(i == m){
-    print('warning, maximum number of iterations was reached!')
+    warning('maximum number of iterations was reached, consider increasing m!')
   }
-  
-  # if pruning is selected, different cp values are tested with the validation and 
-  # tree is automatically pruned
-  if(pruning){
-    # get all the loss decreases for every split in the tree sorted
-    s_dloss <- sort(unique(tree$Get('dloss', traversal = 'post-order')))
-    # get loss decreases between the ones, that are present in the tree
-    # those are the relevant stopping criterias that have to be compared
-    t_loss <- s_dloss[-length(s_dloss)] + diff(s_dloss) / 2
-    
-    # compare all the loss decreases as stopping crition and choose the one with minimum spectral loss
-    t <- t_loss[which.min(unlist(lapply(t_loss, function(t)val_loss(tree, X_val, Y_val, Q_val, t))))]
-    
-    # prune tree with resulting optimal minimum loss decrease
-    Prune(tree, function(x) x$dloss > t)
-    
-    # calculate optimal cp value
-    cp_min <- t / loss_start
-  }else{
-    cp_min <- NA
-  }
-  
+
   # predict the test set
   f_X_hat <- predict_outsample(tree, X)
 
-  res <- list(f_X_hat = f_X_hat, tree = tree, cp_min = cp_min)
+  res <- list(f_X_hat = f_X_hat, tree = tree)
   class(res) <- 'SDTree'
   return(res)
 }
 
-evaluate_splitt <- function(branch, j, s, index, X, Y_tilde, Q = diag(length(Y)), n, n_branches, E, min_sample){
+evaluate_splitt <- function(branch, j, s, index, X, Y_tilde, Q, n, n_branches, E, min_sample){
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
   
   # dividing observation in branch
-  index_branch <- index[X[index, j] <= s]
   index_n_branches <- index[X[index, j] > s]
+  index_branch <- index[X[index, j] <= s]
   
   # check wether this split resolves in two reasnable partitions
   if(length(index_branch) < min_sample | length(index_n_branches) < min_sample){
     # remove no longer needed objects from memory
-    rm(Q, index, index_branch, index_n_branches)
+    rm(Q, index, index_n_branches)
     return(list('loss' = Inf, j = j, s = s))
   }
   
@@ -364,36 +341,42 @@ evaluate_splitt <- function(branch, j, s, index, X, Y_tilde, Q = diag(length(Y))
   E_tilde <- Q %*% E
   c_hat <- fastLmPure(E_tilde, Y_tilde)$coefficients
 
-  # resulting new spectral loss
-  loss <- loss(Y_tilde, E_tilde %*% c_hat)
-  
-  # remove no longer needed objects from memory
-  rm(Q, Y_tilde, E, E_tilde, c_hat, index, index_branch, index_n_branches)
+  if(any(is.na(c_hat))){
+    # linear model could not be estimated
+    loss <- Inf
+  }else{
+    # resulting new spectral loss
+    loss <- loss(Y_tilde, E_tilde %*% c_hat)
+  }
 
+  # remove no longer needed objects from memory
+  rm(Q, Y_tilde, E, E_tilde, c_hat, index, index_n_branches)
   return(list('loss' = loss, j = j, s = s))
 }
 
-get_all_splitt <- function(branch, X, Y_tilde, Q = diag(length(Y)), n, n_branches, E, multicore = F, min_sample){
+get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, min_sample, multicore){
   # finds the best splitts for every covariate in branch
   # returns the best splitpoint for every covariate and the resulting loss decrease
-  
+
   # observations belonging to branch
   index <- which(E[, branch] == 1)
-  
+
   # all possible split points
   s <- find_s(X[index, ])
   # itetator for the splits
-  iter <- 1:length(s)-1
-  
+  iter <- 1:length(s) - 1
+
   # evaluate all the relevant splitts
   if(multicore){
-      res <- mclapply(iter, function(x)evaluate_splitt(branch, floor(x / dim(s)[1] + 1), 
-              s[x + 1], index, X, Y_tilde, Q, n, n_branches, E, min_sample), mc.cores =  n_cores)
+      res <- mclapply(iter, function(x)evaluate_splitt(branch = branch, j = floor(x / dim(s)[1] + 1), 
+              s = s[x + 1], index = index, X = X, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
+              E = E, min_sample = min_sample), mc.cores = n_cores)
   }else{
-    res <- lapply(iter, function(x)evaluate_splitt(branch, floor(x / dim(s)[1] + 1), 
-                s[x + 1], index, X, Y_tilde, Q, n, n_branches, E, min_sample))
+    res <- lapply(iter, function(x)evaluate_splitt(branch = branch, j = floor(x / dim(s)[1] + 1), 
+              s = s[x + 1], index = index, X = X, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
+              E = E, min_sample = min_sample))
   }
-  
+
   # choose minimum split for every covariate
   res <- rbindlist(res)
   res_min <- lapply(1:ncol(X), function(x){res_temp <- res[j == x, ]
@@ -404,16 +387,16 @@ get_all_splitt <- function(branch, X, Y_tilde, Q = diag(length(Y)), n, n_branche
 
 find_s <- function(X){
   # finds all the reasnable splitting points in a data matrix
-  
+
   if(is.null(dim(X))){
     X <- matrix(X, ncol = 1)
   }
-  
+
   X_sort <- apply(X, 2, sort)
-  
+
   # find middlepoints between observed x values
   s <- X_sort[-dim(X)[1], ] + diff(X_sort)/2
-  
+
   # for runtime reasons use only every 4th middlepoint if we have more than 400 observations
   # and only every second if we have more than 200 observations
   if(dim(s)[1] > 400){

@@ -5,7 +5,7 @@ library(xgboost)
 str(airquality)
 data <- na.omit(airquality)
 str(data)
-source("SDForest.r")
+source("R/SDForest.r")
 
 Q <- get_Q(data[1:80, -1], type = 1)
 Q_2 <- t(Q) %*% Q
@@ -17,8 +17,16 @@ sd_objective <- function(preds, dtrain) {
     hess <- Q_2
 }
 
-fit <- SDTree(Y = data[1:80, 1], X = data[1:80, -1],min_sample = 2, cp = 0, Q_type = 'pca', )
-fit$f_X_hat
+SDTree(Ozone ~ ., data = data[1:80, ])
+
+fit1 <- SDTree(Y = data[1:80, 1], x = data[1:80, -1],min_sample = 2, cp = 0, multicore = F)
+fit2 <- SDTree(Y = data[1:80, 1], X = data[1:80, -1],min_sample = 2, cp = 0)
+fit1$f_X_hat
+fit2$f_X_hat
+
+fit1$f_X_hat - fit2$f_X_hat
+
+
 print(fit$tree, 'value', 's', 'j')
 data <- scale(data)
 
