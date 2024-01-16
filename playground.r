@@ -4,10 +4,18 @@ library(xgboost)
 
 str(airquality)
 data <- na.omit(airquality)
+data <- scale(data)
+data <- data.frame(data)
+data
+
+data$Day <- as.factor(data$Day)
 str(data)
 source("R/SDForest.r")
 
-Q <- get_Q(data[1:80, -1], type = 1)
+Q <- get_Q(data[1:80, -1], type = 'trim')
+
+svd(Q)$d
+
 Q_2 <- t(Q) %*% Q
 
 sd_objective <- function(preds, dtrain) {
@@ -17,12 +25,36 @@ sd_objective <- function(preds, dtrain) {
     hess <- Q_2
 }
 
-SDTree(Ozone ~ ., data = data[1:80, ])
+SDTree(Ozone ~ ., data = data[1:80, ], m = 6, cp = 0)
+SDTree(Ozone ~ ., data = data[1:80, ], cp = 0)
+
+
+
+
 
 fit1 <- SDTree(Y = data[1:80, 1], x = data[1:80, -1],min_sample = 2, cp = 0, multicore = F)
-fit2 <- SDTree(Y = data[1:80, 1], X = data[1:80, -1],min_sample = 2, cp = 0)
+fit2 <- SDTree(y = data[1:80, 1], x = data[1:80, -1],cp = 0)
 fit1$f_X_hat
 fit2$f_X_hat
+
+print(fit2)
+plot(fit2)
+predict(fit2, data[3,])
+plot(data$Ozone)
+
+fit2$tree[[1]]
+
+
+
+
+tree_labels <- get_labels(fit2$vis_tree)
+fit2$vis_tree
+x = fit2
+plot(x$vis_tree, layout = layout.reingold.tilford(x$vis_tree, root = 1), vertex.shape = tree_labels$node_shape, 
+    vertex.label.color = 'black', vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
+    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8)
+
+plot(x$vis_tree)
 
 fit1$f_X_hat - fit2$f_X_hat
 

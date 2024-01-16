@@ -1,10 +1,40 @@
 library(parallel)
 library(data.tree)
 library(RcppEigen)
-library(data.table)
+library(data.table)## visualize trees
+library(igraph)
+library(data.tree)
+
+#helper functions to name nodes
+splitt_names <- function(node, var_names = NULL){
+  if(is.null(var_names)){
+    node$name <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
+  }else{
+    node$name <- paste(var_names[node$j], ' <= ', round(node$s, 2), sep = '')
+  }
+}
+
+leave_names <- function(node){
+    new_name <- as.character(round(node$value, 1))
+    if(new_name %in% node$Get('name', filterFun = isLeaf)){
+        new_name <- paste(new_name, '')
+    }
+    node$name <- new_name
+}
+
+splitt_names_rpart <- function(node){
+    elem <- unlist(lapply(strsplit(node$name, '='), strsplit, split = ' '))
+    elem[length(elem)] <- round(as.numeric(elem[length(elem)]), 1)
+    node$name <- paste(elem, collapse = ' ')
+}
+
+leave_names_rpart <- function(node){
+    node$name <- round(as.numeric(node$name), 1)
+}
+
+
 #' @importFrom Rdpack reprompt
 
-# number of available cores #TODO: add option to freely choose number of cores
 n_cores <- detectCores()
 # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
 if(n_cores > 1 && n_cores <= 24){
@@ -138,37 +168,65 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
 }
 
-SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp = 0, min_sample = 5, mtry = NULL, fast = TRUE,
-                   multicore = F, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL, ...){
+  if(is.null(formula)){
+    if(is.null(x) | is.null(y)){
+      stop("Error: Either data or x and y is required.")
+    }else {
+      x <- apply(x, 2, function(x){if (is.character(x)) as.numeric(factor(x))
+                                    else if(!is.numeric(x))  as.numeric(x)
+                                    else x})
+      return(list(X = as.matrix(x), Y = y))
+    }
+  }else {
+    if(is.null(data)){
+      stop("Error: data is required.")
+    }else {
+      Call <- match.call()
+      indx <- match(c("formula", "data"), names(Call), nomatch = 0L)
+  
+      if (indx[1] == 0L) stop("a 'formula' argument is required")
+      
+      temp <- Call[c(1L, indx)]      # only keep the arguments we wanted
+      temp[[1L]] <- quote(stats::model.frame) # change the function called
+      m <- eval.parent(temp)
+
+      Terms <- attr(m, "terms")
+      if(any(attr(Terms, "order") > 1L)) stop("Trees cannot handle interaction terms")
+
+      Y <- model.response(m)
+      
+
+      if(!inherits(m, "data.frame") || is.null(attr(m, "terms"))) print('hallo')
+
+      #m[] <- lapply(m, function(x) {if (is.character(x)) as.numeric(factor(x))
+      #                              else if(!is.numeric(x))  as.numeric(x)
+      #                              else x})
+      X <- model.matrix(attr(m, "terms"), m)[, -1L, drop = FALSE]
+      return(list(X = X, Y = Y))
+    }
+  }
+
+}
+
+SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 2, mtry = NULL, fast = TRUE,
+                   multicore = F, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, mc.cores = NULL, pruning = F){
   # X: covariates
   # Y: outcome
   # m: max number of splits
   # min_sample: min number of samples per leaf to split
   # cp: complexity parameter
   # mtry: if a number, only a random set of size mtry of the covariates are usable for a split
-
-  Call <- match.call()
-
-  indx <- match(c("formula", "data", "weights", "subset"),
-                names(Call), nomatch = 0L)
-  if (indx[1] == 0L) stop("a 'formula' argument is required")
-  temp <- Call[c(1L, indx)]      # only keep the arguments we wanted
-
-  temp[[1L]] <- quote(stats::model.frame) # change the function called
-  m <- eval.parent(temp)
-
-  Terms <- attr(m, "terms")
-  if (any(attr(Terms, "order") > 1L))
-	stop("Trees cannot handle interaction terms")
-
-  Y <- model.response(m)
-  print(m)
+  input_data <- data.handler(formula = formula, data = data, x = x, y = y)
+  X <- input_data$X
+  Y <- input_data$Y
 
   # number of observations
   n <- dim(X)[1]
   # number of covariates
   p <- dim(X)[2]
 
+  m <- max_leaves - 1
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('m must be larger than 0')
@@ -184,6 +242,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp =
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
+
+  print(Y)
+
 
   # calculate first estimate
   E <- matrix(1, n, 1)
@@ -224,7 +285,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp =
     #iterate over new to estimate splits
     for(branch in potential_splitts){
       best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q = Q, 
-                                     n = n, n_branches = i+1, E = E, min_sample = min_sample, multicore = multicore)
+                                     n = n, n_branches = i+1, E = E, min_sample = min_sample, 
+                                     multicore = multicore, mc.cores = mc.cores)
       best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts[, c(1, 3)]
 
@@ -262,7 +324,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp =
 
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
-    if((Losses_dec[loc] <= cp * loss_start) | (sum(is.na(c_hat)) > 0)){
+    if(sum(is.na(c_hat)) > 0){
+      warning('singulaer')
+      break
+    }
+    if(Losses_dec[loc] <= cp * loss_start){
       break
     }
 
@@ -279,8 +345,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp =
     leave$s <- s
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc])
-    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc])
+    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc], decision = 'no')
+    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc], decision = 'yes')
 
     # add estimates to tree leaves
     for(l in tree$leaves){
@@ -312,7 +378,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, m = 50, cp =
   # predict the test set
   f_X_hat <- predict_outsample(tree, X)
 
-  res <- list(f_X_hat = f_X_hat, tree = tree)
+  #estimated SDTree as igraph
+  vis_tree <- Clone(tree)
+  vis_tree$Do(splitt_names, filterFun = isNotLeaf, var_names = colnames(X))
+  vis_tree$Do(leave_names, filterFun = isLeaf)
+
+  res <- list(f_X_hat = f_X_hat, tree = tree, vis_tree = vis_tree)
   class(res) <- 'SDTree'
   return(res)
 }
@@ -354,9 +425,13 @@ evaluate_splitt <- function(branch, j, s, index, X, Y_tilde, Q, n, n_branches, E
   return(list('loss' = loss, j = j, s = s))
 }
 
-get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, min_sample, multicore){
+get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, min_sample, multicore, mc.cores = NULL){
   # finds the best splitts for every covariate in branch
   # returns the best splitpoint for every covariate and the resulting loss decrease
+
+  if(!is.null(mc.cores)){
+    n_cores <- mc.cores
+  }
 
   # observations belonging to branch
   index <- which(E[, branch] == 1)
@@ -434,6 +509,17 @@ loss <- function(Y, f_X){
 predict.SDTree <- function(object, newdata){
   # predict function for the spectral deconfounded tree
   return(predict_outsample(object$tree, newdata))
+}
+
+print.SDTree <- function(x, ...){
+  # print function for the spectral deconfounded tree
+  print(x$vis_tree, 'value', 's', 'j')
+}
+
+plot.SDTree <- function(x){
+  # plot function for the spectral deconfounded tree
+  SetEdgeStyle(x$vis_tree, label = function(x) {x$decision})
+  plot(x$vis_tree)
 }
 
 predict.SDforest <- function(object, newdata){
