@@ -40,9 +40,10 @@ a$predictions - predict(a, data[1:80,c(4, 2)])
 
 res = cv.SDTree(Ozone ~ ., data = data[1:80, ], n_cv = 2)
 res
-
+summary(tree)
 res <- ranger(Ozone ~ ., data = data[1:80, ], num.trees = 100)
 res
+plot(res)
 
 print(a)
 plot(a)
