@@ -4,6 +4,7 @@ library(xgboost)
 
 str(airquality)
 data <- na.omit(airquality)
+data$Ozone <- log(data$Ozone)
 data <- scale(data)
 data <- data.frame(data)
 data
@@ -11,6 +12,8 @@ data
 data$Day <- as.factor(data$Day)
 str(data)
 source("R/SDForest.r")
+
+?get_Q
 
 Q <- get_Q(data[1:80, -1], type = 'trim')
 
@@ -25,11 +28,73 @@ sd_objective <- function(preds, dtrain) {
     hess <- Q_2
 }
 
-SDTree(Ozone ~ ., data = data[1:80, ], m = 6, cp = 0)
-SDTree(Ozone ~ ., data = data[1:80, ], cp = 0)
+tree <- rpart(Ozone ~ ., data = data[1:80, ], control = rpart.control(xval = 20, cp = 0, minsplit = 5, minbucket = 2))
+cptable <- tree$cptable
+cptable
 
 
+a = SDTree(Ozone ~ ., data = data[1:80, ], cp = 0.016)
+a
 
+a$predictions - predict(a, data[1:80,c(4, 2)])
+
+res = cv.SDTree(Ozone ~ ., data = data[1:80, ], n_cv = 2)
+res
+
+res <- ranger(Ozone ~ ., data = data[1:80, ], num.trees = 100)
+res
+
+print(a)
+plot(a)
+
+b <- SDForest(Ozone ~ ., data = data[1:80, ])
+b
+b$f_X_hat
+dev.off()
+plot(data[1:80, 1])
+points(a$predictions, col = 'red')
+points(b$predictions, col = 'blue')
+
+b$predictions - predict(b, data[1:80,])
+
+predict(b, data[1:80,4])
+
+!all(b$var.names %in% names(data))
+
+library(rpart)
+b = rpart(Ozone ~ ., data = data[1:80, ], control = rpart.control(xval = 20, cp = 0, minsplit = 2, minbucket = 2))
+b$cptable
+
+plot(diff(log(seq(1, 2, 0.1))))
+
+
+print(a)
+plot(a)
+
+plot(data[1:80, 1])
+points(a$f_X_hat, col = 'red')
+points(b$f_X_hat, col = 'blue')
+
+all(a$f_X_hat == b$f_X_hat)
+print(a$tree, 'value', 's', 'j')
+print(b$tree, 'value', 's', 'j')
+
+print(a$vis_tree, 'value', 's', 'j', 'decision', 'label')
+print(b$vis_tree, 'value', 's', 'j')
+
+print(a)
+plot(a)
+
+SetEdgeStyle(a$tree, label = function(x) {x$decision})
+SetNodeStyle(a$tree, label = function(x) {x$s})
+plot(a$tree)
+
+
+tree$Do(leave_names, filterFun = isLeaf)
+
+tree[[3]]
+print(tree, 'value', 's', 'j')
+print(fit2$tree, 'value', 's', 'j')
 
 
 fit1 <- SDTree(Y = data[1:80, 1], x = data[1:80, -1],min_sample = 2, cp = 0, multicore = F)

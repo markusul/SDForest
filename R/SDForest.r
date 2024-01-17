@@ -5,12 +5,12 @@ library(data.table)## visualize trees
 library(igraph)
 library(data.tree)
 
-#helper functions to name nodes
+#helper functions to lable nodes
 splitt_names <- function(node, var_names = NULL){
   if(is.null(var_names)){
-    node$name <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
+    node$label <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
   }else{
-    node$name <- paste(var_names[node$j], ' <= ', round(node$s, 2), sep = '')
+    node$label <- paste(var_names[node$j], ' <= ', round(node$s, 2), sep = '')
   }
 }
 
@@ -19,17 +19,7 @@ leave_names <- function(node){
     if(new_name %in% node$Get('name', filterFun = isLeaf)){
         new_name <- paste(new_name, '')
     }
-    node$name <- new_name
-}
-
-splitt_names_rpart <- function(node){
-    elem <- unlist(lapply(strsplit(node$name, '='), strsplit, split = ' '))
-    elem[length(elem)] <- round(as.numeric(elem[length(elem)]), 1)
-    node$name <- paste(elem, collapse = ' ')
-}
-
-leave_names_rpart <- function(node){
-    node$name <- round(as.numeric(node$name), 1)
+    node$label <- new_name
 }
 
 
@@ -76,7 +66,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
                           diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                           { # pca
                               d_pca <- sv$d
-                              if(confounding_dim <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
+                              if(confounding_dim <= 0) stop("the assumed confounding dimension must be larger than zero")
                               d_pca[1:confounding_dim] <- 0
                               sv$u %*% diag(d_pca) %*% t(sv$u)
                           },
@@ -84,18 +74,30 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   return(Q)
 }
 
-cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, multicore = F, n_cv = 3, Q_type = 'trim'){
-  # cross-validation to selecet optimal cp
-  # m: maximum number of splits, maximum m + 1 leaves
-  # cp: cost-complexity parameter
-  # min_sample: min number of samples per leaf to split
-  # n_cv: number of cross-validation sets
-  
+
+cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0, 
+                      min_sample = 5, fast = TRUE, multicore = F, Q_type = 'trim', trim_quantile = 0.5, 
+                      confounding_dim = 0, mc.cores = NULL, n_cv = 3, cp.seq = NULL){
+
+  input_data <- data.handler(formula = formula, data = data, x = x, y = y)
+  X <- input_data$X
+  Y <- input_data$Y
+
   p <- ncol(X)
-  n <- length(Y)
+  n <- nrow(X)
+
+  m <- max_leaves - 1
+  # check validity of input
+  if(n != length(Y)) stop('X and Y must have the same number of observations')
+  if(m < 1) stop('max_leaves must be larger than 1')
+  if(min_sample < 1) stop('min_sample must be larger than 0')
+  if(cp < 0) stop('cp must be at least 0')
+  if(!is.null(cp.seq) && (any(cp.seq < 0) | any(cp.seq > 1))) stop('cp.seq must be between 0 and 1')
+  if(n_cv < 2 | n_cv > n) stop('n_cv must be at least 2 and smaller than n')
+  if(n_cv > 5) warning('if to many folds are used, Q_validation might differ to much from Q_trainig, consider using less folds')
 
   # estimate spectral transformation
-  Q <- get_Q(X, Q_type)
+  Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
   
   # estimating initial loss with only a stump
   # to map optimal minimal loss decrease to a cp value
@@ -112,12 +114,15 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, 
   test_ind <- lapply(1:n_cv, function(x)1:len_test + (x - 1) * len_test)
 
   # sequence of minimum loss decrease to compare with cv
-  t_seq <- seq(0, loss_start, 0.1)
+  if(is.null(cp.seq)){
+    cp.seq <- seq(0, 6, 0.002)
+  }
+  t_seq <- cp.seq * loss_start
 
   # estimate performance for every validation set
   perf <- lapply(test_ind, function(cv_ind){
     # calculate Trim transform
-    Q_cv <- get_Q(X[cv_ind, ], Q_type)
+    Q_cv <- get_Q(X[cv_ind, ], Q_type, trim_quantile, confounding_dim)
 
     # deconfound X and Y
     X_train <- X[-cv_ind, ]
@@ -127,12 +132,17 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, 
     Y_cv <- Y[cv_ind]
     
     # estimate tree with the training set
-    res <- SDTree(X_train, Y_train, m = m, cp = cp, min_sample = min_sample, 
-                  deconfounding = deconfounding, mtry = FALSE, multicore = multicore, 
-                  pruning = F, fast = T, Q_type = Q_type)
-    
+    suppressWarnings({
+    res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = cp, min_sample = min_sample,
+                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim,
+                  multicore = multicore, fast = fast, mc.cores = mc.cores)
+    })
+
     # validation performance if we prune with the different ts
     if(multicore){
+      if(!is.null(mc.cores)){
+        n_cores <- mc.cores
+      }
       perf <- mclapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), mc.cores = n_cores)
     }else{
       perf <- lapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
@@ -143,13 +153,21 @@ cv.SDTree <- function(X, Y, m = 100, cp = 0, min_sample = 5, deconfounding = T, 
   
   # collect performance for different min loss decreases
   perf <- matrix(unlist(perf), ncol = n_cv, byrow = FALSE)
-  # use mean over all cv-sets
-  perf <- apply(perf, 1, mean)
-  # select minimum
-  t.min <- t_seq[[which.min(perf)]]
   
-  # return cp.min
-  return(t.min / loss_start) # TODO: return cp.min and all the cp values and losses
+  cp.table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
+  colnames(cp.table) <- c('cp', 'SDLoss mean', 'SDLoss sd')
+
+  loss_unique <- unique(cp.table[, 2])
+  cp.table <- lapply(loss_unique, function(loss){
+      idx <- which(cp.table[, 2] == loss)
+      cp.table[idx[length(idx)], ]
+  })
+  cp.table <- do.call(rbind, cp.table)
+
+  cp.min <- cp.table[which.min(cp.table[, 2]), 1]
+
+  res <- list(cp.min = cp.min, cp.table = cp.table)
+  return(res)
 }
 
 pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
@@ -168,7 +186,7 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
 }
 
-data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL, ...){
+data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
   if(is.null(formula)){
     if(is.null(x) | is.null(y)){
       stop("Error: Either data or x and y is required.")
@@ -195,22 +213,15 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL, ...){
       if(any(attr(Terms, "order") > 1L)) stop("Trees cannot handle interaction terms")
 
       Y <- model.response(m)
-      
-
-      if(!inherits(m, "data.frame") || is.null(attr(m, "terms"))) print('hallo')
-
-      #m[] <- lapply(m, function(x) {if (is.character(x)) as.numeric(factor(x))
-      #                              else if(!is.numeric(x))  as.numeric(x)
-      #                              else x})
       X <- model.matrix(attr(m, "terms"), m)[, -1L, drop = FALSE]
       return(list(X = X, Y = Y))
     }
   }
-
 }
 
-SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 2, mtry = NULL, fast = TRUE,
-                   multicore = F, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, mc.cores = NULL, pruning = F){
+
+SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
+                   multicore = F, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, mc.cores = NULL){
   # X: covariates
   # Y: outcome
   # m: max number of splits
@@ -229,7 +240,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   m <- max_leaves - 1
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
-  if(m < 1) stop('m must be larger than 0')
+  if(m < 1) stop('max_leaves must be larger than 1')
   if(min_sample < 1) stop('min_sample must be larger than 0')
   if(cp < 0) stop('cp must be at least 0')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
@@ -242,9 +253,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
-
-  print(Y)
-
 
   # calculate first estimate
   E <- matrix(1, n, 1)
@@ -325,7 +333,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
     if(sum(is.na(c_hat)) > 0){
-      warning('singulaer')
+      warning('singulaer matrix QE, tree might be to large, consider increasing cp')
       break
     }
     if(Losses_dec[loc] <= cp * loss_start){
@@ -378,12 +386,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # predict the test set
   f_X_hat <- predict_outsample(tree, X)
 
-  #estimated SDTree as igraph
-  vis_tree <- Clone(tree)
-  vis_tree$Do(splitt_names, filterFun = isNotLeaf, var_names = colnames(X))
-  vis_tree$Do(leave_names, filterFun = isLeaf)
+  # labels for the nodes
+  tree$Do(splitt_names, filterFun = isNotLeaf, var_names = colnames(X))
+  tree$Do(leave_names, filterFun = isLeaf)
 
-  res <- list(f_X_hat = f_X_hat, tree = tree, vis_tree = vis_tree)
+  res <- list(predictions = f_X_hat, tree = tree, var.names = colnames(X))
   class(res) <- 'SDTree'
   return(res)
 }
@@ -508,67 +515,93 @@ loss <- function(Y, f_X){
 
 predict.SDTree <- function(object, newdata){
   # predict function for the spectral deconfounded tree
-  return(predict_outsample(object$tree, newdata))
+  if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
+  if(!all(object$var.names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+
+  X <- newdata[, object$var.names]
+  return(predict_outsample(object$tree, X))
 }
 
-print.SDTree <- function(x, ...){
+print.SDTree <- function(x){
   # print function for the spectral deconfounded tree
-  print(x$vis_tree, 'value', 's', 'j')
+  print(x$tree, 'value', 's', 'j', 'label', 'decision')
 }
 
 plot.SDTree <- function(x){
   # plot function for the spectral deconfounded tree
-  SetEdgeStyle(x$vis_tree, label = function(x) {x$decision})
-  plot(x$vis_tree)
+  SetEdgeStyle(x$tree, label = function(x) {x$decision})
+  SetNodeStyle(x$tree, label = function(x) {x$label})
+  plot(x$tree)
 }
 
 predict.SDforest <- function(object, newdata){
   # predict function for the spectral deconfounded random forest
   # using the mean over all trees as the prediction
-  if(is.null(newdata)){
-    return(object$f_X_hat)
-  }else{
-    pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, newdata)}))
-    return(rowMeans(pred))
-  }
+  # check data type
+  if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
+  if(!all(object$var.names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+
+  X <- newdata[, object$var.names]
+
+  pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
+  return(rowMeans(pred))
 }
 
-# TODO: use only one Q for all trees
+
 # TODO: add variable importance
 # TODO: add oob error
-SDForest <- function(X, Y, nTree, m = 20, cp = 0.005, min_sample = 5, deconfounding = T, mtry = F, multicore = T, pruning = F){
-  # Spectral deconfounded random forest using SDTree
-  # nTree: number of regression trees for the forest
-  # m: maximum number of splits in each tree
-  # cp: cost-complexity parameter for each tree
-  # min_sample: minimum observations for each partition
-  # mtry: number of randomly selected covariates that are available for each split
-  # pruning: wether each tree should be automatically pruned using a validation set
-  
+SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 50, 
+                     cp = 0, min_sample = 5, mtry = NULL, multicore = F, mc.cores = NULL, 
+                     Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+
+  input_data <- data.handler(formula = formula, data = data, x = x, y = y)
+  X <- input_data$X
+  Y <- input_data$Y
+
   # number of observations
-  n <- length(Y)
+  n <- nrow(X)
+
+  if(n != length(Y)) stop('X and Y must have the same number of observations')
+  if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
+  if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
+
+  # estimate spectral transformation
+  if(is.null(Q)){
+    Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
+  }else{
+    if(!is.matrix(Q)) stop('Q must be a matrix')
+    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
+  }
+
+  # mtry
+  if(is.null(mtry)){
+    mtry <- floor(sqrt(ncol(X)))
+  }
   
   # bootstrap samples
   ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
   
+  suppressWarnings({
   # estimating all the trees
   if(multicore){
-    res <- mclapply(ind, function(i)SDTree(X[i, ], Y[i], m = m, cp = cp, min_sample = min_sample, 
-                                           deconfounding = deconfounding, mtry = mtry, fast = T, 
-                                           pruning = pruning, Q_type = 1), 
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    res <- mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
+                                           min_sample = min_sample, Q = Q, mtry = mtry),
                     mc.cores = n_cores)
   }else{
-    res <- lapply(ind, function(i)SDTree(X[i, ], Y[i], m = m, cp = cp, min_sample = min_sample, 
-                                         deconfounding = deconfounding, mtry = mtry, fast = T, 
-                                         pruning = pruning, Q_type = 1))
-  } 
+    res <- lapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
+                                           min_sample = min_sample, Q = Q, mtry = mtry))
+  }
+  })
   
   # predict with all trees
   pred <- do.call(cbind, lapply(res, function(x){predict_outsample(x$tree, X)}))
   
   # use mean over trees as final prediction
   f_X_hat <- rowMeans(pred)
-  res <- list(f_X_hat = f_X_hat, forest = res)
+  res <- list(predictions = f_X_hat, forest = res, var.names = colnames(X))
   class(res) <- 'SDforest'
   return(res)
 }
