@@ -481,13 +481,12 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
   })
 
-  Y_tilde <- Q %*% Y
-
+  # ensemble predictions for each observation
+  # but only with the trees that did not contain the observation in the training set
   oob_ind <- lapply(1:n, function(i) which(unlist(lapply(lapply(ind, 
                          function(train)c(1:n)[-train]), 
                          function(x) any(x == i)))))
 
-  length(oob_ind[[8]])
   oob_predictions <- unlist(lapply(1:n, function(i){
     if(length(oob_ind[[i]]) == 0){
       return(NA)
@@ -497,7 +496,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     })
     return(mean(unlist(predictions)))
   }))
-  oob_SDloss <- loss(Y_tilde, Q %*% oob_predictions)
+  oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
   oob_loss <- loss(Y, oob_predictions)
 
   # predict with all trees
