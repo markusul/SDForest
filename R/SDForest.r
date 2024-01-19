@@ -19,11 +19,12 @@ if(n_cores > 1 && n_cores <= 24){
 #' Estimates the spectral transformation Q for spectral deconfounding by shrinking the leading singular values of the covariates.
 #' @references
 #'   \insertAllCited{}
-#' @param X numerical covariates of class \code{matrix}
-#' @param type type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity
-#' @param trim_quantile quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim
-#' @param confounding_dim assumed confounding dimension, only needed for pca
-#' @return Q of class \code{matrix}, the spectral transformation
+#' @author Markus Ulmer
+#' @param X Numerical covariates of class \code{matrix}.
+#' @param type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity.
+#' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim.
+#' @param confounding_dim Assumed confounding dimension, only needed for pca.
+#' @return Q of class \code{matrix}, the spectral transformation matrix.
 #' @examples
 #' X <- matrix(rnorm(100 * 20), nrow = 100)
 #' get_Q(X, 'trim')
@@ -62,35 +63,34 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
 
 #' Spectral Deconfounded Tree
 #' 
+#' Estimates a tree using spectral deconfounding. # TODO: add more details
+#' @references
+#'  \insertAllCited{}
+#' @author Markus Ulmer
 #' @param formula Object of class \code{formula} or describing the model to fit of the form \code{y ~ x1 + x2 + ...} where \code{y} is a numeric response and \code{x1, x2, ...} are vectors of covariates. Interactions are not supported.
-#' @param data \code{data.frame} containing the variables in the model
-#' @param x \code{matrix} of covariates
-#' @param y \code{numeric} response
-#' @param max_leaves maximum number of leaves for the grown tree
-#' @param cp complexity parameter, minimum loss decrease to split a node. A split is only performed if the loss decrease is larger than \code{cp * initial_loss}, where \code{initial_loss} is the loss of the initial estimate using only a stump.
-#' @param min_sample minimum number of observations per leaf
-#' @param mtry number of randomly selected covariates to consider for a split, if \code{NULL} all covariates are available for each split
-#' @param fast if \code{TRUE} only the optimal splitts in the new leaves are reevaluated, if \code{FALSE} all possible splitts are reevaluated
-#' @param multicore if \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems)
-#' @param mc.cores number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used
-#' @param Q_type type of spectral transformation, see \code{\link{get_Q}}
-#' @param trim_quantile quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}
-#' @param confounding_dim assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}
-#' @param Q spectral transformation, if \code{NULL} it is estimated using \code{\link{get_Q}}
+#' @param data Training data of class \code{data.frame} containing the variables in the model.
+#' @param x Predictor data, alternative to \code{formula} and \code{data}.
+#' @param y Response vector, alternative to \code{formula} and \code{data}.
+#' @param max_leaves Maximum number of leaves for the grown tree.
+#' @param cp Complexity parameter, minimum loss decrease to split a node. A split is only performed if the loss decrease is larger than \code{cp * initial_loss}, where \code{initial_loss} is the loss of the initial estimate using only a stump.
+#' @param min_sample Minimum number of observations per leaf. A split is only performed if both resulting leaves have at least \code{min_sample} observations.
+#' @param mtry Number of randomly selected covariates to consider for a split, if \code{NULL} all covariates are available for each split.
+#' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
+#' @param multicore If \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems).
+#' @param mc.cores Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.
+#' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
+#' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
+#' @param confounding_dim Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
+#' @param Q Spectral transformation, if \code{NULL} it is internally estimated using \code{\link{get_Q}}.
 #' @return Object of class \code{SDTree} containing
-#' \item{predictions}{predictions for the training set}
-#' \item{tree}{\code{data.tree} object containing the tree}
-#' \item{var.names}{names of the covariates}
+#' \item{predictions}{Predictions for the training set.}
+#' \item{tree}{The estimated tree of type \code{data.tree} \insertCite{data.tree}{SDForest}. The tree contains the information about all the splits and the resulting estimates.}
+#' \item{var_names}{Names of the covariates in the training data.}
 #' @examples
-#' 
+#' # TODO: add example
+#' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    multicore = F, mc.cores = NULL, Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
-  # X: covariates
-  # Y: outcome
-  # m: max number of splits
-  # min_sample: min number of samples per leaf to split
-  # cp: complexity parameter
-  # mtry: if a number, only a random set of size mtry of the covariates are usable for a split
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -253,14 +253,42 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   tree$Do(splitt_names, filterFun = isNotLeaf, var_names = colnames(X))
   tree$Do(leave_names, filterFun = isLeaf)
 
-  res <- list(predictions = f_X_hat, tree = tree, var.names = colnames(X))
+  res <- list(predictions = f_X_hat, tree = tree, var_names = colnames(X))
   class(res) <- 'SDTree'
   return(res)
 }
 
-cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0, 
+#' Cross-validation for the Spectral Deconfounded Tree
+#' 
+#' Estimates the optimal complexity parameter for the spectral deconfounded tree using cross-validation. Q is estimated for each training set and validation set separately to ensure independence of the validation set.
+#' @references
+#' \insertAllCited{}
+#' @author Markus Ulmer
+#' @param formula Object of class \code{formula} or describing the model to fit of the form \code{y ~ x1 + x2 + ...} where \code{y} is a numeric response and \code{x1, x2, ...} are vectors of covariates. Interactions are not supported.
+#' @param data Training data of class \code{data.frame} containing the variables in the model.
+#' @param x Predictor data, alternative to \code{formula} and \code{data}.
+#' @param y Response vector, alternative to \code{formula} and \code{data}.
+#' @param max_leaves Maximum number of leaves for the grown tree.
+#' @param min_sample Minimum number of observations per leaf. A split is only performed if both resulting leaves have at least \code{min_sample} observations.
+#' @param mtry Number of randomly selected covariates to consider for a split, if \code{NULL} all covariates are available for each split.
+#' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
+#' @param multicore If \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems).
+#' @param mc.cores Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.
+#' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
+#' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
+#' @param confounding_dim Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
+#' @param n_cv Number of folds for cross-validation. It is recommended to not use more than 5 folds if the number of covariates is larger than the number of observations. In this case the spectral transformation could differ to much if the validation data is substantially smaller than the training data.
+#' @param cp_seq Sequence of complexity parameters cp to compare using cross-validation, if \code{NULL} a sequence from 0 to 0.6 with stepsize 0.002 is used.
+#' @return A list containing
+#' \item{cp_min}{The optimal complexity parameter.}
+#' \item{cp_table}{A table containing the complexity parameter, the mean and the standard deviation of the loss on the validation sets for the complexity parameters. If multiple complexity parameters result in the same loss, only the one with the largest complexity parameter is shown.}
+#' @examples
+#' # TODO: add example
+#' @seealso \code{\link{SDTree}}
+#' @export
+cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, 
                       min_sample = 5, fast = TRUE, multicore = F, Q_type = 'trim', trim_quantile = 0.5, 
-                      confounding_dim = 0, mc.cores = NULL, n_cv = 3, cp.seq = NULL){
+                      confounding_dim = 0, mc.cores = NULL, n_cv = 3, cp_seq = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -274,10 +302,9 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('max_leaves must be larger than 1')
   if(min_sample < 1) stop('min_sample must be larger than 0')
-  if(cp < 0) stop('cp must be at least 0')
-  if(!is.null(cp.seq) && (any(cp.seq < 0) | any(cp.seq > 1))) stop('cp.seq must be between 0 and 1')
+  if(!is.null(cp_seq) && (any(cp_seq < 0) | any(cp_seq > 1))) stop('cp.seq must be between 0 and 1')
   if(n_cv < 2 | n_cv > n) stop('n_cv must be at least 2 and smaller than n')
-  if(n_cv > 5) warning('if to many folds are used, Q_validation might differ to much from Q_trainig, consider using less folds')
+  if(n_cv > 5 & n < p) warning('if n < p and to many folds are used, Q_validation might differ to much from Q_trainig, consider using less folds')
 
   # estimate spectral transformation
   Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
@@ -297,10 +324,10 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   test_ind <- lapply(1:n_cv, function(x)1:len_test + (x - 1) * len_test)
 
   # sequence of minimum loss decrease to compare with cv
-  if(is.null(cp.seq)){
-    cp.seq <- seq(0, 6, 0.002)
+  if(is.null(cp_seq)){
+    cp_seq <- seq(0, 0.6, 0.002)
   }
-  t_seq <- cp.seq * loss_start
+  t_seq <- cp_seq * loss_start
 
   # estimate performance for every validation set
   perf <- lapply(test_ind, function(cv_ind){
@@ -316,7 +343,7 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
     
     # estimate tree with the training set
     suppressWarnings({
-    res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = cp, min_sample = min_sample,
+    res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0, min_sample = min_sample,
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim,
                   multicore = multicore, fast = fast, mc.cores = mc.cores)
     })
@@ -337,41 +364,71 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   # collect performance for different min loss decreases
   perf <- matrix(unlist(perf), ncol = n_cv, byrow = FALSE)
   
-  cp.table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
-  colnames(cp.table) <- c('cp', 'SDLoss mean', 'SDLoss sd')
+  cp_table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
+  colnames(cp_table) <- c('cp', 'SDLoss mean', 'SDLoss sd')
 
-  loss_unique <- unique(cp.table[, 2])
-  cp.table <- lapply(loss_unique, function(loss){
-      idx <- which(cp.table[, 2] == loss)
-      cp.table[idx[length(idx)], ]
+  loss_unique <- unique(cp_table[, 2])
+  cp_table <- lapply(loss_unique, function(loss){
+      idx <- which(cp_table[, 2] == loss)
+      cp_table[idx[length(idx)], ]
   })
-  cp.table <- do.call(rbind, cp.table)
+  cp_table <- do.call(rbind, cp_table)
 
-  cp.min <- cp.table[which.min(cp.table[, 2]), 1]
+  cp_min <- cp_table[which.min(cp_table[, 2]), 1]
 
-  res <- list(cp.min = cp.min, cp.table = cp.table)
+  res <- list(cp_min = cp_min, cp_table = cp_table)
   return(res)
 }
 
+#' Predictions for the Spectral Deconfounded Tree
+#' 
+#' Predicts the response for new data using a fitted spectral deconfounded tree.
+#' @references
+#' \insertAllCited{}
+#' @author Markus Ulmer
+#' @param object Fitted object of class \code{SDTree}.
+#' @param newdata New test data of class \code{data.frame} containing the covariates for which to predict the response.
+#' @return A vector of predictions for the new data.
+#' @examples
+#' # TODO: add example
+#' @seealso \code{\link{SDTree}}
+#' @export
 predict.SDTree <- function(object, newdata){
   # predict function for the spectral deconfounded tree
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
-  if(!all(object$var.names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+  if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
-  X <- newdata[, object$var.names]
+  X <- newdata[, object$var_names]
   return(predict_outsample(object$tree, X))
 }
 
-print.SDTree <- function(x){
+
+#' Print Spectral Deconfounded Tree
+#' 
+#' Print contents of the spectral deconfounded tree.
+#' @references
+#' \insertAllCited{}
+#' @author Markus Ulmer
+#' @param object Fitted object of class \code{SDTree}.
+#' @seealso \code{\link{SDTree}}
+print.SDTree <- function(object){
   # print function for the spectral deconfounded tree
-  print(x$tree, 'value', 's', 'j', 'label', 'decision')
+  print(object$tree, 'value', 's', 'j', 'label', 'decision')
 }
 
-plot.SDTree <- function(x){
+#' Plot Spectral Deconfounded Tree
+#' 
+#' Plot the spectral deconfounded tree.
+#' @references
+#' \insertAllCited{}
+#' @author Markus Ulmer
+#' @param object Fitted object of class \code{SDTree}.
+#' @seealso \code{\link{SDTree}}
+plot.SDTree <- function(object){
   # plot function for the spectral deconfounded tree
-  SetEdgeStyle(x$tree, label = function(x) {x$decision})
-  SetNodeStyle(x$tree, label = function(x) {x$label})
-  plot(x$tree)
+  SetEdgeStyle(object$tree, label = function(x) {object$decision})
+  SetNodeStyle(object$tree, label = function(x) {object$label})
+  plot(object$tree)
 }
 
 #### SDForest functions ####
@@ -408,7 +465,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   
   # bootstrap samples
   ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
-  
+
   suppressWarnings({
   # estimating all the trees
   if(multicore){
@@ -423,13 +480,32 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                            min_sample = min_sample, Q = Q, mtry = mtry))
   }
   })
-  
+
+  Y_tilde <- Q %*% Y
+
+  oob_ind <- lapply(1:n, function(i) which(unlist(lapply(lapply(ind, 
+                         function(train)c(1:n)[-train]), 
+                         function(x) any(x == i)))))
+
+  length(oob_ind[[8]])
+  oob_predictions <- unlist(lapply(1:n, function(i){
+    if(length(oob_ind[[i]]) == 0){
+      return(NA)
+    }
+    predictions <- lapply(oob_ind[[i]], function(model){
+      predict_outsample(res[[model]]$tree, X[i, ])
+    })
+    return(mean(unlist(predictions)))
+  }))
+  oob_SDloss <- loss(Y_tilde, Q %*% oob_predictions)
+  oob_loss <- loss(Y, oob_predictions)
+
   # predict with all trees
   pred <- do.call(cbind, lapply(res, function(x){predict_outsample(x$tree, X)}))
   
   # use mean over trees as final prediction
   f_X_hat <- rowMeans(pred)
-  res <- list(predictions = f_X_hat, forest = res, var.names = colnames(X))
+  res <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), oob_loss = oob_loss, oob_SDloss = oob_SDloss)
   class(res) <- 'SDforest'
   return(res)
 }
@@ -439,9 +515,9 @@ predict.SDforest <- function(object, newdata){
   # using the mean over all trees as the prediction
   # check data type
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
-  if(!all(object$var.names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+  if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
-  X <- newdata[, object$var.names]
+  X <- newdata[, object$var_names]
 
   pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
   return(rowMeans(pred))
@@ -578,6 +654,9 @@ traverse_tree <- function(tree, x){
 predict_outsample <- function(tree, X){
   # predict for every observation in X f(x)
   # using the splitting rules from the tree
+  if(is.null(dim(X))){
+    return(traverse_tree(tree, X))
+  }
   return(apply(X, 1, function(x)traverse_tree(tree, x)))
 }
 

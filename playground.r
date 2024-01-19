@@ -9,6 +9,10 @@ data <- scale(data)
 data <- data.frame(data)
 data
 
+X <- data[1:10, -1]
+# reset index
+
+
 data$Day <- as.factor(data$Day)
 str(data)
 source("R/SDForest.r")
@@ -32,9 +36,21 @@ tree <- rpart(Ozone ~ ., data = data[1:80, ], control = rpart.control(xval = 20,
 cptable <- tree$cptable
 cptable
 
+y <- data[1:80, 1]
+x <- data[1:80, -1]
+Q <- get_Q(x, type = 'trim')
+
+plot(y)
+points(Q %*% y, col = 'red')
+grid()
 
 a = SDTree(Ozone ~ ., data = data[1:80, ], cp = 0.016)
 a
+dat = data.handler(Ozone ~ ., data = data[1:80, ])
+
+isdim(dat$X[1,])
+
+predict_outsample(a$tree, dat$X[1,])
 
 a$predictions - predict(a, data[1:80,c(4, 2)])
 

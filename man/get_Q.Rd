@@ -7,16 +7,16 @@
 get_Q(X, type, trim_quantile = 0.5, confounding_dim = 0)
 }
 \arguments{
-\item{X}{numerical covariates of class \code{matrix}}
+\item{X}{Numerical covariates of class \code{matrix}.}
 
-\item{type}{type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity}
+\item{type}{Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity.}
 
-\item{trim_quantile}{quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim}
+\item{trim_quantile}{Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim.}
 
-\item{confounding_dim}{assumed confounding dimension, only needed for pca}
+\item{confounding_dim}{Assumed confounding dimension, only needed for pca.}
 }
 \value{
-Q of class \code{matrix}, the spectral transformation
+Q of class \code{matrix}, the spectral transformation matrix.
 }
 \description{
 Estimates the spectral transformation Q for spectral deconfounding by shrinking the leading singular values of the covariates.
@@ -30,4 +30,7 @@ get_Q(X, 'no_deconfounding')
 }
 \references{
 \insertAllCited{}
+}
+\author{
+Markus Ulmer
 }
