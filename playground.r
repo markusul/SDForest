@@ -1,6 +1,7 @@
 library(graphics)
 library(ranger)
 library(xgboost)
+library(rpart)
 
 str(airquality)
 data <- na.omit(airquality)
@@ -9,165 +10,55 @@ data <- scale(data)
 data <- data.frame(data)
 data
 
-X <- data[1:10, -1]
-# reset index
 
 
-data$Day <- as.factor(data$Day)
-str(data)
 source("R/SDForest.r")
 
-?get_Q
+res <- SDTree(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = F, cp = 0.1)
 
-Q <- get_Q(data[1:80, -1], type = 'trim')
 
-svd(Q)$d
+simulate_data_nonlinear <- function(q, p, n, m){
+    #simulate data with confounding and non-linear f_X
+    # q: number of confounding covariates in H
+    # p: number of covariates in X
+    # n: number of observations
+    # m: number of covariates with a causal effect on Y
 
-Q_2 <- t(Q) %*% Q
+    # random confounding covariates H
+    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
 
-sd_objective <- function(preds, dtrain) {
-    labels <- getinfo(dtrain, "label")
+    # random correlation matrix cov(X, H)
+    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
 
-    grad <- - Q_2 %*% (labels - preds)
-    hess <- Q_2
+    # random coefficient vector delta
+    delta <- rnorm(q, 0, 1)
+
+    # random error term
+    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+
+    if(q == 0){
+        X <- E
+    }else{
+        X <- H %*% Gamma + E
+    }
+  
+    # random sparse subset of covariates in X
+    js <- sample(1:p, m)
+
+    # complexity of f_X
+    complexity <- 5
+    # random parameter for fourier basis
+    beta <- runif(m * complexity * 2, -1, 1)
+    # generate f_X
+    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+    
+    # generate Y
+    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
+  
+    #return data
+    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
 }
 
-tree <- rpart(Ozone ~ ., data = data[1:80, ], control = rpart.control(xval = 20, cp = 0, minsplit = 5, minbucket = 2))
-cptable <- tree$cptable
-cptable
-
-y <- data[1:80, 1]
-x <- data[1:80, -1]
-Q <- get_Q(x, type = 'trim')
-
-plot(y)
-points(Q %*% y, col = 'red')
-grid()
-
-a = SDTree(Ozone ~ ., data = data[1:80, ], cp = 0.016)
-a
-dat = data.handler(Ozone ~ ., data = data[1:80, ])
-
-isdim(dat$X[1,])
-
-predict_outsample(a$tree, dat$X[1,])
-
-a$predictions - predict(a, data[1:80,c(4, 2)])
-
-res = cv.SDTree(Ozone ~ ., data = data[1:80, ], n_cv = 2)
-res
-summary(tree)
-res <- ranger(Ozone ~ ., data = data[1:80, ], num.trees = 100)
-res
-plot(res)
-
-print(a)
-plot(a)
-
-b <- SDForest(Ozone ~ ., data = data[1:80, ])
-b
-b$f_X_hat
-dev.off()
-plot(data[1:80, 1])
-points(a$predictions, col = 'red')
-points(b$predictions, col = 'blue')
-
-b$predictions - predict(b, data[1:80,])
-
-predict(b, data[1:80,4])
-
-!all(b$var.names %in% names(data))
-
-library(rpart)
-b = rpart(Ozone ~ ., data = data[1:80, ], control = rpart.control(xval = 20, cp = 0, minsplit = 2, minbucket = 2))
-b$cptable
-
-plot(diff(log(seq(1, 2, 0.1))))
-
-
-print(a)
-plot(a)
-
-plot(data[1:80, 1])
-points(a$f_X_hat, col = 'red')
-points(b$f_X_hat, col = 'blue')
-
-all(a$f_X_hat == b$f_X_hat)
-print(a$tree, 'value', 's', 'j')
-print(b$tree, 'value', 's', 'j')
-
-print(a$vis_tree, 'value', 's', 'j', 'decision', 'label')
-print(b$vis_tree, 'value', 's', 'j')
-
-print(a)
-plot(a)
-
-SetEdgeStyle(a$tree, label = function(x) {x$decision})
-SetNodeStyle(a$tree, label = function(x) {x$s})
-plot(a$tree)
-
-
-tree$Do(leave_names, filterFun = isLeaf)
-
-tree[[3]]
-print(tree, 'value', 's', 'j')
-print(fit2$tree, 'value', 's', 'j')
-
-
-fit1 <- SDTree(Y = data[1:80, 1], x = data[1:80, -1],min_sample = 2, cp = 0, multicore = F)
-fit2 <- SDTree(y = data[1:80, 1], x = data[1:80, -1],cp = 0)
-fit1$f_X_hat
-fit2$f_X_hat
-
-print(fit2)
-plot(fit2)
-predict(fit2, data[3,])
-plot(data$Ozone)
-
-fit2$tree[[1]]
-
-
-
-
-tree_labels <- get_labels(fit2$vis_tree)
-fit2$vis_tree
-x = fit2
-plot(x$vis_tree, layout = layout.reingold.tilford(x$vis_tree, root = 1), vertex.shape = tree_labels$node_shape, 
-    vertex.label.color = 'black', vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
-    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8)
-
-plot(x$vis_tree)
-
-fit1$f_X_hat - fit2$f_X_hat
-
-
-print(fit$tree, 'value', 's', 'j')
-data <- scale(data)
-
-
-fit <- SDForest(Y = data[1:80, 1], X = data[1:80, -1], m = 100, nTree = 500, min_sample = 2, cp = 0, mtry = 4, deconfounding = T)
-fit$f_X_hat
-fit2 <- ranger(Ozone ~ ., data = data[1:80, ], num.trees = 100)
-
-dtrain <- xgb.DMatrix(data = as.matrix(data[1:80, -1]), 
-                      label = as.matrix(data[1:80, 1]))
-fit3 <- xgb.train(data = dtrain, nrounds = 100)
-
-pred <- predict(fit, data[81:111, -1])
-pred2 <- predict(fit2, data[81:111, ])
-pred3 <- predict(fit3, xgb.DMatrix(data = as.matrix(data[81:111, -1])))
-
-mean((data[81:111, 1] - pred)**2)
-mean((data[81:111, 1] - pred2$predictions)**2)
-mean((data[81:111, 1] - pred3)**2)
-
-Q_test <- get_Q(data[81:111, -1], type = 1)
-mean((Q_test %*% data[81:111, 1] - Q_test %*% pred)**2)
-mean((Q_test %*% data[81:111, 1] - Q_test %*% pred2$predictions)**2)
-mean((Q_test %*% data[81:111, 1] - Q_test %*%pred3)**2)
-
-
-?ranger
 
 f_four <- function(x, beta, js){
     # function to generate f_X
@@ -191,174 +82,203 @@ f_four <- function(x, beta, js){
         }))
 }
 
-simulate_data_nonlinear_E <- function(q, p, n, m){
-    #simulate data with confounding and non-linear f_X
-    # q: number of confounding covariates in H
-    # p: number of covariates in X
-    # n: number of observations
-    # m: number of covariates with a causal effect on Y
+source('utils.r')
+data <- simulate_data_nonlinear(1, 10, 500, 5)
+data <- simulate_data_linear(1, 10, 500, 5)
 
-    # random confounding covariates H
-    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
 
-    # random correlation matrix cov(X, H)
-    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+dat <- data.frame(X = data$X, Y = data$Y)
+dat <- scale(dat, scale = T)
+dat <- data.frame(dat)
 
-    # random coefficient vector delta
-    delta <- rnorm(q, 0, 1)
+a <- SDTree(Y ~ ., dat, Q_type = 'no_deconfounding', multicore = F, cp = 0.1)
+a
 
-    # random error term
-    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+res <- SDForest(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = T)
+res$predictions
 
-    b <- rbinom(n, 1, 0.5)
-    e <- rnorm(n, -2, 1)
-    e[b == 1] <- rnorm(sum(b), 2, 1)
-    E[, 1] <- e
 
-    if(q == 0){
-        X <- E
-    }else{
-        X <- H %*% Gamma + E
-    }
-  
-    # random sparse subset of covariates in X
-    js <- sample(1:p, m)
+plot(res$predictions, data$Ozone)
 
-    # complexity of f_X
-    complexity <- 5
-    # random parameter for fourier basis
-    beta <- runif(m * complexity * 2, -1, 1)
-    # generate f_X
-    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+
+f <- function(x, a) {
+  return(a * x)
+}
+
+
+ind <- 1:10
+a <- 2
+ind <- lapply(1:2, function(x)sample(1:n, n, replace = T))
+f <- SDTree
+X <- data[, -1]
+Y <- data[, 1]
+max_leaves <- 10
+cp <- 0.01
+min_sample <- 5
+Q <- get_Q(X, 'pca', confounding_dim = 1)
+mtry <- 2
+
+
+    cl <- parallel::makeCluster(n_cores)
+    doParallel::registerDoParallel(cl)
+    parallel::clusterExport(cl, c("SDTree", "get_Q", "n_cores", "X", "Y", "max_leaves", 
+                                  "cp", "min_sample", "Q", "mtry", "data.handler", "get_all_splitt", 
+                                  "evaluate_splitt", "find_s", "predict_outsample", "traverse_tree", 
+                                  "leave_names", "loss", "splitt_names"))
+    res <- parLapply(cl = cl, X = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+                Q = Q, mtry = mtry, multicore = FALSE))
+    parallel::stopCluster(cl = cl)
+    print(res)
+
+
+cl <- parallel::makeCluster(n_cores)
+doParallel::registerDoParallel(cl)
+parallel::clusterExport(cl, c("SDTree", "get_Q", "n_cores", "X", "Y", "max_leaves", 
+                              "cp", "min_sample", "Q", "mtry", "data.handler", "get_all_splitt", 
+                              "evaluate_splitt", "find_s", "predict_outsample", "traverse_tree", 
+                              "leave_names"))
+res <- parLapply(cl = cl, X = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+             Q = Q, mtry = mtry, multicore = FALSE))
+parallel::stopCluster(cl = cl)
+res
+
+res =2
+
+cl <- parallel::makeCluster(n_cores)
+doParallel::registerDoParallel(cl)
+res <- foreach(i = ind) %dopar% {
+      fit <- SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+             Q = Q, mtry = mtry, multicore = FALSE)
+      return(fit)
     
-    # generate Y
-    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
-  
-    #return data
-    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
-}
-
-data <- simulate_data_nonlinear_E(1, 20, 100, 5)
-data
-
-plot(svd(scale(data$X))$d)
-
-
-plot(density(rnorm(100, 0, 1)))
-b <- rbinom(100, 1, 0.5)
-e <- rnorm(100, -2, 1)
-e[b == 1] <- rnorm(sum(b), 2, 1)
-e
-
-plot(density(rnorm(100, -0.5, 1) + rnorm(100, 0.5, 1)))
-plot(density(e))
-
-
-
-simulate_data_nonlinear_D <- function(q, p, n, m, d = 1){
-    #simulate data with confounding and non-linear f_X
-    # q: number of confounding covariates in H
-    # p: number of covariates in X
-    # n: number of observations
-    # m: number of covariates with a causal effect on Y
-
-    # random confounding covariates H
-    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
-
-    # random correlation matrix cov(X, H)
-    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
-    non_confounded_covs <- sample(1:p, floor((1-d) * p))
-    print(non_confounded_covs)
-    Gamma[, non_confounded_covs] <- 0
-
-
-    # random coefficient vector delta
-    delta <- rnorm(q, 0, 1)
-
-    # random error term
-    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
-
-    if(q == 0){
-        X <- E
-    }else{
-        X <- H %*% Gamma + E
     }
-  
-    # random sparse subset of covariates in X
-    js <- sample(1:p, m)
+parallel::stopCluster(cl = cl)
+res
 
-    # complexity of f_X
-    complexity <- 5
-    # random parameter for fourier basis
-    beta <- runif(m * complexity * 2, -1, 1)
-    # generate f_X
-    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
-    
-    # generate Y
-    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
-  
-    #return data
-    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
-}
+res1 <- SDForest(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = F, nTree = 2)
+res2 <- SDForest(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = T, nTree = 2)
 
 
-
-data <- simulate_data_nonlinear_D(1, 20, 100, 5, d = 0.1)
-data
-
-quantile(sv$d, 0.5)
-
-get_Q <- function(X, type, q_hat = 0){
-    # X: covariates
-    # type: type of deconfounding
-    modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
-    if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
-
-    # number of observations
-    n <- dim(X)[1]
-
-    # calculate deconfounding matrix
-    sv <- svd(X)
-    tau <- median(sv$d)
-    D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
-
-    Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
-                            diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
-                            { # pca
-                                d_pca <- sv$d
-                                if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
-                                d_pca[1:q_hat] <- 0
-                                print('aa')
-                                sv$u %*% diag(d_pca) %*% t(sv$u)
-                            },
-                            diag(n)) # no_deconfounding
-    return(Q)
-}
-
-print(paste(c(1, 2, 3, 4)))
+source("utils.r")
+data <- simulate_data_nonlinear(1, 10, 500, 5)
 
 
-X <- matrix(rnorm(100 * 20), nrow = 100)
-get_Q(X, 'pa')
+dat <- data.frame(X = data$X, Y = data$Y)
 
-paste(names(modes), collapse = ', ')
+dat
+Q <- get_Q(data$X, type = 'trim')
+plot(rowSums(Q))
 
-sv <- svd(X)
-
-type <- 'pc'
-q_hat <- 0
-!(type %in% names(modes))
+Q <- get_Q(scale(data$X), type = 'trim')
+plot(rowSums(Q))
 
 
-modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+dat <- scale(dat, scale = T)
 
-Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), 
-                         diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), 
-                         {
-                            d_pca <- sv$d
-                            if(q_hat <= 0) stop("the assumed confounding dimension q_hat must be larger than zero")
-                            d_pca[1:q_hat] <- 0
-                            print('aa')
-                            sv$u %*% diag(d_pca) %*% t(sv$u)
-                         },
-                         diag(n))
+dat <- data.frame(dat)
+dat
+
+
+a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, cp = 0.1)
+
+
+res1 <- ranger(Y ~ ., data = dat, num.trees = 100)
+res2 <- SDForest(Y ~ ., data = dat, nTree = 100, Q_type = 'DDL_trim', multicore = T, cp = 0.1)
+
+
+
+
+
+dat$ranger <- res1$predictions
+dat$SDForest <- res2$predictions
+
+res2
+res1
+
+
+
+
+
+res1 <- ranger(Ozone ~ ., data = data, num.trees = 500)
+res2 <- SDForest(Ozone ~ ., data = data, nTree = 500, Q_type = 'DDL_trim', multicore = T)
+
+res2
+res1
+
+plot(dat)
+
+dev.off()
+plot(dat)
+
+X <- as.matrix(dat[, -11])
+plot(svd(X)$d)
+Q <- get_Q(X, 'DDL_trim')
+
+plot(rowSums(Q))
+
+hist(Q)
+heatmap(Q)
+Q
+
+
+plot(svd(Q)$d)
+
+
+plot(svd(X)$d)
+points(svd(Q %*% X)$d, col = 'red')
+
+svd(Q %*% X)$d
+
+
+E_tilde <- matrix(rowSums(Q))
+Y_tilde <- Q %*% dat$Y
+
+plot(E_tilde, Y_tilde)
+
+c_hat <- fastLmPure(E_tilde, Y_tilde)$coefficients
+c_hat
+
+SDTree(Y ~ . , dat, Q_type = 'DDL_trim')
+
+rnorm(100, 0, 100)
+
+
+library(ggplot2)
+
+n <- 100
+p <- 200
+q <- 5
+
+sigma_nu <- 1
+# strength of confounding
+sigma_gamma <- sqrt(0.022)
+
+# simulate data
+set.seed(2023)
+H <- matrix(rnorm(n * q), nrow = n)
+Gamma <- matrix(rnorm(q * p, 0, sigma_gamma), nrow = q)
+X <- matrix(rnorm(n * p, 0, sigma_nu), nrow = n)
+
+X <- X + H %*% Gamma
+
+X <- data$X
+
+X <- scale(X)
+
+
+decomp_conf <- svd(X)
+
+Q <- get_Q(X, 'pca', confounding_dim = 1)
+X_tilde <- Q %*% X
+
+
+plot(decomp_conf$d)
+points(c(0, svd(X_tilde)$d), col = 'red')
+
+
+
+
+
+
+plot(svd(X)$d)
+plot(svd(Q %*% X)$d)
