@@ -14,85 +14,74 @@ data
 
 source("R/SDForest.r")
 
-res <- SDTree(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = F, cp = 0.1)
-
-
-simulate_data_nonlinear <- function(q, p, n, m){
-    #simulate data with confounding and non-linear f_X
-    # q: number of confounding covariates in H
-    # p: number of covariates in X
-    # n: number of observations
-    # m: number of covariates with a causal effect on Y
-
-    # random confounding covariates H
-    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
-
-    # random correlation matrix cov(X, H)
-    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
-
-    # random coefficient vector delta
-    delta <- rnorm(q, 0, 1)
-
-    # random error term
-    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
-
-    if(q == 0){
-        X <- E
-    }else{
-        X <- H %*% Gamma + E
-    }
-  
-    # random sparse subset of covariates in X
-    js <- sample(1:p, m)
-
-    # complexity of f_X
-    complexity <- 5
-    # random parameter for fourier basis
-    beta <- runif(m * complexity * 2, -1, 1)
-    # generate f_X
-    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
-    
-    # generate Y
-    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
-  
-    #return data
-    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
-}
-
-
-f_four <- function(x, beta, js){
-    # function to generate f_X
-    # x: covariates
-    # beta: parameter vector
-    # js: relevant covariates
-
-    # number of relevant covariates
-    m <- length(js)
-
-    # complexity of f_X
-    complexity <- length(beta) / (2 * m)
-
-    # calculate f_X
-    do.call(sum, lapply(1:m, function(i) {
-        j <- js[i]
-        # select beta for covariate j
-        beta_ind <- 1:(2*complexity) + (i-1) * 2 * complexity
-        # calculate f_X_j
-        do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.2 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.2 * x[j])))
-        }))
-}
-
 source('utils.r')
-data <- simulate_data_nonlinear(1, 10, 500, 5)
-data <- simulate_data_linear(1, 10, 500, 5)
-
+data <- simulate_data_nonlinear(1, 200, 300, 5)
 
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-a <- SDTree(Y ~ ., dat, Q_type = 'no_deconfounding', multicore = F, cp = 0.1)
-a
+start_time <- Sys.time()
+a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, cp = 0.01, max_leaves = 300, mtry = 180)
+end_time <- Sys.time()
+end_time - start_time
+
+start_time <- Sys.time()
+a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = T, mtry = 180, cp = 0.01, max_leaves = 300, nTree = 100)
+end_time <- Sys.time()
+end_time - start_time
+
+
+
+b <- a$predictions
+
+plot(b, a$predictions)
+
+
+nTree <- 10
+n <- nrow(dat)
+max_leaves <- 300
+cp <- 0
+min_sample <- 5
+Q <- get_Q(dat[, - ncol(dat)], 'DDL_trim')
+mtry <- floor(sqrt(ncol(dat) - 1))
+mtry <- NULL
+
+start_time <- Sys.time()
+a <- SDTree(Y ~ ., dat, max_leaves = max_leaves, cp = cp, min_sample = min_sample, Q = Q, mtry = mtry, multicore = F)
+end_time <- Sys.time()
+end_time - start_time
+
+
+ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
+  #suppressWarnings({
+  # estimating all the trees
+
+X <- dat[, - ncol(dat)]
+Y <- dat[, ncol(dat)]
+data_list <- lapply(ind, function(i){
+    return(list(X = X[i, ], Y = Y[i]))
+})
+res <- lapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
+                                           min_sample = min_sample, Q = Q, mtry = mtry, multicore = F))
+
+
+# mlbnenchmarks
+library(microbenchmark)
+
+data <- simulate_data_nonlinear(1, 200, 500, 5)
+dat <- data.frame(X = data$X, Y = data$Y)
+dat <- scale(dat, scale = T)
+dat <- data.frame(dat)
+
+microbenchmark(
+  seq = SDTree(Y ~ ., data = dat, Q_type = 'DDL_trim', multicore = F),
+  multicore = SDTree(Y ~ ., data = dat, Q_type = 'DDL_trim', multicore = T),
+  times = 2
+)
+
+
+
 
 res <- SDForest(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = T)
 res$predictions
