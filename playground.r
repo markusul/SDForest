@@ -11,32 +11,39 @@ data <- data.frame(data)
 data
 
 
-
 source("R/SDForest.r")
 
 source('utils.r')
-data <- simulate_data_nonlinear(1, 200, 300, 5)
+p <- 400
+n <- 400
+data <- simulate_data_nonlinear(1, p, n, 1)
 
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
+SDTree(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, cp = 0, max_leaves = 50)
+dim(dat)
+
 start_time <- Sys.time()
-a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, cp = 0.01, max_leaves = 300, mtry = 180)
+suppressWarnings({
+a <- lapply(1:40, function(i) SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'DDL_trim', multicore = F, cp = 0, max_leaves = 50, mtry = p))
+})
 end_time <- Sys.time()
 end_time - start_time
 
 start_time <- Sys.time()
-a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = T, mtry = 180, cp = 0.01, max_leaves = 300, nTree = 100)
+a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = T, mtry = p, cp = 0, max_leaves = 50, nTree = 40)
 end_time <- Sys.time()
 end_time - start_time
 
 
+a$forest[[3]]$tree$height
 
-b <- a$predictions
-
-plot(b, a$predictions)
-
+tree_heights <- unlist(lapply(a$forest, function(x)x$tree$height))
+mean(tree_heights)
+min(tree_heights)
+max(tree_heights)
 
 nTree <- 10
 n <- nrow(dat)
