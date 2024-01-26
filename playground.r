@@ -177,8 +177,8 @@ f_four <- function(x, beta, js){
 source("R/SDForest.r")
 
 #source('utils.r')
-p <- 200
-n <- 400
+p <- 300
+n <- 200
 data <- simulate_data_nonlinear(1, p, n, 1)
 
 
@@ -186,20 +186,20 @@ dat <- data.frame(X = data$X, Y = data$Y)
 dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-a <- SDTree(Y ~ ., dat, Q_type = 'no_deconfounding', cp = 0, max_leaves = 50)
+a <- SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'no_deconfounding', cp = 0, max_leaves = 400)
 
 
 
 
 start_time <- Sys.time()
 suppressWarnings({
-a <- lapply(1:40, function(i) SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'DDL_trim'))
+a <- lapply(1:40, function(i) SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'DDL_trim', cp = 0, max_leaves = 400))
 })
 end_time <- Sys.time()
 end_time - start_time
 
 start_time <- Sys.time()
-a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, mtry = p, cp = 0, max_leaves = 50, nTree = 40)
+a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = T, mtry = p, cp = 0, max_leaves = 400, nTree = 40)
 end_time <- Sys.time()
 end_time - start_time
 

@@ -9,11 +9,11 @@
 #library(data.tree)
 #' @importFrom Rdpack reprompt
 
-# n_cores <- parallel::detectCores()
-# # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
-# if(n_cores > 1 && n_cores <= 24){
-#     n_cores <- n_cores - 1
-# }
+n_cores <- parallel::detectCores()
+ # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
+if(n_cores > 1 && n_cores <= 24){
+    n_cores <- n_cores - 1
+}
 
 
 #' Estimation of spectral transformation
@@ -273,7 +273,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       }
       potential_splitts <- potential_splitts[!to_small]
     }
-    print(i)
   }
 
 
@@ -501,7 +500,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # mtry
   if(is.null(mtry)){
-    mtry <- floor(sqrt(ncol(X)))
+    mtry <- floor(0.9 * p)
   }
   
   # bootstrap samples
@@ -521,7 +520,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
                                   "find_s", "evaluate_splitt", "loss", "predict_outsample", 
                                   "traverse_tree", "splitt_names", "leave_names"))
-    res <- clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+    res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                 Q = Q, mtry = mtry))
     parallel::stopCluster(cl = cl)
     # res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
@@ -623,7 +622,6 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_br
   # check wether this split resolves in two reasnable partitions
   if(length(index_branch) < min_sample | length(index_n_branches) < min_sample){
     # remove no longer needed objects from memory
-    print('to small')
     return(list('loss' = Inf, j = j, s = s, branch = branch))
   }
   
