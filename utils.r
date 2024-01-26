@@ -1,12 +1,12 @@
 # Load packages
-library(glmnet)
-library(parallel)
-library(rpart)
-library(dplyr)
-library(tidyr)
+# library(glmnet)
+# library(parallel)
+# library(rpart)
+# library(dplyr)
+# library(tidyr)
 
-library(rpart)
-library(ranger)
+# library(rpart)
+# library(ranger)
 
 simulate_data_step <- function(q, p, n, m, make_tree = F){
     # q: number of confounding covariates in H

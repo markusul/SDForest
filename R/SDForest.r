@@ -2,18 +2,18 @@
 #library(parallel)
 #library(doParallel)
 #library(foreach)
-library(data.tree)
-library(RcppEigen)
-library(data.table)## visualize trees
-library(igraph)
-library(data.tree)
+#library(data.tree)
+#library(RcppEigen)
+#library(data.table)## visualize trees
+#library(igraph)
+#library(data.tree)
 #' @importFrom Rdpack reprompt
 
-n_cores <- parallel::detectCores()
-# if there are less than 24 cores, it will be a local machine leave two cores for other tasks
-if(n_cores > 1 && n_cores <= 24){
-    n_cores <- n_cores - 1
-}
+# n_cores <- parallel::detectCores()
+# # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
+# if(n_cores > 1 && n_cores <= 24){
+#     n_cores <- n_cores - 1
+# }
 
 
 #' Estimation of spectral transformation
@@ -92,7 +92,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
 #' # TODO: add example
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   multicore = F, mc.cores = NULL, Q_type = 'DDL_trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+                   Q_type = 'DDL_trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
   a <- Sys.time()
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -143,20 +143,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   tree <- data.tree::Node$new(name = '1', value = c_hat, dloss = loss_start)
 
   # memory for optimal splits
-  memory <- list(replicate(m + 1 , matrix(0, p, 2)))
+  memory <- list(replicate(m + 1 , matrix(0, p, 4)))
   potential_splitts <- 1
 
-  after_mtry <- 3
+  after_mtry <- 0
 
   for(i in 1:m){
-    #available covariates
-    if(i > after_mtry && !is.null(mtry)){
-      len_p <- mtry
-    }else {
-      len_p <- p
-    }
-    available_j <- sample(1:p, len_p)
-
     # iterate over all possible splits every time
     # for slow but slightly better solution
     if(!fast){
@@ -165,35 +157,53 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       potential_splitts <- potential_splitts[!to_small]
     }
     #iterate over new to estimate splits
+
+
     for(branch in potential_splitts){
 
       best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q = Q, 
-                                     n = n, n_branches = i+1, E = E, min_sample = min_sample, 
-                                     multicore = multicore, mc.cores = mc.cores)
+                                     n = n, n_branches = i+1, E = E, E_tilde = E_tilde, min_sample = min_sample, i)
       best_splitts[, 1] <- loss_temp - best_splitts[, 1]
-      memory[[branch]] <- best_splitts[, c(1, 3)]
+      memory[[branch]] <- best_splitts
     }
-    # find best split and its loss decrease
-    if(p == 1){
-      Losses_dec <- unlist(lapply(memory, function(branch){branch[1]}))
-    }else{
-      Losses_dec <- unlist(lapply(memory, function(branch){branch[available_j, 1]}))
-    }
-    #Losses_dec <- do.call(rbind, memory)
 
-    if(max(Losses_dec) <= 0){
+
+        #available covariates
+    # if(i > after_mtry && !is.null(mtry)){
+    #   len_p <- mtry
+    # }else {
+    #   len_p <- p
+    # }
+    # find best split and its loss decrease
+    # if(p == 1){
+    #   Losses_dec <- unlist(lapply(memory, function(branch){branch[1]}))
+    # }else{
+    #   #available_j <- sample(1:p, len_p)
+    #   Losses_dec <- unlist(lapply(memory, function(branch){branch[available_j, 1]}))
+    # }
+    if(i > after_mtry && !is.null(mtry)){
+      Losses_dec <- lapply(memory, function(branch){branch[sample(1:p, mtry), ]})
+      Losses_dec <- do.call(rbind, Losses_dec)
+    }else {
+       Losses_dec <- do.call(rbind, memory)
+    }
+
+    if(max(Losses_dec[, 1]) <= 0){
       break
     }
-    loc <- which.max(Losses_dec)
-    best_branch <- ceiling(loc / len_p)
+    loc <- which.max(Losses_dec[, 1])
+    #best_branch <- ceiling(loc / len_p)
+    best_branch <- Losses_dec[loc, 4]
 
-    what_j <- loc %% len_p
-    if(what_j == 0){
-      what_j <- len_p
-    }
+    # what_j <- loc %% len_p
+    # if(what_j == 0){
+    #   what_j <- len_p
+    # }
 
-    j <- available_j[what_j]
-    s <- if(p != 1) memory[[best_branch]][j, 2] else memory[[best_branch]][2]
+    # j <- available_j[what_j]
+    # s <- if(p != 1) memory[[best_branch]][j, 3] else memory[[best_branch]][3]
+    j <- Losses_dec[loc, 2]
+    s <- Losses_dec[loc, 3]
 
     # divide observations in leave
     index <- which(E[, best_branch] == 1)
@@ -207,7 +217,10 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
     # calculate new level estimates
     #E_tilde <- Q %*% E
-    E_tilde <- SMUT::eigenMapMatMult(Q, E)
+    #E_tilde <- SMUT::eigenMapMatMult(Q, E)
+
+    E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
+    E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, i + 1]))
 
     c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
     #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
@@ -216,8 +229,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # and if linear model could be estimated
     if(sum(is.na(c_hat)) > 0){
       warning('singulaer matrix QE, tree might be to large, consider increasing cp')
-      print(colSums(E_tilde))
-      print(svd(E_tilde)$d)
       break
     }
     if(Losses_dec[loc] <= cp * loss_start){
@@ -235,10 +246,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # save split rule
     leave$j <- j
     leave$s <- s
+    leave$cp <- Losses_dec[loc, 1] / loss_start
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc], decision = 'no')
-    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc], decision = 'yes')
+    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc], decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc], decision = 'yes', n_samples = sum(E[, i + 1] == 1))
 
     # add estimates to tree leaves
     for(l in tree$leaves){
@@ -257,11 +269,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
         # to small partitions cannot decrease the loss
-        memory[[el]] <- matrix(0, p, 2)
+        memory[[el]] <- matrix(0, p, 4)
       }
       potential_splitts <- potential_splitts[!to_small]
     }
+    print(i)
   }
+
 
   # print warning if maximum splitts was reached, one might want to increase m
   if(i == m){
@@ -438,7 +452,7 @@ predict.SDTree <- function(object, newdata){
 #' @seealso \code{\link{SDTree}}
 print.SDTree <- function(object){
   # print function for the spectral deconfounded tree
-  print(object$tree, 'value', 's', 'j', 'label', 'decision')
+  print(object$tree, 'value', 's', 'j', 'label', 'decision', 'n_samples')
 }
 
 #' Plot Spectral Deconfounded Tree
@@ -508,7 +522,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                   "find_s", "evaluate_splitt", "loss", "predict_outsample", 
                                   "traverse_tree", "splitt_names", "leave_names"))
     res <- clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
-                Q = Q, mtry = mtry, multicore = FALSE))
+                Q = Q, mtry = mtry))
     parallel::stopCluster(cl = cl)
     # res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
     #                                        min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
@@ -518,7 +532,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     #                                       min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
     #                                       mc.cores = n_cores)
     res <- lapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
-                                           min_sample = min_sample, Q = Q, mtry = mtry, multicore = F))
+                                           min_sample = min_sample, Q = Q, mtry = mtry))
   }
 
 
@@ -599,20 +613,18 @@ leave_names <- function(node){
     node$label <- new_name
 }
 
-evaluate_splitt <- function(branch, j, s, index, X_branch, Y_tilde, Q, n, n_branches, E, min_sample){
+evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, i){
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
-  
   # dividing observation in branch
-  X_branch_j <- X_branch[, j]
   index_n_branches <- index[X_branch_j > s]
   index_branch <- index[X_branch_j <= s]
   
   # check wether this split resolves in two reasnable partitions
   if(length(index_branch) < min_sample | length(index_n_branches) < min_sample){
     # remove no longer needed objects from memory
-  #  return(list('loss' = Inf, j = j, s = s))
     print('to small')
+    return(list('loss' = Inf, j = j, s = s, branch = branch))
   }
   
   # new indicator matrix
@@ -620,9 +632,12 @@ evaluate_splitt <- function(branch, j, s, index, X_branch, Y_tilde, Q, n, n_bran
   E[index[X_branch_j > s], branch] <- 0
   E[index[X_branch_j > s], n_branches] <- 1
   # new level estimates
-  E_tilde <- SMUT::eigenMapMatMult(Q, E)
-  #E_tilde <- Q %*% E
+  
+  #E_tilde <- SMUT::eigenMapMatMult(Q, E)
+  E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
+  E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, n_branches]))
 
+  #E_tilde <- Q %*% E
   c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
   #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
 
@@ -634,15 +649,12 @@ evaluate_splitt <- function(branch, j, s, index, X_branch, Y_tilde, Q, n, n_bran
     loss <- loss(Y_tilde, E_tilde %*% c_hat)
   #}
 
-  return(list('loss' = loss, j = j, s = s))
+  return(list('loss' = loss, j = j, s = s, branch = branch))
 }
 
-get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, min_sample, multicore, mc.cores = NULL){
+get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, i){
   # finds the best splitts for every covariate in branch
   # returns the best splitpoint for every covariate and the resulting loss decrease
-  if(!is.null(mc.cores)){
-    n_cores <- mc.cores
-  }
 
   # observations belonging to branch
   index <- which(E[, branch] == 1)
@@ -652,34 +664,16 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, min_sample, 
   # all possible split points
   s <- find_s(X_branch, min_sample)
 
-  # evaluate all the relevant splitts
-  if(multicore){
-    res <- mclapply(1:ncol(X_branch), function(j) lapply(s[, j], function(x)evaluate_splitt(branch = branch, j = j, 
-              s = x, index = index, X = X_branch, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-              E = E, min_sample = min_sample)), mc.cores = n_cores)
-  }else{
-    #Sys.sleep(3)
-    res <- lapply(1:ncol(X_branch), function(j) lapply(s[, j], function(x)evaluate_splitt(branch = branch, j = j, 
-              s = x, index = index, X = X_branch, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-              E = E, min_sample = min_sample)))
-    #res <- lapply(iter, function(x)evaluate_splitt(branch = branch, j = floor(x / dim(s)[1] + 1), 
-    #        s = s[x + 1], index = index, X = X_branch, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-    #        E = E, min_sample = min_sample))
-  }
-
-  #Sys.sleep(3)
-  #res <- do.call(rbind, res)
-  #res <- rbindlist(res)
-  #res_min <- lapply(1:ncol(X), function(x){res_temp <- res[j == x, ]
-  #                                       res_temp[which.min(loss), ]})
-  #Sys.sleep(3)
-  #res <- do.call(rbind, res)
+  res <- lapply(1:ncol(X_branch), function(j) {lapply(s[, j], function(x) {
+            X_branch_j <- X_branch[, j]
+            eval <- evaluate_splitt(branch = branch, j = j, 
+            s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
+            E = E, E_tilde = E_tilde, min_sample = min_sample, i)
+            return(eval)})})
   
   res <- lapply(res, function(x)do.call(rbind, x))
   res_min <- lapply(res, function(x)x[which.min(x[, 1]), ])
-  #return(do.call(rbind, res_min))
-
-  return(matrix(unlist(do.call(rbind, res_min)), ncol = 3, byrow = F))
+  return(matrix(unlist(do.call(rbind, res_min)), ncol = 4, byrow = F))
 
 }
 

@@ -1,39 +1,205 @@
-library(graphics)
-library(ranger)
-library(xgboost)
-library(rpart)
 
-str(airquality)
-data <- na.omit(airquality)
-data$Ozone <- log(data$Ozone)
-data <- scale(data)
-data <- data.frame(data)
-data
+simulate_data_step <- function(q, p, n, m, make_tree = F){
+    # q: number of confounding covariates in H
+    # p: number of covariates in X
+    # n: number of observations
+    # m: number of partitions
 
+    # minimum number of observations for split
+    min_sample <- 2
+
+    # random confounding covariates H
+    H <- matrix(rnorm(n * q), nrow = n)
+
+    # random correlation matrix cov(X, H)
+    Gamma <- matrix(rnorm(q * p), nrow = q)
+
+    # random coefficient vector delta
+    delta <- rnorm(q, 0, 10)
+
+    # relevant covariates
+    js <- c()
+
+    # generate X
+    if(q == 0){
+        # no confounding covariates
+        X <- matrix(rnorm(n * p), nrow = n)
+    }else{
+        # confounding covariates
+        X <- H %*% Gamma + matrix(rnorm(n * p), nrow = n)
+    }
+
+    # generate tree
+    if(make_tree){
+        tree <- Node$new(name = '1', value = 0)
+    }
+
+    # partitions of observations
+    index <- list(1:n)
+    for (i in 1:m){
+        # get number of observations in each partition
+        samples_per_part <- unlist(lapply(index, function(x)length(x)))
+
+        # get potential splits (partitions with enough observations)
+        potential_splitts <- which(samples_per_part >= min_sample)
+
+        # sample potential partition to split
+        # probability of each partition is proportional to number of observations
+        if(length(potential_splitts) == 1){
+            branch <- potential_splitts
+        }else {
+            branch <- sample(potential_splitts, 1,
+                            prob = samples_per_part[potential_splitts]/sum(samples_per_part[potential_splitts]))
+        }
+
+        # sample covariate to split on
+        j <- sample(1:p, 1)
+        js <- c(j, js)
+
+        # sample split point
+        potential_s <- X[index[[branch]], j]
+        s <- rbeta(1, 2, 2) * (max(potential_s) - min(potential_s)) + min(potential_s)
+
+        # split partition
+        index <- append(index, list(index[[branch]][X[index[[branch]], j] > s]))
+        index[[branch]] <- index[[branch]][X[index[[branch]], j] <= s]
+
+        # add split to tree
+        if(make_tree){
+            if(tree$height == 1){
+                leave <- tree
+            }else{
+                leaves <- tree$leaves
+                leave <- leaves[[which(tree$Get('name', filterFun = isLeaf) == branch)]]
+            }
+            leave$j <- j
+            leave$s <- s
+            leave$AddChild(branch, value = 0)
+            leave$AddChild(i + 1, value = 0)
+        }
+     }
+
+    # sample means per partition
+    f_X_means <- runif(length(index), -50, 50)
+
+    # generate f_X
+    f_X <- rep(0, n)
+    for (i in 1:length(index)){
+        f_X[index[[i]]] <- f_X_means[i]
+    }
+
+    # generate Y
+    if(q == 0){
+        # no confounding covariates
+        Y <- f_X + rnorm(n)
+    }else{
+        # confounding covariates
+        Y <- f_X + H %*% delta + rnorm(n)
+    }
+
+    # return data
+    if(make_tree){
+        # add leave values to tree
+        for(l in tree$leaves){
+            l$value <- f_X_means[as.numeric(l$name)]
+        }
+        return(list(X = X, Y = Y, f_X = f_X, j = js, tree = tree, index = index))
+    }
+
+    # return data
+    return(list(X = X, Y = Y, f_X = f_X, j = js, index = index))
+}
+
+simulate_data_nonlinear <- function(q, p, n, m){
+    #simulate data with confounding and non-linear f_X
+    # q: number of confounding covariates in H
+    # p: number of covariates in X
+    # n: number of observations
+    # m: number of covariates with a causal effect on Y
+
+    # random confounding covariates H
+    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
+
+    # random correlation matrix cov(X, H)
+    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+
+    # random coefficient vector delta
+    delta <- rnorm(q, 0, 1)
+
+    # random error term
+    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+
+    if(q == 0){
+        X <- E
+    }else{
+        X <- H %*% Gamma + E
+    }
+  
+    # random sparse subset of covariates in X
+    js <- sample(1:p, m)
+
+    # complexity of f_X
+    complexity <- 5
+    # random parameter for fourier basis
+    beta <- runif(m * complexity * 2, -1, 1)
+    # generate f_X
+    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+    
+    # generate Y
+    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
+  
+    #return data
+    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
+}
+
+f_four <- function(x, beta, js){
+    # function to generate f_X
+    # x: covariates
+    # beta: parameter vector
+    # js: relevant covariates
+
+    # number of relevant covariates
+    m <- length(js)
+
+    # complexity of f_X
+    complexity <- length(beta) / (2 * m)
+
+    # calculate f_X
+    do.call(sum, lapply(1:m, function(i) {
+        j <- js[i]
+        # select beta for covariate j
+        beta_ind <- 1:(2*complexity) + (i-1) * 2 * complexity
+        # calculate f_X_j
+        do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.2 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.2 * x[j])))
+        }))
+}
 
 source("R/SDForest.r")
 
-source('utils.r')
-p <- 400
+#source('utils.r')
+p <- 200
 n <- 400
 data <- simulate_data_nonlinear(1, p, n, 1)
+
 
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-SDTree(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, cp = 0, max_leaves = 50)
-dim(dat)
+a <- SDTree(Y ~ ., dat, Q_type = 'no_deconfounding', cp = 0, max_leaves = 50)
+
+
+
 
 start_time <- Sys.time()
 suppressWarnings({
-a <- lapply(1:40, function(i) SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'DDL_trim', multicore = F, cp = 0, max_leaves = 50, mtry = p))
+a <- lapply(1:40, function(i) SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'DDL_trim'))
 })
 end_time <- Sys.time()
 end_time - start_time
 
 start_time <- Sys.time()
-a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = T, mtry = p, cp = 0, max_leaves = 50, nTree = 40)
+a <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', multicore = F, mtry = p, cp = 0, max_leaves = 50, nTree = 40)
 end_time <- Sys.time()
 end_time - start_time
 
@@ -87,8 +253,8 @@ microbenchmark(
   times = 2
 )
 
-
-
+for(i in 1:100) a <- lapply(1:100, function(x) lapply(1:100, function(i) mean(sort(rnorm(10000)))))
+a
 
 res <- SDForest(Ozone ~ ., data, Q_type = 'DDL_trim', multicore = T)
 res$predictions
@@ -278,3 +444,4 @@ points(c(0, svd(X_tilde)$d), col = 'red')
 
 plot(svd(X)$d)
 plot(svd(Q %*% X)$d)
+
