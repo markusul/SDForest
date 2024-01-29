@@ -93,7 +93,6 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'DDL_trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
-  a <- Sys.time()
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -146,6 +145,10 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   memory <- list(replicate(m + 1 , matrix(0, p, 4)))
   potential_splitts <- 1
 
+  # variable importance
+  var_imp <- rep(0, p)
+  names(var_imp) <- colnames(X)
+
   after_mtry <- 0
 
   for(i in 1:m){
@@ -162,25 +165,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     for(branch in potential_splitts){
 
       best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q = Q, 
-                                     n = n, n_branches = i+1, E = E, E_tilde = E_tilde, min_sample = min_sample, i)
+                                     n = n, n_branches = i+1, E = E, E_tilde = E_tilde, min_sample = min_sample, p = p)
       best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts
     }
 
-
-        #available covariates
-    # if(i > after_mtry && !is.null(mtry)){
-    #   len_p <- mtry
-    # }else {
-    #   len_p <- p
-    # }
-    # find best split and its loss decrease
-    # if(p == 1){
-    #   Losses_dec <- unlist(lapply(memory, function(branch){branch[1]}))
-    # }else{
-    #   #available_j <- sample(1:p, len_p)
-    #   Losses_dec <- unlist(lapply(memory, function(branch){branch[available_j, 1]}))
-    # }
     if(i > after_mtry && !is.null(mtry)){
       Losses_dec <- lapply(memory, function(branch){branch[sample(1:p, mtry), ]})
       Losses_dec <- do.call(rbind, Losses_dec)
@@ -192,16 +181,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       break
     }
     loc <- which.max(Losses_dec[, 1])
-    #best_branch <- ceiling(loc / len_p)
     best_branch <- Losses_dec[loc, 4]
-
-    # what_j <- loc %% len_p
-    # if(what_j == 0){
-    #   what_j <- len_p
-    # }
-
-    # j <- available_j[what_j]
-    # s <- if(p != 1) memory[[best_branch]][j, 3] else memory[[best_branch]][3]
     j <- Losses_dec[loc, 2]
     s <- Losses_dec[loc, 3]
 
@@ -234,6 +214,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     if(Losses_dec[loc] <= cp * loss_start){
       break
     }
+    # add loss decrease to variable importance
+    var_imp[j] <- var_imp[j] + Losses_dec[loc]
 
     # select leave to split
     if(tree$height == 1){
@@ -260,6 +242,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # new temporary loss
     loss_temp <- loss(Y_tilde, E_tilde %*% c_hat)
 
+
     # the two new partitions need to be checked for optimal splits in next iteration
     potential_splitts <- c(best_branch, i + 1)
 
@@ -275,7 +258,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
   }
 
-
   # print warning if maximum splitts was reached, one might want to increase m
   if(i == m){
     warning('maximum number of iterations was reached, consider increasing m!')
@@ -288,9 +270,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = colnames(X))
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
 
-  res <- list(predictions = f_X_hat, tree = tree, var_names = colnames(X))
+  res <- list(predictions = f_X_hat, tree = tree, var_names = colnames(X), var_importance = var_imp)
   class(res) <- 'SDTree'
-  print(Sys.time() - a)
   return(res)
 }
 
@@ -464,8 +445,8 @@ print.SDTree <- function(object){
 #' @seealso \code{\link{SDTree}}
 plot.SDTree <- function(object){
   # plot function for the spectral deconfounded tree
-  SetEdgeStyle(object$tree, label = function(x) {x$decision})
-  SetNodeStyle(object$tree, label = function(x) {x$label})
+  data.tree::SetEdgeStyle(object$tree, label = function(x) {x$decision})
+  data.tree::SetNodeStyle(object$tree, label = function(x) {x$label})
   plot(object$tree)
 }
 
@@ -573,9 +554,14 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   
   # use mean over trees as final prediction
   f_X_hat <- rowMeans(pred)
-  res <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), oob_loss = oob_loss, oob_SDloss = oob_SDloss)
-  class(res) <- 'SDforest'
-  return(res)
+
+  # variable importance
+  var_imp <- rowMeans(sapply(res, function(x){x$var_importance}))
+
+  output <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), 
+                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp)
+  class(output) <- 'SDforest'
+  return(output)
 }
 
 predict.SDforest <- function(object, newdata){
@@ -591,6 +577,31 @@ predict.SDforest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
+condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
+  if(is.character(j)){
+    j <- which(names(X) == j)
+  }
+  if(!is.numeric(j)) stop('j must be a numeric or character')
+  if(j > ncol(X)) stop('j must be smaller than p')
+  if(j < 1) stop('j must be larger than 0')
+
+  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
+
+  preds <- parallel::mclapply(x_seq, function(x){
+    X_new <- X
+    X_new[, j] <- x
+    pred <- predict(object, newdata = X_new)
+    return(pred)
+  }, mc.cores = n_cores)
+  preds <- do.call(rbind, preds)
+  preds_mean <- rowMeans(preds)
+
+
+
+  return(list(preds_mean = preds_mean, x_seq = x_seq, preds = preds))
+}
+
+#TODO: permutation importance
 #TODO: print function
 
 #### Utility functions ####
@@ -612,7 +623,7 @@ leave_names <- function(node){
     node$label <- new_name
 }
 
-evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, i){
+evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample){
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
   # dividing observation in branch
@@ -650,7 +661,7 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_br
   return(list('loss' = loss, j = j, s = s, branch = branch))
 }
 
-get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, i){
+get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, p){
   # finds the best splitts for every covariate in branch
   # returns the best splitpoint for every covariate and the resulting loss decrease
 
@@ -660,13 +671,13 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min
   X_branch <- X[index, ]
 
   # all possible split points
-  s <- find_s(X_branch, min_sample)
+  s <- find_s(X_branch, min_sample, p)
 
-  res <- lapply(1:ncol(X_branch), function(j) {lapply(s[, j], function(x) {
-            X_branch_j <- X_branch[, j]
+  res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
+            X_branch_j <- if(p == 1) X_branch else X_branch[, j]
             eval <- evaluate_splitt(branch = branch, j = j, 
             s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-            E = E, E_tilde = E_tilde, min_sample = min_sample, i)
+            E = E, E_tilde = E_tilde, min_sample = min_sample)
             return(eval)})})
   
   res <- lapply(res, function(x)do.call(rbind, x))
@@ -675,22 +686,24 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min
 
 }
 
-find_s <- function(X, min_sample){
+find_s <- function(X, min_sample, p){
   # finds all the reasnable splitting points in a data matrix
-
-  if(is.null(dim(X))){
+  
+  if(p == 1){
     X <- matrix(X, ncol = 1)
   }
+  n <- nrow(X)
 
   X_sort <- apply(X, 2, sort)
   if(min_sample > 1) {
-    X_sort <- X_sort[-c(1:(min_sample-1), (dim(X)[1] - min_sample + 2):dim(X)[1]), ]
+    X_sort <- X_sort[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
   }
   
-  #X_sort <- as.matrix(X_sort)
-  
+  if(is.null(dim(X_sort))){
+    X_sort <- matrix(X_sort, ncol = 1)
+  }
   # find middlepoints between observed x values
-  s <- X_sort[-dim(X_sort)[1], ] + diff(X_sort)/2
+  s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
   # for runtime reasons
   if(dim(s)[1] > 200){
@@ -698,6 +711,11 @@ find_s <- function(X, min_sample){
   }else if (dim(s)[1] > 100) {
     s <- s[seq(1, dim(s)[1], 2), ]
   }
+  
+  if(is.null(dim(s))){
+    s <- matrix(s, ncol = 1)
+  }
+
   return(s)
 }
 

@@ -177,18 +177,37 @@ f_four <- function(x, beta, js){
 source("R/SDForest.r")
 
 #source('utils.r')
-p <- 300
+p <- 50
 n <- 200
-data <- simulate_data_nonlinear(1, p, n, 1)
+data <- simulate_data_nonlinear(10, p, n, 1)
 
 
 dat <- data.frame(X = data$X, Y = data$Y)
-dat <- scale(dat, scale = T)
+#dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-a <- SDTree(Y ~ ., dat[sample(1:n, n, replace = T), ], Q_type = 'no_deconfounding', cp = 0, max_leaves = 400)
+a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400)
+plot(a$var_imp)
 
 
+b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 100)
+f <- condDependence(b, dat, data$j[1])
+plot(b$var_importance)
+
+
+plot(data$X[, data$j[1]], data$Y)
+points(data$X[, data$j[1]], a$predictions, col = 'red', pch = 20)
+points(data$X[, data$j[1]], b$predictions, col = 'blue', pch = 20)
+points(data$X[, data$j[1]], data$f_X, col = 'green', pch = 20)
+
+library(ranger)
+c <- ranger(Y ~ ., data = dat, num.trees = 100, importance = 'impurity')
+points(data$X[, data$j[1]], c$predictions, col = 'purple', pch = 2, cex = 0.5)
+
+plot(c$variable.importance/max(c$variable.importance), ylim = c(0, 1))
+points(b$var_imp/max(b$var_imp), col = 'red', pch = 20)
+points(a$var_imp/max(a$var_imp), col = 'blue', pch = 20)
+points(1, data$j[1], col = 'green', pch = 20)
 
 
 start_time <- Sys.time()
