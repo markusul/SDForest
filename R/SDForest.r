@@ -483,9 +483,9 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(is.null(mtry)){
     mtry <- floor(0.9 * p)
   }
-  
+  mtry <- NULL
   # bootstrap samples
-  ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
+  ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = F))
   suppressWarnings({
   # estimating all the trees
 

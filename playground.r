@@ -178,7 +178,7 @@ source("R/SDForest.r")
 
 #source('utils.r')
 p <- 50
-n <- 200
+n <- 100
 data <- simulate_data_nonlinear(10, p, n, 1)
 
 
@@ -190,7 +190,7 @@ a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400)
 plot(a$var_imp)
 
 
-b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 100)
+b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 1, multicore = F, mtry = p)
 f <- condDependence(b, dat, data$j[1])
 plot(b$var_importance)
 
@@ -204,10 +204,12 @@ library(ranger)
 c <- ranger(Y ~ ., data = dat, num.trees = 100, importance = 'impurity')
 points(data$X[, data$j[1]], c$predictions, col = 'purple', pch = 2, cex = 0.5)
 
+
+
 plot(c$variable.importance/max(c$variable.importance), ylim = c(0, 1))
-points(b$var_imp/max(b$var_imp), col = 'red', pch = 20)
-points(a$var_imp/max(a$var_imp), col = 'blue', pch = 20)
-points(1, data$j[1], col = 'green', pch = 20)
+points(b$var_imp/max(b$var_imp), col = 'red', pch = 3)
+points(a$var_imp/max(a$var_imp), col = 'blue', pch = 4)
+points(rep(1, length(data$j)), x = data$j, col = 'green', pch = 2)
 
 
 start_time <- Sys.time()
