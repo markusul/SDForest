@@ -174,25 +174,67 @@ f_four <- function(x, beta, js){
         }))
 }
 
+true_function <- function(beta, js){
+    res <- list(beta = beta, js = js)
+    class(res) <- 'true_function'
+    return(res)
+}
+
+predict.true_function <- function(object, newdata){
+    f_X <- apply(newdata, 1, function(x) f_four(x, object$beta, object$js))
+    return(f_X)
+}
+
 source("R/SDForest.r")
 
 #source('utils.r')
-p <- 50
-n <- 100
-data <- simulate_data_nonlinear(10, p, n, 1)
+p <- 200
+n <- 200
+data <- simulate_data_nonlinear(10, p, n, 4)
 
+ind <- sample(1:n, n, replace = F)
+Q_1 <- get_Q(data$X, type = 'DDL_trim')
+Q_2 <- get_Q(data$X[ind, ], type = 'DDL_trim')
+
+plot(data$Y)
+plot(sort(ind))
+
+plot(svd(Q_1)$d)
+plot(svd(Q_2)$d)
+
+plot(svd(data$X)$d)
+plot(svd(Q_1 %*% data$X)$d)
+plot(svd(Q_2 %*% data$X)$d)
+
+plot(svd(data$X[ind, ])$d)
+plot(svd(Q_1 %*% data$X[ind, ])$d)
+plot(svd(Q_2 %*% data$X[ind, ])$d)
 
 dat <- data.frame(X = data$X, Y = data$Y)
 #dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
 a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400)
-plot(a$var_imp)
 
-
-b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 1, multicore = F, mtry = p)
+b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 100, multicore = T)
 f <- condDependence(b, dat, data$j[1])
-plot(b$var_importance)
+plot(f)
+
+
+
+true_f <- true_function(data$beta, data$j)
+predict(true_f, data$X)
+
+dep_f <- condDependence(true_f, data$X, data$j[1])
+plot(dep_f)
+
+dep_ranger <- condDependence(c, dat, data$j[1])
+
+ranger_f <-
+
+ggdep <- plot(f)
+ggdep + geom_line(data = data.frame(x = dep_f$x_seq, y = dep_f$preds_mean), aes(x = x, y = y), col = 'red')
+
 
 
 plot(data$X[, data$j[1]], data$Y)
@@ -210,7 +252,13 @@ plot(c$variable.importance/max(c$variable.importance), ylim = c(0, 1))
 points(b$var_imp/max(b$var_imp), col = 'red', pch = 3)
 points(a$var_imp/max(a$var_imp), col = 'blue', pch = 4)
 points(rep(1, length(data$j)), x = data$j, col = 'green', pch = 2)
+grid()
 
+
+sort(b$var_importance, decreasing = T)[1:6]
+sort(a$var_importance, decreasing = T)[1:6]
+sort(c$variable.importance, decreasing = T)[1:6]
+data$j
 
 start_time <- Sys.time()
 suppressWarnings({

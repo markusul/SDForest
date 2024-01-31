@@ -60,6 +60,52 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   return(Q)
 }
 
+condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
+  if(is.character(j)){
+    j <- which(names(X) == j)
+  }
+  if(!is.numeric(j)) stop('j must be a numeric or character')
+  if(j > ncol(X)) stop('j must be smaller than p')
+  if(j < 1) stop('j must be larger than 0')
+
+  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
+
+  preds <- parallel::mclapply(x_seq, function(x){
+    X_new <- X
+    X_new[, j] <- x
+    pred <- predict(object, newdata = X_new)
+    return(pred)
+  }, mc.cores = n_cores)
+  preds <- do.call(rbind, preds)
+  preds_mean <- rowMeans(preds)
+
+  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j)
+  class(res) <- 'condDependence'
+  return(res)
+}
+
+plot.condDependence <- function(object, n_examples = 19){
+  ggdep <- ggplot() + theme_bw()
+  preds <- object$preds
+  x_seq <- object$x_seq
+
+  for(i in sample(1:dim(preds)[2], n_examples)){
+      pred_data <- data.frame(x = x_seq, y = preds[, i])
+      ggdep <- ggdep + geom_line(data = pred_data, aes(x = x, y = y), col = 'grey')
+  }
+
+  ggdep <- ggdep + geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
+                    aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
+  ggdep <- ggdep + ylab('f(x)') + ggtitle('Conditional dependence')
+  if(is.character(object$j)){
+    ggdep <- ggdep + xlab(object$j)
+  }else{
+    ggdep <- ggdep + xlab(paste('x', object$j, sep = ''))
+  }
+  ggdep
+}
+
+
 
 ##### SDTree functions #####
 
@@ -483,9 +529,10 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(is.null(mtry)){
     mtry <- floor(0.9 * p)
   }
-  mtry <- NULL
+
   # bootstrap samples
-  ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = F))
+  ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
+
   suppressWarnings({
   # estimating all the trees
 
@@ -502,7 +549,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                   "find_s", "evaluate_splitt", "loss", "predict_outsample", 
                                   "traverse_tree", "splitt_names", "leave_names"))
     res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
-                Q = Q, mtry = mtry))
+                Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
     parallel::stopCluster(cl = cl)
     # res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
     #                                        min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
@@ -511,8 +558,10 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     #res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
     #                                       min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
     #                                       mc.cores = n_cores)
+    
     res <- lapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
-                                           min_sample = min_sample, Q = Q, mtry = mtry))
+                                              min_sample = min_sample, Q_type = Q_type, 
+                                              trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
   }
 
 
@@ -577,29 +626,6 @@ predict.SDforest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
-condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
-  if(is.character(j)){
-    j <- which(names(X) == j)
-  }
-  if(!is.numeric(j)) stop('j must be a numeric or character')
-  if(j > ncol(X)) stop('j must be smaller than p')
-  if(j < 1) stop('j must be larger than 0')
-
-  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
-
-  preds <- parallel::mclapply(x_seq, function(x){
-    X_new <- X
-    X_new[, j] <- x
-    pred <- predict(object, newdata = X_new)
-    return(pred)
-  }, mc.cores = n_cores)
-  preds <- do.call(rbind, preds)
-  preds_mean <- rowMeans(preds)
-
-
-
-  return(list(preds_mean = preds_mean, x_seq = x_seq, preds = preds))
-}
 
 #TODO: permutation importance
 #TODO: print function
