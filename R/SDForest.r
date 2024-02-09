@@ -577,7 +577,7 @@ predict.SDforest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
-condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
+condDependence <- function(object, X, j){
   if(is.character(j)){
     j <- which(names(X) == j)
   }
@@ -587,12 +587,12 @@ condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
 
   x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
 
-  preds <- parallel::mclapply(x_seq, function(x){
+  preds <- lapply(x_seq, function(x){
     X_new <- X
     X_new[, j] <- x
     pred <- predict(object, newdata = X_new)
     return(pred)
-  }, mc.cores = n_cores)
+  })
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
@@ -672,7 +672,6 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min
 
   # all possible split points
   s <- find_s(X_branch, min_sample, p)
-
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
             eval <- evaluate_splitt(branch = branch, j = j, 
@@ -774,6 +773,12 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
                                     else if(!is.numeric(x))  as.numeric(x)
                                     else x})
       if (!is.numeric(y)) stop("Error: y must be numeric. Only regression is supported at the moment.")
+      if(any(is.na(x)) | any(is.na(y))){
+        stop("Error: Missing values are not allowed.")
+      }
+      if(any(is.infinite(x)) | any(is.infinite(y))){
+        stop("Error: Infinite values are not allowed.")
+      }
       return(list(X = as.matrix(x), Y = y))
     }
   }else {
@@ -794,6 +799,10 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
 
       Y <- model.response(m)
       X <- model.matrix(attr(m, "terms"), m)[, -1L, drop = FALSE]
+
+      if(any(is.infinite(X)) | any(is.infinite(Y))){
+        stop("Error: Infinite values are not allowed.")
+      }
       return(list(X = X, Y = Y))
     }
   }
