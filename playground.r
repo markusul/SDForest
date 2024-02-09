@@ -75,64 +75,20 @@ predict.true_function <- function(object, newdata){
 
 source("R/SDForest.r")
 
-#source('utils.r')
-p <- 10
-n <- 200
-data <- simulate_data_nonlinear(1, p, n, 1)
+p <- 100
+n <- 100
+data <- simulate_data_nonlinear(20, p, n, 4)
 
-# make covariates 1 to 5 discrete wiht 3 levels
-data$X[, 1:5] <- apply(data$X[, 1:5], 2, function(x) cut(x, breaks = 3, labels = c(1, 2, 3)))
-X <- data$X
-#to numeric values
-X <- apply(X, 2, as.numeric)
-X
-
-
-Q <- get_Q(X, 'DDL_trim')
-plot(svd(X)$d)
-points((svd(Q%*%X)$d), col = 'red', pch = 20)
-
-
-p <- 200
-n <- 200
-data <- simulate_data_nonlinear(10, p, n, 4)
-
-ind <- sample(1:n, n, replace = F)
-Q_1 <- get_Q(data$X, type = 'DDL_trim')
-Q_2 <- get_Q(data$X[ind, ], type = 'DDL_trim')
-
-plot(data$Y)
-plot(sort(ind))
-
-plot(svd(Q_1)$d)
-plot(svd(Q_2)$d)
-
-plot(svd(data$X)$d)
-plot(svd(Q_1 %*% data$X)$d)
-plot(svd(Q_2 %*% data$X)$d)
-
-plot(svd(data$X[ind, ])$d)
-plot(svd(Q_1 %*% data$X[ind, ])$d)
-plot(svd(Q_2 %*% data$X[ind, ])$d)
 
 dat <- data.frame(X = data$X, Y = data$Y)
 #dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-dat[3:6, 4] <- NA
-dat[3:6, 6] <- 10
-
-res <-SDTree(y = dat[, 6], x = dat[, 1:5], Q_type = 'no_deconfounding', cp = 0.01, max_leaves = 400, min_sample = 1)
-plot(res)
-
-res <- ranger(Y ~ ., dat)
-res$predictions
+start_time <- Sys.time()
+b <- SDForest(Y ~ ., dat,min_sample = 1)
+print(Sys.time() - start_time)
 
 
-a <- SDTree(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400)
-
-a
-b <- SDForest(Y ~ ., dat, Q_type = 'DDL_trim', cp = 0.01, max_leaves = 400, nTree = 1000, multicore = T)
 plot(b$predictions)
 points(dat$Y, col = 'red', pch = 20)
 points(data$f_X, col = 'green', pch = 20)
@@ -141,7 +97,7 @@ b
 f <- condDependence(b, dat, data$j[1])
 plot(f)
 
-
+plot(a$var_importance)
 
 true_f <- true_function(data$beta, data$j)
 predict(true_f, data$X)
@@ -149,9 +105,11 @@ predict(true_f, data$X)
 dep_f <- condDependence(true_f, data$X, data$j[1])
 plot(dep_f)
 
+library(ranger)
+c <- ranger(Y ~ ., data = dat, num.trees = 100, importance = 'impurity')
+
 dep_ranger <- condDependence(c, dat, data$j[1])
 
-ranger_f <-
 
 ggdep <- plot(f)
 ggdep + geom_line(data = data.frame(x = dep_f$x_seq, y = dep_f$preds_mean), aes(x = x, y = y), col = 'red')

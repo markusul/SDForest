@@ -37,7 +37,7 @@ if(n_cores > 1 && n_cores <= 24){
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   # X: covariates
   # type: type of deconfounding
-  modes <- c('trim' = 1, 'DDL_trim' = 2, 'pca' = 3, 'no_deconfounding' = 4)
+  modes <- c('trim' = 1, 'pca' = 2, 'no_deconfounding' = 3)
   if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
 
   # number of observations
@@ -48,15 +48,15 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
 
-  Q <- switch(modes[type], sv$u %*% diag(D_tilde) %*% t(sv$u), # trim
-                          diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
+  Q <- switch(modes[type], diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                           { # pca
                               d_pca <- rep(1, length(sv$d))
                               if(confounding_dim <= 0) stop("the assumed confounding dimension must be larger than zero")
                               d_pca[1:confounding_dim] <- 0
-                              sv$u %*% diag(d_pca) %*% t(sv$u)
+                              diag(n) - sv$u %*% diag(1 - d_pca) %*% t(sv$u)
                           },
-                         diag(n)) # no_deconfounding
+                         diag(n)
+                         ) # no_deconfounding
   return(Q)
 }
 
@@ -85,22 +85,22 @@ condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
 }
 
 plot.condDependence <- function(object, n_examples = 19){
-  ggdep <- ggplot() + theme_bw()
+  ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
   preds <- object$preds
   x_seq <- object$x_seq
 
   for(i in sample(1:dim(preds)[2], n_examples)){
       pred_data <- data.frame(x = x_seq, y = preds[, i])
-      ggdep <- ggdep + geom_line(data = pred_data, aes(x = x, y = y), col = 'grey')
+      ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
   }
 
-  ggdep <- ggdep + geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
-                    aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
-  ggdep <- ggdep + ylab('f(x)') + ggtitle('Conditional dependence')
+  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
+                    ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
+  ggdep <- ggdep + ggplot2::ylab('f(x)') + ggplot2::ggtitle('Conditional dependence')
   if(is.character(object$j)){
-    ggdep <- ggdep + xlab(object$j)
+    ggdep <- ggdep + ggplot2::xlab(object$j)
   }else{
-    ggdep <- ggdep + xlab(paste('x', object$j, sep = ''))
+    ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
   }
   ggdep
 }
@@ -467,7 +467,6 @@ predict.SDTree <- function(object, newdata){
   return(predict_outsample(object$tree, X))
 }
 
-
 #' Print Spectral Deconfounded Tree
 #' 
 #' Print contents of the spectral deconfounded tree.
@@ -533,7 +532,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   # bootstrap samples
   ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
 
-  suppressWarnings({
+  #suppressWarnings({
   # estimating all the trees
 
   data_list <- lapply(ind, function(i){
@@ -551,34 +550,14 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                 Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
     parallel::stopCluster(cl = cl)
-    # res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
-    #                                        min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
-    #                                        mc.cores = n_cores)
   }else{
-    #res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
-    #                                       min_sample = min_sample, Q = Q, mtry = mtry, multicore = F), 
-    #                                       mc.cores = n_cores)
-    
     res <- lapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
   }
 
 
-#  if(multicore){
-#    if(!is.null(mc.cores)){
-#      n_cores <- mc.cores
-#    }
-#    res <- mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
-#                                           min_sample = min_sample, Q = Q, mtry = mtry, multicore = FALSE),
-#                    mc.cores = n_cores, mc.preschedule = FALSE)
-#  }else{
-#    res <- lapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
-#                                           min_sample = min_sample, Q = Q, mtry = mtry, multicore = FALSE))
-#  }
-  
-
-  })
+  #})
 
   # ensemble predictions for each observation
   # but only with the trees that did not contain the observation in the training set
@@ -626,29 +605,7 @@ predict.SDforest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
-condDependence <- function(object, X, j){
-  if(is.character(j)){
-    j <- which(names(X) == j)
-  }
-  if(!is.numeric(j)) stop('j must be a numeric or character')
-  if(j > ncol(X)) stop('j must be smaller than p')
-  if(j < 1) stop('j must be larger than 0')
 
-  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
-
-  preds <- lapply(x_seq, function(x){
-    X_new <- X
-    X_new[, j] <- x
-    pred <- predict(object, newdata = X_new)
-    return(pred)
-  })
-  preds <- do.call(rbind, preds)
-  preds_mean <- rowMeans(preds)
-
-
-
-  return(list(preds_mean = preds_mean, x_seq = x_seq, preds = preds))
-}
 
 #TODO: permutation importance
 #TODO: print function
