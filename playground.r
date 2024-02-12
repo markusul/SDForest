@@ -85,8 +85,100 @@ dat <- data.frame(X = data$X, Y = data$Y)
 dat <- data.frame(dat)
 
 start_time <- Sys.time()
-b <- SDForest(Y ~ ., dat,min_sample = 1)
+b <- SDTree(Y ~ ., dat,min_sample = 1)
 print(Sys.time() - start_time)
+
+res <- SDTree(Ozone ~ ., data = airquality, cp = 0)
+res$var_importance
+res$tree$Get('cp')
+prune(res, 1)$var_importance
+
+start_time <- Sys.time()
+a <- regPath(res)
+print(Sys.time() - start_time)
+
+rm(a)
+
+
+a$loss_path
+
+prune(res, 0.1)$var_importance
+
+res$oob_SDloss
+
+start <- Sys.time()
+res <- SDForest(Ozone ~ ., data = airquality, nTree = 100, cp = 0)
+print(Sys.time() - start)
+
+
+cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.02), seq(0.5, 1, 0.05))
+length(cp_seq)
+
+
+class(a)
+print(a)
+a$cp_min
+plot(a)
+
+res$forest
+dep <- condDependence(res, na.omit(airquality), 'Temp')
+plot(dep)
+
+predict(res, na.omit(airquality))
+
+library(dplyr)
+library(tidyr)
+imp_data <- data.frame(a$varImp_path, cp = a$cp)
+imp_data <- gather(imp_data, key = 'covariate', value = 'importance', -cp)
+imp_data
+
+library(ggplot2)
+ggplot(imp_data, aes(x = cp, y = importance, col = covariate)) +
+    geom_line() + 
+    theme_bw()
+
+
+loss_data <- data.frame(a$loss_path, cp = a$cp)
+gg_sde <- ggplot(loss_data, aes(x = cp, y = oob.SDE)) +
+    geom_line() + 
+    theme_bw()
+
+gg_mse <- ggplot(loss_data, aes(x = cp, y = oob.MSE)) +
+    geom_line() + 
+    theme_bw()
+
+gg_sde
+gg_mse
+
+res$forest[[1]]$var_importance
+res$var_importance
+a <- prune(res, 1)
+
+a$forest[[1]]$var_importance
+a$var_importance
+
+res$oob_SDloss
+a$oob_SDloss
+
+
+res$forest
+a <- lapply(res$forest, function(tree){prune_tree(tree, 0.1)})
+a
+
+
+prune_tree(res, 0.01)$predictions
+
+
+min(res$tree$Get('cp'), na.rm = T)
+
+res$var_importance == varImp(res$tree, 5)
+
+varImp(res)
+
+res$var_names
+
+res <- SDForest(Ozone ~ ., data = airquality)
+res$var_importance == varImp(res)
 
 
 plot(b$predictions)

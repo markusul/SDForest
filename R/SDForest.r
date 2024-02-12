@@ -67,15 +67,16 @@ condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
   if(!is.numeric(j)) stop('j must be a numeric or character')
   if(j > ncol(X)) stop('j must be smaller than p')
   if(j < 1) stop('j must be larger than 0')
+  if(any(is.na(X))) stop('X must not contain missing values')
 
-  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), 0.01)
+  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), length.out = 100)
 
-  preds <- parallel::mclapply(x_seq, function(x){
+  preds <- lapply(x_seq, function(x){
     X_new <- X
     X_new[, j] <- x
     pred <- predict(object, newdata = X_new)
     return(pred)
-  }, mc.cores = n_cores)
+  })
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
@@ -138,7 +139,7 @@ plot.condDependence <- function(object, n_examples = 19){
 #' # TODO: add example
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   Q_type = 'DDL_trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+                   Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -174,8 +175,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   E_tilde <- matrix(rowSums(Q))
 
   #Y_tilde <- Q %*% Y
-  Y_tilde <- SMUT::eigenMapMatMult(Q, Y)
 
+  Y_tilde <- SMUT::eigenMapMatMult(Q, Y)
+  
   # solve linear model
   c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
 
@@ -185,7 +187,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   loss_temp <- loss_start
 
   # initialize tree
-  tree <- data.tree::Node$new(name = '1', value = c_hat, dloss = loss_start)
+  tree <- data.tree::Node$new(name = '1', value = c_hat, dloss = loss_start, cp = 10)
 
   # memory for optimal splits
   memory <- list(replicate(m + 1 , matrix(0, p, 4)))
@@ -248,6 +250,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
     E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, i + 1]))
 
+    #E_tilde[, best_branch] <- Q %*% E[, best_branch]
+    #E_tilde <- cbind(E_tilde, Q %*% E[, i + 1])
+
     c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
     #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
 
@@ -274,11 +279,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # save split rule
     leave$j <- j
     leave$s <- s
-    leave$cp <- Losses_dec[loc, 1] / loss_start
+
+    leave$res_dloss <- Losses_dec[loc, 1]
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc], decision = 'no', n_samples = sum(E[, best_branch] == 1))
-    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc], decision = 'yes', n_samples = sum(E[, i + 1] == 1))
+    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
 
     # add estimates to tree leaves
     for(l in tree$leaves){
@@ -464,6 +470,7 @@ predict.SDTree <- function(object, newdata){
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
   X <- newdata[, object$var_names]
+  if(any(is.na(X))) stop('X must not contain missing values')
   return(predict_outsample(object$tree, X))
 }
 
@@ -551,7 +558,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                 Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
     parallel::stopCluster(cl = cl)
   }else{
-    res <- lapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
+    res <- pbapply::pblapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
   }
@@ -574,7 +581,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     })
     return(mean(unlist(predictions)))
   }))
-  oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+  oob_SDloss <- loss(SMUT::eigenMapMatMult(Q, Y), SMUT::eigenMapMatMult(Q, oob_predictions))
   oob_loss <- loss(Y, oob_predictions)
 
   # predict with all trees
@@ -587,12 +594,13 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   var_imp <- rowMeans(sapply(res, function(x){x$var_importance}))
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), 
-                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp)
-  class(output) <- 'SDforest'
+                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
+                 oob_ind = oob_ind, X = X, Y = Y, Q = Q)
+  class(output) <- 'SDForest'
   return(output)
 }
 
-predict.SDforest <- function(object, newdata){
+predict.SDForest <- function(object, newdata){
   # predict function for the spectral deconfounded random forest
   # using the mean over all trees as the prediction
   # check data type
@@ -600,6 +608,7 @@ predict.SDforest <- function(object, newdata){
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
   X <- newdata[, object$var_names]
+  if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
   return(rowMeans(pred))
@@ -651,6 +660,9 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_br
   #E_tilde <- SMUT::eigenMapMatMult(Q, E)
   E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
   E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, n_branches]))
+
+  #E_tilde[, branch] <- Q %*% E[, branch]
+  #E_tilde <- cbind(E_tilde, Q %*% E[, n_branches])
 
   #E_tilde <- Q %*% E
   c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
@@ -755,16 +767,113 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   # funtion to prune tree using the minimum loss decrease t
   # and return spectral loss on the validation set
   
-  tree_t <- Clone(tree)
+  tree_t <- data.tree::Clone(tree)
   
   # prune tree
-  Prune(tree_t, function(x) x$dloss > t)
+  data.tree::Prune(tree_t, function(x) x$dloss > t)
   
   # predict on test set
   f_X_hat_val <- predict_outsample(tree_t, X_val)
   
   # return spectral loss
   return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
+}
+
+varImp <- function(object) {UseMethod("varImp")}
+
+varImp.SDTree <- function(object){
+  j_dec <- object$tree$Get(function(x)c(x$j, x$res_dloss), filterFun = function(x)!data.tree::isLeaf(x))
+  var_importance <- rep(0, length(object$var_names))
+  if(is.null(j_dec)){
+    names(var_importance) <- object$var_names
+    return(var_importance)
+  }
+  for(i in 1:ncol(j_dec)){
+    var_importance[j_dec[1, i]] <- var_importance[j_dec[1, i]] + j_dec[2, i]
+  }
+  names(var_importance) <- object$var_names
+  return(var_importance)
+}
+
+varImp.SDForest <- function(object){
+  rowMeans(sapply(object$forest, varImp))
+}
+
+prune <- function(object, ...) UseMethod('prune')
+
+prune.SDTree <- function(object, cp){
+  object$tree <- data.tree::Clone(object$tree)
+  data.tree::Prune(object$tree, function(x) x$cp > cp)
+  object$predictions <- NULL
+  object$var_importance <- varImp(object)
+  return(object)
+}
+
+prune.SDForest <- function(forest, cp, oob = T){
+  n <- length(forest$Y)
+
+  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
+  forest$forest <- pruned_forest
+
+  if(oob){
+    oob_predictions <- unlist(lapply(1:n, function(i){
+      if(length(forest$oob_ind[[i]]) == 0){
+        return(NA)
+      }
+      predictions <- lapply(forest$oob_ind[[i]], function(model){
+        predict_outsample(forest$forest[[model]]$tree, forest$X[i, ])
+      })
+      return(mean(unlist(predictions)))
+    }))
+    forest$oob_SDloss <- loss(SMUT::eigenMapMatMult(forest$Q, forest$Y), SMUT::eigenMapMatMult(forest$Q, oob_predictions))
+    forest$oob_loss <- loss(forest$Y, oob_predictions)
+
+    # predict with all trees
+    pred <- do.call(cbind, lapply(forest$forest, function(x){predict_outsample(x$tree, forest$X)}))
+    
+    # use mean over trees as final prediction
+    f_X_hat <- rowMeans(pred)
+    forest$predictions <- f_X_hat
+  }
+
+  # variable importance
+  forest$var_importance <- rowMeans(sapply(forest$forest, function(x){x$var_importance}))  
+
+  return(forest)
+}
+
+regPath <- function(object, oob = F){
+  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  res <- pbapply::pblapply(cp_seq, function(cp){
+    pruned_object <- prune(object, cp)
+    return(list(var_importance = pruned_object$var_importance, 
+                oob_SDloss = pruned_object$oob_SDloss, 
+                oob_loss = pruned_object$oob_loss))})
+
+  varImp_path <- t(sapply(res, function(x)x$var_importance))
+  if(!oob){
+    paths <- list(cp = cp_seq, varImp_path = varImp_path)
+    class(paths) <- 'paths'
+    return(paths)
+  }
+  
+  loss_path <- t(sapply(res, function(x)c(x$oob_SDloss, x$oob_loss)))
+  colnames(loss_path) <- c('oob SDE', 'oob MSE')
+  paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path, 
+                cp_min = cp_seq[which.min(loss_path[, 1])])
+  class(paths) <- 'paths'
+  return(paths)
+}
+
+plot.paths <- function(object){
+  imp_data <- data.frame(object$varImp_path, cp = object$cp)
+  imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
+  
+  gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
+      ggplot2::geom_line() + 
+      ggplot2::theme_bw()
+
+  plotly::ggplotly(gg_path)
 }
 
 data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
@@ -785,7 +894,10 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       if(any(is.infinite(x)) | any(is.infinite(y))){
         stop("Error: Infinite values are not allowed.")
       }
-      return(list(X = as.matrix(x), Y = y))
+      if(!is.numeric(y)){
+        stop("Error: Only regression is suported at the moment. Y must be numeric.")
+      }
+      return(list(X = as.matrix(x), Y = as.numeric(y)))
     }
   }else {
     if(is.null(data)){
@@ -809,7 +921,10 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       if(any(is.infinite(X)) | any(is.infinite(Y))){
         stop("Error: Infinite values are not allowed.")
       }
-      return(list(X = X, Y = Y))
+      if(!is.numeric(Y)){
+        stop("Error: Only regression is suported at the moment. Y must be numeric.")
+      }
+      return(list(X = X, Y = as.numeric(Y)))
     }
   }
 }
