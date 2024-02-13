@@ -60,7 +60,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   return(Q)
 }
 
-condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
+condDependence <- function(object, X, j, multicore = F, mc.cores = NULL){
   if(is.character(j)){
     j <- which(names(X) == j)
   }
@@ -69,9 +69,13 @@ condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
   if(j < 1) stop('j must be larger than 0')
   if(any(is.na(X))) stop('X must not contain missing values')
 
-  x_seq <- seq(quantile(X[, j], 0.05), quantile(max(X[, j]), 0.95), length.out = 100)
+  #x_seq <- seq(quantile(X[, j], 0.05), quantile(X[, j], 0.95), length.out = 100)
+  x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
 
-  preds <- lapply(x_seq, function(x){
+  if(multicore){
+
+  }
+  preds <- pbapply::pblapply(x_seq, function(x){
     X_new <- X
     X_new[, j] <- x
     pred <- predict(object, newdata = X_new)
@@ -80,7 +84,7 @@ condDependence <- function(object, X, j, individual = FALSE, plot = TRUE){
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
-  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j)
+  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j, xj = X[, j])
   class(res) <- 'condDependence'
   return(res)
 }
@@ -89,15 +93,19 @@ plot.condDependence <- function(object, n_examples = 19){
   ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
   preds <- object$preds
   x_seq <- object$x_seq
-
-  for(i in sample(1:dim(preds)[2], n_examples)){
+  
+  sample_examples <- sample(1:dim(preds)[2], n_examples)
+  for(i in sample_examples){
       pred_data <- data.frame(x = x_seq, y = preds[, i])
       ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
   }
 
   ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
                     ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
+  ggdep <- ggdep + ggplot2::geom_point(data = data.frame(x = object$xj, y = min(preds[, sample_examples])), 
+                    ggplot2::aes(x = x, y = y), col = 'black', size = 1,shape = 108)
   ggdep <- ggdep + ggplot2::ylab('f(x)') + ggplot2::ggtitle('Conditional dependence')
+  ggdep <- ggdep + ggplot2::xlim(quantile(object$xj, 0.05), quantile(object$xj, 0.95))
   if(is.character(object$j)){
     ggdep <- ggdep + ggplot2::xlab(object$j)
   }else{
@@ -506,7 +514,7 @@ plot.SDTree <- function(object){
 
 # TODO: add variable importance
 # TODO: add oob error
-SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 50, 
+SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 5, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
 
@@ -591,7 +599,12 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   f_X_hat <- rowMeans(pred)
 
   # variable importance
-  var_imp <- rowMeans(sapply(res, function(x){x$var_importance}))
+  var_imp <- sapply(res, function(x){x$var_importance})
+  if(p > 1){
+    var_imp <- rowMeans(var_imp)
+  }else {
+    var_imp <- mean(var_imp)
+  }
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), 
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
@@ -842,13 +855,41 @@ prune.SDForest <- function(forest, cp, oob = T){
   return(forest)
 }
 
-regPath <- function(object, oob = F){
+regPath <- function(object, ...) UseMethod('regPath')
+
+regPath.SDTree <- function(object){
   cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  res <- pbapply::pblapply(cp_seq, function(cp){
+  res <- lapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
-    return(list(var_importance = pruned_object$var_importance, 
-                oob_SDloss = pruned_object$oob_SDloss, 
-                oob_loss = pruned_object$oob_loss))})
+    return(list(var_importance = pruned_object$var_importance))})
+
+  varImp_path <- t(sapply(res, function(x)x$var_importance))
+
+  paths <- list(cp = cp_seq, varImp_path = varImp_path)
+  class(paths) <- 'paths'
+  return(paths)
+}
+
+regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL){
+  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  
+  if(multicore){
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    res <- parallel::mclapply(cp_seq, function(cp){
+      pruned_object <- prune(object, cp, oob = oob)
+      return(list(var_importance = pruned_object$var_importance, 
+                  oob_SDloss = pruned_object$oob_SDloss, 
+                  oob_loss = pruned_object$oob_loss))}, 
+                  mc.cores = n_cores)
+  }else{
+    res <- pbapply::pblapply(cp_seq, function(cp){
+      pruned_object <- prune(object, cp, oob = oob)
+      return(list(var_importance = pruned_object$var_importance, 
+                  oob_SDloss = pruned_object$oob_SDloss, 
+                  oob_loss = pruned_object$oob_loss))})
+  }
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
   if(!oob){
@@ -865,7 +906,28 @@ regPath <- function(object, oob = F){
   return(paths)
 }
 
-plot.paths <- function(object){
+stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
+
+stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL){
+  cp_seq <- regPath(object$forest[[1]])$cp
+
+  if(multicore){
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    imp <- parallel::mclapply(object$forest, function(x)regPath(x)$varImp_path > 0, mc.cores = n_cores)
+  }else{
+    imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
+  }
+  imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
+  imp <- Reduce('+', imp) / length(object$forest)
+  names(imp) <- object$var_names
+  paths <- list(cp = cp_seq, varImp_path = imp)
+  class(paths) <- 'paths'
+  return(paths)
+}
+
+plot.paths <- function(object, plotly = F){
   imp_data <- data.frame(object$varImp_path, cp = object$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
   
@@ -873,7 +935,20 @@ plot.paths <- function(object){
       ggplot2::geom_line() + 
       ggplot2::theme_bw()
 
-  plotly::ggplotly(gg_path)
+  if(plotly) return(plotly::ggplotly(gg_path))
+  return(gg_path)
+}
+
+plotOOB <- function(object){
+    loss_data <- data.frame(object$loss_path, cp = object$cp)
+    gg_sde <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.SDE)) +
+        ggplot2::geom_line() + 
+        ggplot2::theme_bw()
+
+    gg_mse <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.MSE)) +
+        ggplot2::geom_line() + 
+        ggplot2::theme_bw()
+    gridExtra::grid.arrange(gg_sde, gg_mse, ncol = 2)
 }
 
 data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){

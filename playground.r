@@ -58,7 +58,7 @@ f_four <- function(x, beta, js){
         # select beta for covariate j
         beta_ind <- 1:(2*complexity) + (i-1) * 2 * complexity
         # calculate f_X_j
-        do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.2 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.2 * x[j])))
+        do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.1 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.1 * x[j])))
         }))
 }
 
@@ -75,18 +75,92 @@ predict.true_function <- function(object, newdata){
 
 source("R/SDForest.r")
 
+
 p <- 100
-n <- 100
+n <- 400
+
+set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
+
+true_f <- true_function(data$beta, data$j)
+
+dep_f_1 <- condDependence(true_f, data$X, data$j[1])
+dep_f_2 <- condDependence(true_f, data$X, data$j[2])
+dep_f_3 <- condDependence(true_f, data$X, data$j[3])
+dep_f_4 <- condDependence(true_f, data$X, data$j[4])
+
+gridExtra::grid.arrange(plot(dep_f_1), plot(dep_f_2), plot(dep_f_3), plot(dep_f_4), ncol = 2)
 
 
 dat <- data.frame(X = data$X, Y = data$Y)
-#dat <- scale(dat, scale = T)
 dat <- data.frame(dat)
 
-start_time <- Sys.time()
-b <- SDTree(Y ~ ., dat,min_sample = 1)
-print(Sys.time() - start_time)
+fit <- SDForest(Y ~ ., data = dat, cp = 0.01)
+data$j
+most_important <- sort(varImp(fit), decreasing = T)[1]
+sort(varImp(fit), decreasing = T)[1:6]
+names(most_important)
+
+plot(fit$var_importance)
+
+reg_path <- regPath(fit, oob = T, multicore = T)
+plot(reg_path, T)
+
+stable_path <- stabilitySelection(fit, multicore = T)
+plot(stable_path, T)
+
+reg_path$loss_path
+
+
+
+plotOOB(reg_path)
+
+
+dep_1 <- condDependence(fit, dat, data$j[1])
+dep_2 <- condDependence(fit, dat, data$j[2])
+dep_3 <- condDependence(fit, dat, data$j[3])
+dep_4 <- condDependence(fit, dat, data$j[4])
+
+gridExtra::grid.arrange(plot(dep_1), plot(dep_2), plot(dep_3), plot(dep_4), ncol = 2)
+
+
+
+library(ranger)
+fit2 <- ranger(Y ~ ., data = dat, num.trees = 100, importance = 'impurity', mtry = 90)
+plot(fit2$variable.importance)
+
+ranger_fun <- function(object){
+    res <- list(model = object)
+    class(res) <- 'ranger_fun'
+    return(res)
+}
+predict.ranger_fun <- function(object, newdata){
+    return(predict(object$model, newdata)$predictions)
+}
+
+ranger_fit <- ranger_fun(fit2)
+
+dep_r_1 <- condDependence(ranger_fit, dat, data$j[1])
+dep_r_2 <- condDependence(ranger_fit, dat, data$j[2])
+dep_r_3 <- condDependence(ranger_fit, dat, data$j[3])
+dep_r_4 <- condDependence(ranger_fit, dat, data$j[4])
+
+gridExtra::grid.arrange(plot(dep_r_1), plot(dep_r_2), plot(dep_r_3), plot(dep_r_4), ncol = 2)
+
+
+data <- simulate_data_nonlinear(0, 1, 100, 1)
+dat <- data.frame(X = data$X, Y = data$Y)
+dat <- data.frame(dat)
+
+fit <- SDTree(Y ~ ., data = dat, cp = 0, Q_type = 'no_deconfounding')
+
+
+plot(data$X, data$Y)
+points(data$X, fit$predictions, col = 'red', pch = 20)
+
+path <- regPath(fit)
+plot(path)
+
 
 res <- SDTree(Ozone ~ ., data = airquality, cp = 0)
 res$var_importance
@@ -191,11 +265,7 @@ plot(f)
 
 plot(a$var_importance)
 
-true_f <- true_function(data$beta, data$j)
-predict(true_f, data$X)
 
-dep_f <- condDependence(true_f, data$X, data$j[1])
-plot(dep_f)
 
 library(ranger)
 c <- ranger(Y ~ ., data = dat, num.trees = 100, importance = 'impurity')
