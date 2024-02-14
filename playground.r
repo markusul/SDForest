@@ -73,10 +73,35 @@ predict.true_function <- function(object, newdata){
     return(f_X)
 }
 
+plotDep <- function(object, n_examples = 19){
+  ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
+  preds <- object$preds
+  x_seq <- object$x_seq
+  
+  sample_examples <- sample(1:dim(preds)[2], n_examples)
+  for(i in sample_examples){
+      pred_data <- data.frame(x = x_seq, y = preds[, i])
+      ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
+  }
+
+  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
+                    ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
+  ggdep <- ggdep + ggplot2::geom_point(data = data.frame(x = object$xj, y = -5), 
+                    ggplot2::aes(x = x, y = y), col = 'black', size = 1,shape = 108)
+  ggdep <- ggdep + ggplot2::ylab('f(x)') + ggplot2::ggtitle('Conditional dependence')
+  ggdep <- ggdep + ggplot2::xlim(quantile(object$xj, 0.05), quantile(object$xj, 0.95))
+  if(is.character(object$j)){
+    ggdep <- ggdep + ggplot2::xlab(object$j)
+  }else{
+    ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
+  }
+  ggdep + ggplot2::ylim(-5, 5)
+}
+
 source("R/SDForest.r")
+library(ggplot2)
 
-
-p <- 100
+p <- 400
 n <- 400
 
 set.seed(2024)
@@ -89,24 +114,26 @@ dep_f_2 <- condDependence(true_f, data$X, data$j[2])
 dep_f_3 <- condDependence(true_f, data$X, data$j[3])
 dep_f_4 <- condDependence(true_f, data$X, data$j[4])
 
-gridExtra::grid.arrange(plot(dep_f_1), plot(dep_f_2), plot(dep_f_3), plot(dep_f_4), ncol = 2)
+set.seed(2024)
+gridExtra::grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2)
 
 
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- data.frame(dat)
 
-fit <- SDForest(Y ~ ., data = dat, cp = 0.01)
+fit <- SDForest(Y ~ ., data = dat, cp = 0, multicore = T)
 data$j
+
 most_important <- sort(varImp(fit), decreasing = T)[1]
 sort(varImp(fit), decreasing = T)[1:6]
 names(most_important)
 
 plot(fit$var_importance)
 
-reg_path <- regPath(fit, oob = T, multicore = T)
+reg_path <- regPath(fit, oob = T)
 plot(reg_path, T)
 
-stable_path <- stabilitySelection(fit, multicore = T)
+stable_path <- stabilitySelection(fit)
 plot(stable_path, T)
 
 reg_path$loss_path
@@ -121,7 +148,7 @@ dep_2 <- condDependence(fit, dat, data$j[2])
 dep_3 <- condDependence(fit, dat, data$j[3])
 dep_4 <- condDependence(fit, dat, data$j[4])
 
-gridExtra::grid.arrange(plot(dep_1), plot(dep_2), plot(dep_3), plot(dep_4), ncol = 2)
+gridExtra::grid.arrange(plotDep(dep_1), plotDep(dep_2), plotDep(dep_3), plotDep(dep_4), ncol = 2)
 
 
 
@@ -145,7 +172,7 @@ dep_r_2 <- condDependence(ranger_fit, dat, data$j[2])
 dep_r_3 <- condDependence(ranger_fit, dat, data$j[3])
 dep_r_4 <- condDependence(ranger_fit, dat, data$j[4])
 
-gridExtra::grid.arrange(plot(dep_r_1), plot(dep_r_2), plot(dep_r_3), plot(dep_r_4), ncol = 2)
+gridExtra::grid.arrange(plotDep(dep_r_1), plotDep(dep_r_2), plotDep(dep_r_3), plotDep(dep_r_4), ncol = 2)
 
 
 data <- simulate_data_nonlinear(0, 1, 100, 1)
