@@ -19,10 +19,10 @@ performance_measure <- function(n, p, q, n_test){
     return(c(SDF = mse, ranger = mse2))
 }
 
-n <- 400
-p <- 400
+n <- 500
+p <- 500
 q <- 20
-n_test <- 100
+n_test <- 500
 
 N_rep <- 2
 

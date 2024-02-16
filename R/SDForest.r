@@ -1036,6 +1036,11 @@ simulate_data_nonlinear <- function(q, p, n, m){
     # n: number of observations
     # m: number of covariates with a causal effect on Y
 
+    # complexity of f_X
+    complexity <- 5
+    # random parameter for fourier basis
+    beta <- runif(m * complexity * 2, -1, 1)
+
     # random confounding covariates H
     H <- matrix(rnorm(n * q, 0, 1), nrow = n)
 
@@ -1057,10 +1062,6 @@ simulate_data_nonlinear <- function(q, p, n, m){
     # random sparse subset of covariates in X
     js <- sample(1:p, m)
 
-    # complexity of f_X
-    complexity <- 5
-    # random parameter for fourier basis
-    beta <- runif(m * complexity * 2, -1, 1)
     # generate f_X
     f_X <- apply(X, 1, function(x) f_four(x, beta, js))
     

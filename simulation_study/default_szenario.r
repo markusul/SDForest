@@ -1,11 +1,21 @@
 source("R/SDForest.r")
 multicore <- T
 
-p <- 400
-n <- 400
+p <- 500
+n <- 500
+
+n_test <- 500
 
 set.seed(2024)
-data <- simulate_data_nonlinear(20, p, n, 4)
+data <- simulate_data_nonlinear(20, p, n + n_test, 4)
+data_test <- data
+data_test$Y <- data_test$Y[(n+1):(n+n_test)]
+data_test$X <- data_test$X[(n+1):(n+n_test),]
+data_test$f_X <- data_test$f_X[(n+1):(n+n_test)]
+
+data$X <- data$X[1:n,]
+data$Y <- data$Y[1:n]
+data$f_X <- data$f_X[1:n]
 
 fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = multicore)
 print('fit done')
@@ -22,5 +32,6 @@ dep_3 <- condDependence(fit, data$j[3], multicore = multicore)
 dep_4 <- condDependence(fit, data$j[4], multicore = multicore)
 print('dep done')
 
-save(data, fit, reg_path, stable_path, dep_1, dep_2, dep_3, dep_4, file = "simulation_study/results/default_szenario.RData")
+save(data, data_test, fit, reg_path, stable_path, dep_1, dep_2, dep_3, dep_4, 
+    file = "simulation_study/results/default_szenario.RData")
 print('save done')

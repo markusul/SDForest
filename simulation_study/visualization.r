@@ -31,7 +31,7 @@ plotDep <- function(object, n_examples = 19){
   }else{
     ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
   }
-  ggdep + ggplot2::ylim(-5, 5)
+  ggdep + ggplot2::ylim(-5, 6)
 }
 
 ranger_fun <- function(object){
@@ -132,3 +132,20 @@ dep_p_4 <- condDependence(fit_pruned, data$j[4])
 grid.arrange(plotDep(dep_p_1), plotDep(dep_p_2), 
   plotDep(dep_p_3), plotDep(dep_p_4), ncol = 2, 
   top = 'Conditional dependence of the pruned SDForest')
+
+
+f_hat <- predict(fit, data.frame(data_test$X))
+f_hat2 <- predict(fit2, data.frame(data_test$X))
+
+
+
+
+
+Q <- get_Q(data_test$X, 'trim')
+f_mse <- mean((data_test$f_X - f_hat)^2)
+SDE <- mean((Q %*% data_test$Y - Q %*% f_hat)^2)
+
+
+fit$oob_SDloss
+f_mse
+SDE
