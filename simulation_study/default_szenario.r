@@ -1,8 +1,8 @@
 source("R/SDForest.r")
-multicore <- F
+multicore <- T
 
-p <- 40
-n <- 40
+p <- 400
+n <- 400
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
