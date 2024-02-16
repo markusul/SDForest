@@ -101,18 +101,18 @@ plotDep <- function(object, n_examples = 19){
 source("R/SDForest.r")
 library(ggplot2)
 
-p <- 400
-n <- 400
+p <- 40
+n <- 40
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
 
 true_f <- true_function(data$beta, data$j)
 
-dep_f_1 <- condDependence(true_f, data$X, data$j[1])
-dep_f_2 <- condDependence(true_f, data$X, data$j[2])
-dep_f_3 <- condDependence(true_f, data$X, data$j[3])
-dep_f_4 <- condDependence(true_f, data$X, data$j[4])
+dep_f_1 <- condDependence(true_f, data$j[1], data$X)
+dep_f_2 <- condDependence(true_f, data$j[2], data$X)
+dep_f_3 <- condDependence(true_f, data$j[3], data$X)
+dep_f_4 <- condDependence(true_f, data$j[4], data$X)
 
 set.seed(2024)
 gridExtra::grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2)
@@ -120,6 +120,11 @@ gridExtra::grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), pl
 
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- data.frame(dat)
+
+
+fit <- SDForest(x = data$X, y = data$Y, cp = 0.1, nTree = 3)
+fit$var_importance
+
 
 boxplot(colMeans(dat))
 

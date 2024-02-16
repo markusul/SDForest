@@ -342,6 +342,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   f_X_hat <- predict_outsample(tree, X)
 
   var_names <- colnames(data.frame(X))
+  names(var_imp) <- var_names
 
   # labels for the nodes
   tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
@@ -1027,8 +1028,6 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
     }
   }
 }
-
-
 
 simulate_data_nonlinear <- function(q, p, n, m){
     #simulate data with confounding and non-linear f_X
