@@ -90,3 +90,31 @@ dep_r_4 <- condDependence(ranger_fit, data$j[4], data.frame(data$X))
 grid.arrange(plotDep(dep_r_1), plotDep(dep_r_2), 
   plotDep(dep_r_3), plotDep(dep_r_4), ncol = 2, 
   top = 'Conditional dependence of the ranger')
+
+
+gg_regpath <- ggplot()
+for(i in 1:ncol(reg_path$varImp_path)){
+  gg_regpath <- gg_regpath + geom_line(data = data.frame(x = reg_path$cp, 
+    y = reg_path$varImp_path[, i]), aes(x = x, y = y), 
+    col = if(i %in% data$j)'#d11010' else 'grey')
+}
+gg_regpath <- gg_regpath + theme_bw() + xlab('Complexity parameter') + 
+  ylab('Variable importance') + ggtitle('Variable importance path')
+
+gg_regpath
+
+gg_stablepath <- ggplot()
+for(i in 1:ncol(stable_path$varImp_path)){
+  gg_stablepath <- gg_stablepath + geom_line(data = data.frame(x = stable_path$cp, 
+    y = stable_path$varImp_path[, i]), aes(x = x, y = y), 
+    col = if(i %in% data$j)'#d11010' else 'grey')
+}
+gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') + 
+  ylab('Variable importance') + ggtitle('Stability selection path')
+
+gg_stablepath
+
+
+plotOOB(reg_path)
+
+
