@@ -101,8 +101,8 @@ plotDep <- function(object, n_examples = 19){
 source("R/SDForest.r")
 library(ggplot2)
 
-p <- 40
-n <- 40
+p <- 20
+n <- 20
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
@@ -122,7 +122,7 @@ dat <- data.frame(X = data$X, Y = data$Y)
 dat <- data.frame(dat)
 
 
-fit <- SDForest(x = data$X, y = data$Y, cp = 0.1, nTree = 3)
+fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = F)
 fit$var_importance
 
 

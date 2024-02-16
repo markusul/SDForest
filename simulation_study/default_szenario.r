@@ -14,7 +14,7 @@ data_test$X <- data_test$X[(n+1):(n+n_test),]
 data_test$f_X <- data_test$f_X[(n+1):(n+n_test)]
 
 data$X <- data$X[1:n,]
-data$Y <- data$Y[1:n]
+data$Y <- matrix(data$Y[1:n])
 data$f_X <- data$f_X[1:n]
 
 fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = multicore)

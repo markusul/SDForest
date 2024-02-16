@@ -142,10 +142,24 @@ f_hat2 <- predict(fit2, data.frame(data_test$X))
 
 
 Q <- get_Q(data_test$X, 'trim')
+
 f_mse <- mean((data_test$f_X - f_hat)^2)
 SDE <- mean((Q %*% data_test$Y - Q %*% f_hat)^2)
+mse <- mean((data_test$Y - f_hat)^2)
 
+f_mse2 <- mean((data_test$f_X - f_hat2)^2)
+SDE2 <- mean((Q %*% data_test$Y - Q %*% f_hat2)^2)
+mse2 <- mean((data_test$Y - f_hat2)^2)
 
 fit$oob_SDloss
 f_mse
 SDE
+
+
+
+load('simulation_study/results/perf_n.RData')
+
+perf_n
+n_seq
+
+

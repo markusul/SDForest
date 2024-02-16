@@ -47,6 +47,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   sv <- svd(X)
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+  D_tilde[is.na(D_tilde)] <- 1
 
   Q <- switch(modes[type], diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                           { # pca
@@ -242,7 +243,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
 
     if(i > after_mtry && !is.null(mtry)){
-      Losses_dec <- lapply(memory, function(branch){branch[sample(1:p, mtry), ]})
+      Losses_dec <- lapply(memory, function(branch){
+        branch[sample(1:p, mtry), ]})
       Losses_dec <- do.call(rbind, Losses_dec)
     }else {
        Losses_dec <- do.call(rbind, memory)
@@ -571,6 +573,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   data_list <- lapply(ind, function(i){
     return(list(X = X[i, ], Y = Y[i]))
   })
+
   if(multicore){
     if(!is.null(mc.cores)){
       n_cores <- mc.cores
@@ -728,17 +731,19 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min
 
   # all possible split points
   s <- find_s(X_branch, min_sample, p)
+
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
             eval <- evaluate_splitt(branch = branch, j = j, 
-            s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-            E = E, E_tilde = E_tilde, min_sample = min_sample)
+              s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
+              E = E, E_tilde = E_tilde, min_sample = min_sample)
             return(eval)})})
-  
+
   res <- lapply(res, function(x)do.call(rbind, x))
   res_min <- lapply(res, function(x)x[which.min(x[, 1]), ])
-  return(matrix(unlist(do.call(rbind, res_min)), ncol = 4, byrow = F))
+  res_min <- do.call(rbind, res_min)
 
+  return(matrix(unlist(res_min), ncol = 4, byrow = F))
 }
 
 find_s <- function(X, min_sample, p){
