@@ -26,17 +26,25 @@ n_test <- 500
 
 N_rep <- 100
 
-n_seq <- seq(100, 1000, 500)
-p_seq <- seq(100, 1000, 500)
-q_seq <- seq(0, 100, 50)
+n_seq <- seq(100, 1000, 100)
+p_seq <- seq(100, 1000, 100)
+q_seq <- seq(0, 100, 10)
 
-n_seq <- c(50, 60)
-p <-20
 
 print('start')
 perf_n <- mclapply(1:N_rep, function(i) sapply(n_seq, function(n) performance_measure(n, p, q, n_test)), mc.cores = n_cores)
 save(perf_n, n_seq, file = "simulation_study/results/perf_n.RData")
 print('n done')
+
+perf_p <- mclapply(1:N_rep, function(i) sapply(p_seq, function(p) performance_measure(n, p, q, n_test)), mc.cores = n_cores)
+save(perf_p, p_seq, file = "simulation_study/results/perf_p.RData")
+print('p done')
+
+perf_q <- mclapply(1:N_rep, function(i) sapply(q_seq, function(q) performance_measure(n, p, q, n_test)), mc.cores = n_cores)
+save(perf_q, q_seq, file = "simulation_study/results/perf_q.RData")
+print('q done')
+
+
 
 
 
