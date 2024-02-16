@@ -121,6 +121,8 @@ gridExtra::grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), pl
 dat <- data.frame(X = data$X, Y = data$Y)
 dat <- data.frame(dat)
 
+boxplot(colMeans(dat))
+
 fit <- SDForest(Y ~ ., data = dat, cp = 0, multicore = T)
 data$j
 

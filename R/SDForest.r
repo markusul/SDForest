@@ -60,10 +60,16 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   return(Q)
 }
 
-condDependence <- function(object, X, j, multicore = F, mc.cores = NULL){
+condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   if(is.character(j)){
     j <- which(names(X) == j)
   }
+
+  if(is.null(X)){
+    X <- data.frame(object$X)
+    if(is.null(X)) stop('X must be provided if it is not part of the object')
+  }
+
   if(!is.numeric(j)) stop('j must be a numeric or character')
   if(j > ncol(X)) stop('j must be smaller than p')
   if(j < 1) stop('j must be larger than 0')
@@ -326,11 +332,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # predict the test set
   f_X_hat <- predict_outsample(tree, X)
 
+  var_names <- colnames(data.frame(X))
+
   # labels for the nodes
-  tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = colnames(X))
+  tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
 
-  res <- list(predictions = f_X_hat, tree = tree, var_names = colnames(X), var_importance = var_imp)
+  res <- list(predictions = f_X_hat, tree = tree, var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'
   return(res)
 }
@@ -606,7 +614,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     var_imp <- mean(var_imp)
   }
 
-  output <- list(predictions = f_X_hat, forest = res, var_names = colnames(X), 
+  output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
                  oob_ind = oob_ind, X = X, Y = Y, Q = Q)
   class(output) <- 'SDForest'
@@ -1002,4 +1010,70 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       return(list(X = X, Y = as.numeric(Y)))
     }
   }
+}
+
+
+
+simulate_data_nonlinear <- function(q, p, n, m){
+    #simulate data with confounding and non-linear f_X
+    # q: number of confounding covariates in H
+    # p: number of covariates in X
+    # n: number of observations
+    # m: number of covariates with a causal effect on Y
+
+    # random confounding covariates H
+    H <- matrix(rnorm(n * q, 0, 1), nrow = n)
+
+    # random correlation matrix cov(X, H)
+    Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+
+    # random coefficient vector delta
+    delta <- rnorm(q, 0, 1)
+
+    # random error term
+    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+
+    if(q == 0){
+        X <- E
+    }else{
+        X <- H %*% Gamma + E
+    }
+  
+    # random sparse subset of covariates in X
+    js <- sample(1:p, m)
+
+    # complexity of f_X
+    complexity <- 5
+    # random parameter for fourier basis
+    beta <- runif(m * complexity * 2, -1, 1)
+    # generate f_X
+    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+    
+    # generate Y
+    Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
+  
+    #return data
+    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta))
+}
+
+f_four <- function(x, beta, js){
+    # function to generate f_X
+    # x: covariates
+    # beta: parameter vector
+    # js: relevant covariates
+
+    # number of relevant covariates
+    m <- length(js)
+
+    # complexity of f_X
+    complexity <- length(beta) / (2 * m)
+
+    # calculate f_X
+    do.call(sum, lapply(1:m, function(i) {
+        j <- js[i]
+        # select beta for covariate j
+        beta_ind <- 1:(2*complexity) + (i-1) * 2 * complexity
+        # calculate f_X_j
+        do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.1 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.1 * x[j])))
+        }))
 }
