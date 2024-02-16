@@ -70,7 +70,7 @@ sort(fit2$variable.importance, decreasing = T)[1:6]
 plot(fit$var_importance / max(fit$var_importance), col = 'blue', 
   ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance')
 points(fit2$variable.importance / max(fit2$variable.importance), 
-  col = 'red', pch = 2)
+  col = 'red', pch = 20)
 
 grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), 
   plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, 
@@ -155,11 +155,18 @@ fit$oob_SDloss
 f_mse
 SDE
 
-
-
+library(ggplot2)
+library(tidyr)
 load('simulation_study/results/perf_n.RData')
 
+perf_n <- do.call(rbind, perf_n)
+perf_n <- data.frame(perf_n, rownames(perf_n), row.names = NULL)
+names(perf_n) <- c(n_seq, 'method')
 perf_n
-n_seq
 
+perf_n <- gather(perf_n, n, error, -method)
+
+ggplot(perf_n, aes(x = n, y = error, col = method)) + 
+  geom_boxplot() + theme_bw() + xlab('Number of training samples') + 
+  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
