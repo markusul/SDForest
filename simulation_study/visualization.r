@@ -63,16 +63,18 @@ dep_f_2 <- condDependence(true_f, data$j[2], data$X)
 dep_f_3 <- condDependence(true_f, data$j[3], data$X)
 dep_f_4 <- condDependence(true_f, data$j[4], data$X)
 
-
-grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), 
-  plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, 
-  top = 'Conditional dependence of the true function')
-
-plot(fit$var_importance)
 data$j
 sort(fit$var_importance, decreasing = T)[1:6]
 sort(fit2$variable.importance, decreasing = T)[1:6]
 
+plot(fit$var_importance / max(fit$var_importance), col = 'blue', 
+  ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance')
+points(fit2$variable.importance / max(fit2$variable.importance), 
+  col = 'red', pch = 2)
+
+grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), 
+  plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, 
+  top = 'Conditional dependence of the true function')
 
 grid.arrange(plotDep(dep_1), plotDep(dep_2), 
   plotDep(dep_3), plotDep(dep_4), ncol = 2, 
@@ -117,4 +119,16 @@ gg_stablepath
 
 plotOOB(reg_path)
 
+cp_min <- reg_path$cp[which.min(reg_path$loss_path[, 'oob SDE'])]
+fit_pruned <- prune(fit, cp_min)
 
+sort(fit_pruned$var_importance, decreasing = T)[1:6]
+
+dep_p_1 <- condDependence(fit_pruned, data$j[1])
+dep_p_2 <- condDependence(fit_pruned, data$j[2])
+dep_p_3 <- condDependence(fit_pruned, data$j[3])
+dep_p_4 <- condDependence(fit_pruned, data$j[4])
+
+grid.arrange(plotDep(dep_p_1), plotDep(dep_p_2), 
+  plotDep(dep_p_3), plotDep(dep_p_4), ncol = 2, 
+  top = 'Conditional dependence of the pruned SDForest')
