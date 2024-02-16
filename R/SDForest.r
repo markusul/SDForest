@@ -79,14 +79,23 @@ condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
 
   if(multicore){
-
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    preds <- parallel::mclapply(x_seq, function(x){
+      X_new <- X
+      X_new[, j] <- x
+      pred <- predict(object, newdata = X_new)
+      return(pred)
+    }, mc.cores = n_cores)
+  }else{
+    preds <- pbapply::pblapply(x_seq, function(x){
+      X_new <- X
+      X_new[, j] <- x
+      pred <- predict(object, newdata = X_new)
+      return(pred)
+    })
   }
-  preds <- pbapply::pblapply(x_seq, function(x){
-    X_new <- X
-    X_new[, j] <- x
-    pred <- predict(object, newdata = X_new)
-    return(pred)
-  })
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
@@ -565,14 +574,21 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     if(!is.null(mc.cores)){
       n_cores <- mc.cores
     }
-    cl <- parallel::makeCluster(n_cores)
-    doParallel::registerDoParallel(cl)
-    parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
-                                  "find_s", "evaluate_splitt", "loss", "predict_outsample", 
-                                  "traverse_tree", "splitt_names", "leave_names"))
-    res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
-                Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
-    parallel::stopCluster(cl = cl)
+    if(locatexec::is_unix()){
+      res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
+                                            min_sample = min_sample, Q_type = Q_type, 
+                                            trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry), 
+                                            mc.cores = n_cores)
+    }else{
+      cl <- parallel::makeCluster(n_cores)
+      doParallel::registerDoParallel(cl)
+      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
+                                    "find_s", "evaluate_splitt", "loss", "predict_outsample", 
+                                    "traverse_tree", "splitt_names", "leave_names"))
+      res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
+      parallel::stopCluster(cl = cl)
+    }
   }else{
     res <- pbapply::pblapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
