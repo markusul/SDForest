@@ -30,15 +30,14 @@ n_seq <- seq(100, 1000, 500)
 p_seq <- seq(100, 1000, 500)
 q_seq <- seq(0, 100, 50)
 
+n_seq <- c(50, 60)
+p <-20
+
 print('start')
-perf_n <- mclapply(n_seq, function(n) performance_measure(n, p, q, n_test))
-save(perf_n, file = "simulation_study/results/perf_n.RData")
+perf_n <- mclapply(1:N_rep, function(i) sapply(n_seq, function(n) performance_measure(n, p, q, n_test)), mc.cores = n_cores)
+save(perf_n, n_seq, file = "simulation_study/results/perf_n.RData")
 print('n done')
-perf_p <- mclapply(p_seq, function(p) performance_measure(n, p, q, n_test))
-save(perf_p, file = "simulation_study/results/perf_p.RData")
-print('p done')
-perf_q <- mclapply(q_seq, function(q) performance_measure(n, p, q, n_test))
-save(perf_q, file = "simulation_study/results/perf_q.RData")
-print('q done')
+
+
 
 
