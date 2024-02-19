@@ -589,3 +589,49 @@ points(c(0, svd(X_tilde)$d), col = 'red')
 plot(svd(X)$d)
 plot(svd(Q %*% X)$d)
 
+
+
+source("R/SDForest.r")
+multicore <- T
+
+p <- 500
+n <- 500
+q <- 20
+
+n_test <- 500
+
+set.seed(2024)
+data <- simulate_data_nonlinear(q, p, n + n_test, 4)
+data_test <- data
+data_test$Y <- data_test$Y[(n+1):(n+n_test)]
+data_test$X <- data_test$X[(n+1):(n+n_test),]
+data_test$f_X <- data_test$f_X[(n+1):(n+n_test)]
+
+data$X <- data$X[1:n,]
+data$Y <- matrix(data$Y[1:n])
+data$f_X <- data$f_X[1:n]
+
+
+
+input_data <- data.handler(x = data$X, y = data$Y)
+X <- input_data$X
+Y <- input_data$Y
+
+n <- nrow(X)
+  # number of covariates
+p <- ncol(X)
+  # bootstrap samples
+ind <- lapply(1:1000, function(x)sample(1:n, n, replace = T))
+
+  #suppressWarnings({
+  # estimating all the trees
+
+data_list <- lapply(ind, function(i){
+return(list(X = X[i, ], Y = Y[i]))
+})
+
+
+for(el in data_list){
+  s <- svd(el$X)
+}
+s

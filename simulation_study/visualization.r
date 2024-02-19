@@ -68,9 +68,10 @@ sort(fit$var_importance, decreasing = T)[1:6]
 sort(fit2$variable.importance, decreasing = T)[1:6]
 
 plot(fit$var_importance / max(fit$var_importance), col = 'blue', 
-  ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance')
+  ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance', pch = 3)
 points(fit2$variable.importance / max(fit2$variable.importance), 
-  col = 'red', pch = 20)
+  col = 'red', pch = 2)
+points(data$j, rep(1, length(data$j)), col = 'green', pch = 20)
 
 grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), 
   plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, 
@@ -135,10 +136,7 @@ grid.arrange(plotDep(dep_p_1), plotDep(dep_p_2),
 
 
 f_hat <- predict(fit, data.frame(data_test$X))
-f_hat2 <- predict(fit2, data.frame(data_test$X))
-
-
-
+f_hat2 <- predict(fit2, data.frame(data_test$X))$predictions
 
 
 Q <- get_Q(data_test$X, 'trim')
@@ -152,8 +150,17 @@ SDE2 <- mean((Q %*% data_test$Y - Q %*% f_hat2)^2)
 mse2 <- mean((data_test$Y - f_hat2)^2)
 
 fit$oob_SDloss
-f_mse
 SDE
+SDE2
+
+f_mse
+f_mse2
+
+fit$oob_loss
+mse
+fit2$prediction.error
+mse2
+
 
 library(ggplot2)
 library(tidyr)
@@ -170,3 +177,31 @@ ggplot(perf_n, aes(x = n, y = error, col = method)) +
   geom_boxplot() + theme_bw() + xlab('Number of training samples') + 
   ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
+
+
+
+
+
+
+res_reg_mean <- data.frame(apply(simplify2array(res_reg), 1:2, mean))
+res_reg_u <- data.frame(apply(simplify2array(res_reg), 1:2, quantile, prob = 0.95))
+res_reg_l <- data.frame(apply(simplify2array(res_reg), 1:2, quantile, prob = 0.05))
+
+res_reg_mean <- gather(res_reg_mean, key = 'type', value = 'error', -cp)
+res_reg_mean$level <- 'mean'
+
+res_reg_u <- gather(res_reg_u, key = 'type', value = 'error', -cp)
+res_reg_u$level <- 'upper'
+
+res_reg_l <- gather(res_reg_l, key = 'type', value = 'error', -cp)
+res_reg_l$level <- 'lower'
+
+res <- rbind(res_reg_mean, res_reg_u, res_reg_l)
+
+res_reg
+library(dplyr)
+library(ggplot2)
+
+ggplot(res, aes(x = cp, y = error, col = type, linetype = level)) + 
+    geom_line() + 
+    labs(title = 'Regularization performance', x = 'cp', y = 'error')
