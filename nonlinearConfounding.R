@@ -30,14 +30,43 @@ plot(svd(X)$d)
 
 
 library(EQL)
-x <- seq(-2, 2, length.out = 100)
 
+
+f_hermite <- function(x, beta, js){
+    # function to generate f_X
+    # x: covariates
+    # beta: parameter vector
+    # js: relevant covariates
+
+    # number of relevant covariates
+    m <- length(js)
+
+    # complexity of f_X
+    complexity <- length(beta) / m
+
+    if(is.null(dim(beta))) beta <- matrix(beta)
+
+    # calculate f_X
+    do.call(sum, lapply(1:m, function(i) {
+        j <- js[i]
+        # select beta for covariate j
+        res <- lapply(1:complexity, function(k) {
+            beta[k, i] * hermite(x[j], k-1)
+        })
+        Reduce('+', res)
+    }))
+}
+
+p <- 500
+q <- 1
+n <- 500
+H <- matrix(rnorm(n*q), ncol=q)
 df <- 5
-betas <- runif(df, -1, 1)
-res <- lapply(1:df, function(i){
-  betas[i] * hermite(x, i-1)
-})
 
+Betas <- replicate(p, matrix(runif(q*df, -1, 1), nrow = df), simplify = F)
 
+X <- sapply(Betas, function(beta) {apply(H, 1, function(h) f_hermite(h, beta, 1:q))})
+X <- X + matrix(rnorm(n*p), ncol = p)
 
-plot(x = x, hermite(x, 4))
+plot(svd(X)$d)
+
