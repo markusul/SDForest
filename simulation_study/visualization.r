@@ -48,8 +48,8 @@ library(gridExtra)
 library(ggplot2)
 library(ranger)
 
-# default experiment
-# load data
+##### default experiment #####
+
 load('simulation_study/results/default_szenario.RData')
 set.seed(2024)
 
@@ -81,7 +81,6 @@ grid.arrange(plotDep(dep_1), plotDep(dep_2),
   plotDep(dep_3), plotDep(dep_4), ncol = 2, 
   top = 'Conditional dependence of the SDForest')
 
-
 ranger_fit <- ranger_fun(fit2)
 
 dep_r_1 <- condDependence(ranger_fit, data$j[1], data.frame(data$X))
@@ -89,11 +88,9 @@ dep_r_2 <- condDependence(ranger_fit, data$j[2], data.frame(data$X))
 dep_r_3 <- condDependence(ranger_fit, data$j[3], data.frame(data$X))
 dep_r_4 <- condDependence(ranger_fit, data$j[4], data.frame(data$X))
 
-
 grid.arrange(plotDep(dep_r_1), plotDep(dep_r_2), 
   plotDep(dep_r_3), plotDep(dep_r_4), ncol = 2, 
   top = 'Conditional dependence of the ranger')
-
 
 gg_regpath <- ggplot()
 for(i in 1:ncol(reg_path$varImp_path)){
@@ -118,49 +115,7 @@ gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') +
 gg_stablepath
 
 
-plotOOB(reg_path)
-
-cp_min <- reg_path$cp[which.min(reg_path$loss_path[, 'oob SDE'])]
-fit_pruned <- prune(fit, cp_min)
-
-sort(fit_pruned$var_importance, decreasing = T)[1:6]
-
-dep_p_1 <- condDependence(fit_pruned, data$j[1])
-dep_p_2 <- condDependence(fit_pruned, data$j[2])
-dep_p_3 <- condDependence(fit_pruned, data$j[3])
-dep_p_4 <- condDependence(fit_pruned, data$j[4])
-
-grid.arrange(plotDep(dep_p_1), plotDep(dep_p_2), 
-  plotDep(dep_p_3), plotDep(dep_p_4), ncol = 2, 
-  top = 'Conditional dependence of the pruned SDForest')
-
-
-f_hat <- predict(fit, data.frame(data_test$X))
-f_hat2 <- predict(fit2, data.frame(data_test$X))$predictions
-
-
-Q <- get_Q(data_test$X, 'trim')
-
-f_mse <- mean((data_test$f_X - f_hat)^2)
-SDE <- mean((Q %*% data_test$Y - Q %*% f_hat)^2)
-mse <- mean((data_test$Y - f_hat)^2)
-
-f_mse2 <- mean((data_test$f_X - f_hat2)^2)
-SDE2 <- mean((Q %*% data_test$Y - Q %*% f_hat2)^2)
-mse2 <- mean((data_test$Y - f_hat2)^2)
-
-fit$oob_SDloss
-SDE
-SDE2
-
-f_mse
-f_mse2
-
-fit$oob_loss
-mse
-fit2$prediction.error
-mse2
-
+##### Performance depending on the dimensions #####
 
 library(ggplot2)
 library(tidyr)
@@ -169,7 +124,6 @@ load('simulation_study/results/perf_n.RData')
 perf_n <- do.call(rbind, perf_n)
 perf_n <- data.frame(perf_n, rownames(perf_n), row.names = NULL)
 names(perf_n) <- c(n_seq, 'method')
-perf_n
 
 perf_n <- gather(perf_n, n, error, -method)
 
@@ -180,28 +134,28 @@ ggplot(perf_n, aes(x = n, y = error, col = method)) +
 
 
 
+##### Regularization performance #####
 
-
+load('simulation_study/results/regularization_performance.RData')
 
 res_reg_mean <- data.frame(apply(simplify2array(res_reg), 1:2, mean))
 res_reg_u <- data.frame(apply(simplify2array(res_reg), 1:2, quantile, prob = 0.95))
 res_reg_l <- data.frame(apply(simplify2array(res_reg), 1:2, quantile, prob = 0.05))
 
-res_reg_mean <- gather(res_reg_mean, key = 'type', value = 'error', -cp)
-res_reg_mean$level <- 'mean'
+res_reg_mean <- gather(res_reg_mean, key = 'type', value = 'mean', -cp)
 
-res_reg_u <- gather(res_reg_u, key = 'type', value = 'error', -cp)
-res_reg_u$level <- 'upper'
+res_reg_u <- gather(res_reg_u, key = 'type', value = 'u', -cp)
 
-res_reg_l <- gather(res_reg_l, key = 'type', value = 'error', -cp)
-res_reg_l$level <- 'lower'
+res_reg_l <- gather(res_reg_l, key = 'type', value = 'l', -cp)
 
-res <- rbind(res_reg_mean, res_reg_u, res_reg_l)
+res <- merge(res_reg_mean, res_reg_u)
+res <- merge(res, res_reg_l)
 
-res_reg
-library(dplyr)
 library(ggplot2)
 
-ggplot(res, aes(x = cp, y = error, col = type, linetype = level)) + 
-    geom_line() + 
-    labs(title = 'Regularization performance', x = 'cp', y = 'error')
+ggplot(res, aes(x = cp, y = mean)) + 
+  geom_line(aes(col = type)) + 
+  geom_ribbon(aes(ymin = l, ymax = u, fill = type), alpha = 0.2) + 
+  theme_bw() + xlab('Complexity parameter') + ylab('Mean squared error') + 
+  ggtitle('Regularization performance of SDForest')
+
