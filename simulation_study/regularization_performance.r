@@ -1,4 +1,5 @@
 source("R/SDForest.r")
+library(parallel)
 
 p <- 500
 n <- 500
@@ -9,7 +10,7 @@ cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
 
 N_rep <- 100
 
-res_reg <- parallel:mclapply(1:N_rep, function(i){
+res_reg <- mclapply(1:N_rep, function(i){
     data <- simulate_data_nonlinear(q, p, n + n_test, 4)
     data_test <- data
     data_test$Y <- data_test$Y[(n+1):(n+n_test)]
