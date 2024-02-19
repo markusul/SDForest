@@ -27,3 +27,17 @@ svd(X)$d
 plot(svd(X)$d)
 
 #we see many spikes even though q=1
+
+
+library(EQL)
+x <- seq(-2, 2, length.out = 100)
+
+df <- 5
+betas <- runif(df, -1, 1)
+res <- lapply(1:df, function(i){
+  betas[i] * hermite(x, i-1)
+})
+
+
+
+plot(x = x, hermite(x, 4))

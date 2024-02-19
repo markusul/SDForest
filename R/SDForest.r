@@ -1034,7 +1034,7 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
   }
 }
 
-simulate_data_nonlinear <- function(q, p, n, m){
+simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
     #simulate data with confounding and non-linear f_X
     # q: number of confounding covariates in H
     # p: number of covariates in X
@@ -1051,6 +1051,13 @@ simulate_data_nonlinear <- function(q, p, n, m){
 
     # random correlation matrix cov(X, H)
     Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+
+    if(!is.null(eff)){
+        non_effected <- p - eff
+        if(non_effected <= 0) stop('eff must be smaller than p or NULL'){
+          Gamma[, sample(1:p, non_effected)] <- 0
+        }
+    }
 
     # random coefficient vector delta
     delta <- rnorm(q, 0, 1)
