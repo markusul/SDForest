@@ -570,16 +570,16 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   #suppressWarnings({
   # estimating all the trees
 
-  data_list <- lapply(ind, function(i){
-    return(list(X = X[i, ], Y = Y[i]))
-  })
+  #data_list <- lapply(ind, function(i){
+  #  return(list(X = X[i, ], Y = Y[i]))
+  #})
 
   if(multicore){
     if(!is.null(mc.cores)){
       n_cores <- mc.cores
     }
     if(locatexec::is_unix()){
-      res <- parallel::mclapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
+      res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
                                             trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry), 
                                             mc.cores = n_cores)
@@ -589,12 +589,12 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
                                     "find_s", "evaluate_splitt", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
-      res <- parallel::clusterApplyLB(cl = cl, x = data_list, fun = function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+      res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
       parallel::stopCluster(cl = cl)
     }
   }else{
-    res <- pbapply::pblapply(data_list, function(i)SDTree(x = i$X, y = i$Y, max_leaves = max_leaves, cp = cp, 
+    res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
   }
