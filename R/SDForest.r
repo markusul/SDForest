@@ -794,7 +794,9 @@ find_s <- function(X, min_sample, p){
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
   # for runtime reasons
-  if(dim(s)[1] > 200){
+  if(dim(s)[1] > 1000){
+    s <- s[seq(1, dim(s)[1], 100), ]
+  }else if (dim(s)[1] > 200) {
     s <- s[seq(1, dim(s)[1], 5), ]
   }else if (dim(s)[1] > 100) {
     s <- s[seq(1, dim(s)[1], 2), ]

@@ -159,3 +159,7 @@ ggplot(res, aes(x = cp, y = mean)) +
   theme_bw() + xlab('Complexity parameter') + ylab('Mean squared error') + 
   ggtitle('Regularization performance of SDForest')
 
+
+
+
+fit$oob_SDloss
