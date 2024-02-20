@@ -56,3 +56,16 @@ a <- tryCatch({
     warning(paste(e, ':X multipied by number close to 1'))
     return(svd(X[i, ] * 1.000000000000001)$d)})
 a
+
+p <- 10
+Q <- matrix(rnorm(p^2), p, p)
+Q
+
+E <- matrix(sample(c(0, 1), 10, replace = T))
+E <- cbind(E, as.numeric(E == 0))
+E
+
+rowSums(Q[, as.logical(E[, 2])])
+
+Q%*%E
+
