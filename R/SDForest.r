@@ -723,11 +723,11 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_br
   #E_tilde <- cbind(E_tilde, strider::row_sums(Q[, as.logical(E[, n_branches])]))
 
   E_tilde_branch <- E_tilde[, branch]
-  E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-  E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
-
-  #E_tilde[, branch] <- rowSums(Q[, as.logical(E[, branch])])
+  #E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
   #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
+
+  E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
+  E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
 
 
   #E_tilde[, branch] <- Q %*% E[, branch]
