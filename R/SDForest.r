@@ -1088,7 +1088,7 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
     }
 
     # random coefficient vector delta
-    delta <- rnorm(q, 0, 2)
+    delta <- rnorm(q, 0, 1)
 
     # random error term
     E <- matrix(rnorm(n * p, 0, 1), nrow = n)
