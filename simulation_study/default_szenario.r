@@ -19,7 +19,7 @@ data$Y <- matrix(data$Y[1:n])
 data$f_X <- data$f_X[1:n]
 
 start <- Sys.time()
-fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = T)
+fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = F)
 end <- Sys.time()
 print(end - start)
 print('fit done')
