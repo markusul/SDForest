@@ -44,7 +44,12 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   n <- dim(X)[1]
 
   # calculate deconfounding matrix
-  sv <- svd(X)
+  sv <- tryCatch({
+    svd(X)
+  }, error = function(e) {
+      warning(paste(e, ':X multipied by number close to 1'))
+      return(svd(X * 1.0000000000001))})
+
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
   D_tilde[is.na(D_tilde)] <- 1
@@ -1054,9 +1059,9 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
 
     if(!is.null(eff)){
         non_effected <- p - eff
-        if(non_effected <= 0) stop('eff must be smaller than p or NULL'){
-          Gamma[, sample(1:p, non_effected)] <- 0
-        }
+        if(non_effected <= 0) stop('eff must be smaller than p or NULL')
+        
+        Gamma[, sample(1:p, non_effected)] <- 0
     }
 
     # random coefficient vector delta
