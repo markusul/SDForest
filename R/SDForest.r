@@ -277,8 +277,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     #E_tilde <- Q %*% E
     #E_tilde <- SMUT::eigenMapMatMult(Q, E)
 
-    #E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
-    #E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, i + 1]))
+    E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
+    E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, i + 1]))
 
     #E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
     #E_tilde <- cbind(E_tilde, strider::row_sums(Q[, as.logical(E[, i+1])]))
@@ -287,9 +287,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     #E_tilde[, branch] <- rowSums(Q[, as.logical(E[, branch])])
     #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
 
-    E_tilde_branch <- E_tilde[, branch]
-    E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-    E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
+    #E_tilde_branch <- E_tilde[, branch]
+    #E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
+    #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
 
     #E_tilde[, best_branch] <- Q %*% E[, best_branch]
     #E_tilde <- cbind(E_tilde, Q %*% E[, i + 1])
@@ -716,15 +716,15 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_br
   
   #E_tilde <- SMUT::eigenMapMatMult(Q, E)
 
-  #E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-  #E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, n_branches]))
+  E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
+  E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, n_branches]))
 
   #E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
   #E_tilde <- cbind(E_tilde, strider::row_sums(Q[, as.logical(E[, n_branches])]))
 
-  E_tilde_branch <- E_tilde[, branch]
-  E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-  E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
+  #E_tilde_branch <- E_tilde[, branch]
+  #E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
+  #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
 
   #E_tilde[, branch] <- rowSums(Q[, as.logical(E[, branch])])
   #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
