@@ -21,6 +21,7 @@ data$f_X <- data$f_X[1:n]
 start <- Sys.time()
 fit <- SDForest(x = data$X, y = data$Y, cp = 0, multicore = multicore)
 end <- Sys.time()
+print(end - start)
 
 print('fit done')
 
