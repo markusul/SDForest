@@ -69,3 +69,16 @@ rowSums(Q[, as.logical(E[, 2])])
 
 Q%*%E
 
+
+p <- 5000
+n <- 5000
+
+set.seed(2024)
+data <- simulate_data_nonlinear(20, p, n, 4)
+Q <- get_Q(data$X, 'trim')
+
+start <- Sys.time()
+E_tilde <- rowSums(Q)
+end <- Sys.time()
+
+(end - start) * 100
