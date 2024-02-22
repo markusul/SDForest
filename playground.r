@@ -1,14 +1,23 @@
 source("R/SDForest.r")
 library(ggplot2)
 
-p <- 20
-n <- 20
+p <- 100
+n <- 100
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
 
-
 source("R/SDForest.r")
+
+start <- Sys.time()
+for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)
+end <- Sys.time()
+(end - start) / 10
+# Time difference of 3.174835 mins
+
+a <- regPath(fit, oob = T)
+b <- stabilitySelection(fit)
+
 multicore <- T
 
 p <- 500
