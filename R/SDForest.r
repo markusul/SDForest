@@ -35,6 +35,15 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'no_deconfounding')
 #' @export
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
+  svd_error <- function(X, f = 1, count = 1){
+    tryCatch({
+      svd(X * f)
+    }, error = function(e) {
+        warning(paste(e, ':X multipied by number close to 1'))
+        if(count > 5) stop('svd did not converge')
+        return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
+  }
+
   # X: covariates
   # type: type of deconfounding
   modes <- c('trim' = 1, 'pca' = 2, 'no_deconfounding' = 3)
@@ -44,11 +53,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   n <- dim(X)[1]
 
   # calculate deconfounding matrix
-  sv <- tryCatch({
-    svd(X)
-  }, error = function(e) {
-      warning(paste(e, ':X multipied by number close to 1'))
-      return(svd(X * 1.0000000000001))})
+  sv <- svd_error(X)
 
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
