@@ -11,7 +11,7 @@ start <- Sys.time()
 for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)
 end <- Sys.time()
 (end - start) / 10
-# Time difference of 3.174835 mins
+# Time difference of 1.825664 mins
 
 a <- regPath(fit, oob = T)
 b <- stabilitySelection(fit)
