@@ -6,21 +6,24 @@ n <- 100
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
-data$j
-fit <- SDTree(x = data$X, y = data$Y)
-fit
 
+fit <- SDForest(x = data$X, y = data$Y)
 
-print(fit$tree, 'cp', 'dloss')
-
-source("R/SDForest.r")
+fit$forest[[2]]
 
 start <- Sys.time()
 for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)
 end <- Sys.time()
 (end - start) / 10
-# Time difference of 3.174835 mins
-# Time difference of 0.868829 mins
+# Time difference of 0.8825729 mins
+
+
+A  <- matrix(rnorm(4*4), 4, 4)
+A <- rbind(A, A[1, ])
+A
+unique(A)
+find_s(A, 2, 4)
+
 
 a <- regPath(fit, oob = T)
 b <- stabilitySelection(fit)

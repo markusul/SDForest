@@ -206,9 +206,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
   Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
 
-  #Y_tilde <- Q %*% Y
-
-  Y_tilde <- SMUT::eigenMapMatMult(Q, Y)
+  Y_tilde <- Q %*% Y
   
   # solve linear model
   c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
@@ -240,11 +238,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       potential_splitts <- potential_splitts[!to_small]
     }
     #iterate over new to estimate splits
-
     for(branch in potential_splitts){
       best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q_temp = Q_temp, 
                                      n = n, min_sample = min_sample, p = p, E = E)
-      #best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts
     }
 
@@ -275,13 +271,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     E[index_n_branches, i+1] <- 1
 
     E_tilde_branch <- E_tilde[, best_branch]
-    E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
+    E_tilde[, best_branch] <- Q %*% E[, best_branch]
     E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
 
     c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
 
-
-    u_next_prime <- SMUT::eigenMapMatMult(Q_temp, E[, i + 1])
+    u_next_prime <- Q_temp %*% E[, i + 1]
     u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
 
     Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
@@ -329,8 +324,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     potential_splitts <- c(best_branch, i + 1)
 
     # a partition with less than min_sample observations or unique samples are not available for further splits
-    to_small <- unlist(lapply(potential_splitts, function(x){(sum(E[, x] == 1) < min_sample * 2)| 
-                                                              length(unique(X[which(E[, x] == 1), 1])) == 1}))
+    to_small <- unlist(lapply(potential_splitts, function(x){length(unique(X[which(E[, x] == 1), 1])) < min_sample * 2}))
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
         # to small partitions cannot decrease the loss
@@ -415,11 +409,10 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   # to map optimal minimal loss decrease to a cp value
   E <- matrix(1, n, 1)
   E_tilde <- matrix(rowSums(Q))
-  #Y_tilde <- Q %*% Y
-  Y_tilde <- SMUT::eigenMapMatMult(Q, Y)
+  Y_tilde <- Q %*% Y
+
   # solve linear model
   c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
-  #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
   loss_start <- sum((Y_tilde - c_hat) ** 2) / n
 
   # validation set size
@@ -536,11 +529,8 @@ plot.SDTree <- function(object){
 }
 
 #### SDForest functions ####
-
-# TODO: add variable importance
-# TODO: add oob error
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
-                     cp = 0, min_sample = 5, mtry = NULL, multicore = F, mc.cores = NULL, 
+                     cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
@@ -566,18 +556,11 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # mtry
   if(is.null(mtry)){
-    mtry <- floor(0.9 * p)
+    mtry <- floor(0.5 * p)
   }
 
   # bootstrap samples
   ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
-
-  #suppressWarnings({
-  # estimating all the trees
-
-  #data_list <- lapply(ind, function(i){
-  #  return(list(X = X[i, ], Y = Y[i]))
-  #})
 
   if(multicore){
     if(!is.null(mc.cores)){
@@ -604,9 +587,6 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
   }
 
-
-  #})
-
   # ensemble predictions for each observation
   # but only with the trees that did not contain the observation in the training set
   oob_ind <- lapply(1:n, function(i) which(unlist(lapply(lapply(ind, 
@@ -622,7 +602,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     })
     return(mean(unlist(predictions)))
   }))
-  oob_SDloss <- loss(SMUT::eigenMapMatMult(Q, Y), SMUT::eigenMapMatMult(Q, oob_predictions))
+
+  oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
   oob_loss <- loss(Y, oob_predictions)
 
   # predict with all trees
@@ -688,17 +669,10 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n,
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
   # dividing observation in branch
-
-  # check wether this split resolves in two reasnable partitions
-  if(sum(X_branch_j <= s) < min_sample | sum(X_branch_j > s) < min_sample){
-    # remove no longer needed objects from memory
-    return(list('dloss' = 0, j = j, s = s, branch = branch))
-  }
-  
   e_next <- matrix(0, n, 1)
   e_next[index[X_branch_j > s]] <- 1
 
-  u_next_prime <- SMUT::eigenMapMatMult(Q_temp, e_next)
+  u_next_prime <- Q_temp %*% e_next
   u_next_size <- sum(u_next_prime ** 2)
 
   dloss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
@@ -716,7 +690,7 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
   X_branch <- X[index, ]
 
   # all possible split points
-  s <- find_s(X_branch, min_sample, p)
+  s <- find_s(unique(X_branch), min_sample, p)
 
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
@@ -740,7 +714,7 @@ find_s <- function(X, min_sample, p){
   }
   n <- nrow(X)
 
-  X_sort <- apply(X, 2, sort)
+  X_sort <- apply(X, 2, sort, method = 'quick')
   if(min_sample > 1) {
     X_sort <- X_sort[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
   }
