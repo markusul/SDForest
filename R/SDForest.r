@@ -203,6 +203,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   E_tilde <- matrix(rowSums(Q))
 
+  u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
+  Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
+
   #Y_tilde <- Q %*% Y
 
   Y_tilde <- SMUT::eigenMapMatMult(Q, Y)
@@ -238,11 +241,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
     #iterate over new to estimate splits
 
-
     for(branch in potential_splitts){
-
-      best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q = Q, 
-                                     n = n, n_branches = i+1, E = E, E_tilde = E_tilde, min_sample = min_sample, p = p)
+      best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q_temp = Q_temp, 
+                                     n = n, min_sample = min_sample, p = p, E = E)
       best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts
     }
@@ -273,29 +274,16 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     E[index_n_branches, best_branch] <- 0
     E[index_n_branches, i+1] <- 1
 
-    # calculate new level estimates
-    #E_tilde <- Q %*% E
-    #E_tilde <- SMUT::eigenMapMatMult(Q, E)
-
-    #E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
-    #E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, i + 1]))
-
-    #E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
-    #E_tilde <- cbind(E_tilde, strider::row_sums(Q[, as.logical(E[, i+1])]))
-
-    #E_tilde_branch <- E_tilde[, branch]
-    #E_tilde[, branch] <- rowSums(Q[, as.logical(E[, branch])])
-    #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
-
     E_tilde_branch <- E_tilde[, best_branch]
     E_tilde[, best_branch] <- SMUT::eigenMapMatMult(Q, E[, best_branch])
     E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
 
-    #E_tilde[, best_branch] <- Q %*% E[, best_branch]
-    #E_tilde <- cbind(E_tilde, Q %*% E[, i + 1])
-
     c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
-    #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
+
+    u_next_prime <- SMUT::eigenMapMatMult(Q_temp, E[, i + 1])
+    u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
+
+    Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
 
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
@@ -695,60 +683,29 @@ leave_names <- function(node){
     node$label <- new_name
 }
 
-evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample){
+evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n, min_sample){
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
   # dividing observation in branch
-  index_n_branches <- index[X_branch_j > s]
-  index_branch <- index[X_branch_j <= s]
-  
+
   # check wether this split resolves in two reasnable partitions
-  if(length(index_branch) < min_sample | length(index_n_branches) < min_sample){
+  if(sum(X_branch_j <= s) < min_sample | sum(X_branch_j > s) < min_sample){
     # remove no longer needed objects from memory
     return(list('loss' = Inf, j = j, s = s, branch = branch))
   }
   
-  # new indicator matrix
-  E <- cbind(E, matrix(0, n, 1))
-  E[index[X_branch_j > s], branch] <- 0
-  E[index[X_branch_j > s], n_branches] <- 1
-  # new level estimates
-  
-  #E_tilde <- SMUT::eigenMapMatMult(Q, E)
+  e_next <- matrix(0, n, 1)
+  e_next[index[X_branch_j > s]] <- 1
 
-  #E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-  #E_tilde <- cbind(E_tilde, SMUT::eigenMapMatMult(Q, E[, n_branches]))
+  u_next_prime <- SMUT::eigenMapMatMult(Q_temp, e_next)
+  u_next_size <- sum(u_next_prime ** 2)
 
-  #E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
-  #E_tilde <- cbind(E_tilde, strider::row_sums(Q[, as.logical(E[, n_branches])]))
-
-  E_tilde_branch <- E_tilde[, branch]
-  E_tilde[, branch] <- SMUT::eigenMapMatMult(Q, E[, branch])
-  E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
-
-  #E_tilde[, branch] <- strider::row_sums(Q[, as.logical(E[, branch])])
-  #E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, branch])
-
-
-  #E_tilde[, branch] <- Q %*% E[, branch]
-  #E_tilde <- cbind(E_tilde, Q %*% E[, n_branches])
-
-  #E_tilde <- Q %*% E
-  c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
-  #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
-
-  #if(any(is.na(c_hat))){
-    # linear model could not be estimated
-  #  loss <- Inf
-  #}else{
-    # resulting new spectral loss
-    loss <- loss(Y_tilde, E_tilde %*% c_hat)
-  #}
+  loss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
 
   return(list('loss' = loss, j = j, s = s, branch = branch))
 }
 
-get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min_sample, p){
+get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
   # finds the best splitts for every covariate in branch
   # returns the best splitpoint for every covariate and the resulting loss decrease
 
@@ -763,8 +720,8 @@ get_all_splitt <- function(branch, X, Y_tilde, Q, n, n_branches, E, E_tilde, min
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
             eval <- evaluate_splitt(branch = branch, j = j, 
-              s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q = Q, n = n, n_branches = n_branches, 
-              E = E, E_tilde = E_tilde, min_sample = min_sample)
+              s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q_temp = Q_temp, n = n, 
+              min_sample = min_sample)
             return(eval)})})
 
   res <- lapply(res, function(x)do.call(rbind, x))

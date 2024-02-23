@@ -14,6 +14,7 @@ for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)
 end <- Sys.time()
 (end - start) / 10
 # Time difference of 3.174835 mins
+# Time difference of 0.868829 mins
 
 a <- regPath(fit, oob = T)
 b <- stabilitySelection(fit)
@@ -92,3 +93,36 @@ E_tilde <- Q %*% matrix(1, ncol(Q), 1)
 end <- Sys.time()
 
 (end - start) * 100
+
+
+
+Q <- matrix(rnorm(4), 2)
+norm(Q %*% c(1, 0), type = '2')
+
+sqrt(sum(rnorm()**2))
+
+n <- 10
+u <-  matrix(rnorm(n), n, 1)
+Q <- matrix(rnorm(n**2), n, n)
+
+a <- Sys.time()
+x <- SMUT::eigenMapMatMult(u, SMUT::eigenMapMatMult(t(u), Q))
+b <- Sys.time()
+x <- u %*% (t(u) %*% Q)
+d <- Sys.time()
+#x <- u %*% t(u) %*% Q
+e <- Sys.time()
+
+(b - a)
+(d - b)
+(e - d)
+
+Q <- matrix(1, 10, 10)
+Q
+E_tilde <- rowSums(Q)
+
+sum((E_tilde / sqrt(sum(E_tilde**2)))**2)
+
+
+
+SMUT::eigenMapMatMult(u, SMUT::eigenMapMatMult(t(u), Q))
