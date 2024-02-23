@@ -308,11 +308,16 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       warning('singulaer matrix QE, tree might be to large, consider increasing cp')
       break
     }
-    if(Losses_dec[loc] <= cp * loss_start){
+
+    # new temporary loss
+    dloss <- loss_temp - loss(Y_tilde, E_tilde %*% c_hat)
+    loss_temp <- loss_temp - dloss
+
+    if(dloss <= cp * loss_start){
       break
     }
     # add loss decrease to variable importance
-    var_imp[j] <- var_imp[j] + Losses_dec[loc]
+    var_imp[j] <- var_imp[j] + dloss
 
     # select leave to split
     if(tree$height == 1){
@@ -326,19 +331,18 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     leave$j <- j
     leave$s <- s
 
-    leave$res_dloss <- Losses_dec[loc, 1]
+    leave$res_dloss <- dloss
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
-    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
+    leave$AddChild(best_branch, value = 0, dloss = dloss, cp = dloss / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = dloss, cp = dloss / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
 
     # add estimates to tree leaves
     for(l in tree$leaves){
       l$value <- c_hat[as.numeric(l$name)]
     }
 
-    # new temporary loss
-    loss_temp <- loss(Y_tilde, E_tilde %*% c_hat)
+
 
 
     # the two new partitions need to be checked for optimal splits in next iteration
