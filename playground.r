@@ -7,9 +7,9 @@ n <- 100
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
 
-fit <- SDForest(x = data$X, y = data$Y)
-
-fit$forest[[2]]
+fit <- SDTree(x = data$X, y = data$Y)
+plot(fit)
+plot(prune(fit, 0.1))
 
 start <- Sys.time()
 for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)

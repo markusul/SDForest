@@ -809,6 +809,7 @@ prune <- function(object, ...) UseMethod('prune')
 prune.SDTree <- function(object, cp){
   object$tree <- data.tree::Clone(object$tree)
   data.tree::Prune(object$tree, function(x) x$cp > cp)
+  object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
   object$var_importance <- varImp(object)
   return(object)
@@ -830,7 +831,7 @@ prune.SDForest <- function(forest, cp, oob = T){
       })
       return(mean(unlist(predictions)))
     }))
-    forest$oob_SDloss <- loss(SMUT::eigenMapMatMult(forest$Q, forest$Y), SMUT::eigenMapMatMult(forest$Q, oob_predictions))
+    forest$oob_SDloss <- loss(forest$Q %*% forest$Y, forest$Q %*% oob_predictions)
     forest$oob_loss <- loss(forest$Y, oob_predictions)
 
     # predict with all trees
