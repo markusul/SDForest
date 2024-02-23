@@ -244,7 +244,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     for(branch in potential_splitts){
       best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q_temp = Q_temp, 
                                      n = n, min_sample = min_sample, p = p, E = E)
-      best_splitts[, 1] <- loss_temp - best_splitts[, 1]
+      #best_splitts[, 1] <- loss_temp - best_splitts[, 1]
       memory[[branch]] <- best_splitts
     }
 
@@ -280,6 +280,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
     c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
 
+
     u_next_prime <- SMUT::eigenMapMatMult(Q_temp, E[, i + 1])
     u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
 
@@ -291,11 +292,15 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       warning('singulaer matrix QE, tree might be to large, consider increasing cp')
       break
     }
-    if(Losses_dec[loc] <= cp * loss_start){
+
+    loss_dec <- loss_temp - loss(Y_tilde, E_tilde %*% c_hat)
+    loss_temp <- loss_temp - loss_dec
+
+    if(loss_dec <= cp * loss_start){
       break
     }
     # add loss decrease to variable importance
-    var_imp[j] <- var_imp[j] + Losses_dec[loc]
+    var_imp[j] <- var_imp[j] + loss_dec
 
     # select leave to split
     if(tree$height == 1){
@@ -309,20 +314,16 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     leave$j <- j
     leave$s <- s
 
-    leave$res_dloss <- Losses_dec[loc, 1]
+    leave$res_dloss <- loss_dec
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
-    leave$AddChild(i + 1, value = 0, dloss = Losses_dec[loc, 1], cp = Losses_dec[loc, 1] / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
+    leave$AddChild(best_branch, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
 
     # add estimates to tree leaves
     for(l in tree$leaves){
       l$value <- c_hat[as.numeric(l$name)]
     }
-
-    # new temporary loss
-    loss_temp <- loss(Y_tilde, E_tilde %*% c_hat)
-
 
     # the two new partitions need to be checked for optimal splits in next iteration
     potential_splitts <- c(best_branch, i + 1)
@@ -691,7 +692,7 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n,
   # check wether this split resolves in two reasnable partitions
   if(sum(X_branch_j <= s) < min_sample | sum(X_branch_j > s) < min_sample){
     # remove no longer needed objects from memory
-    return(list('loss' = Inf, j = j, s = s, branch = branch))
+    return(list('dloss' = 0, j = j, s = s, branch = branch))
   }
   
   e_next <- matrix(0, n, 1)
@@ -700,9 +701,9 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n,
   u_next_prime <- SMUT::eigenMapMatMult(Q_temp, e_next)
   u_next_size <- sum(u_next_prime ** 2)
 
-  loss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
+  dloss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
 
-  return(list('loss' = loss, j = j, s = s, branch = branch))
+  return(list('dloss' = dloss, j = j, s = s, branch = branch))
 }
 
 get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
@@ -725,10 +726,10 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
             return(eval)})})
 
   res <- lapply(res, function(x)do.call(rbind, x))
-  res_min <- lapply(res, function(x)x[which.min(x[, 1]), ])
-  res_min <- do.call(rbind, res_min)
+  res_opt <- lapply(res, function(x)x[which.max(x[, 1]), ])
+  res_opt <- do.call(rbind, res_opt)
 
-  return(matrix(unlist(res_min), ncol = 4, byrow = F))
+  return(matrix(unlist(res_opt), ncol = 4, byrow = F))
 }
 
 find_s <- function(X, min_sample, p){
