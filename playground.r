@@ -11,6 +11,9 @@ fit <- SDTree(x = data$X, y = data$Y)
 plot(fit)
 plot(prune(fit, 0.1))
 
+cv.SDTree(x = data$X, y = data$Y)
+prune(fit, 0.52)
+
 start <- Sys.time()
 for(i in 1:10) fit <- SDForest(x = data$X, y = data$Y)
 end <- Sys.time()

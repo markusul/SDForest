@@ -441,8 +441,7 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
     # estimate tree with the training set
     suppressWarnings({
     res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0, min_sample = min_sample,
-                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim,
-                  multicore = multicore, fast = fast, mc.cores = mc.cores)
+                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim)
     })
 
     # validation performance if we prune with the different ts
