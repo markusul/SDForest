@@ -114,7 +114,6 @@ gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') +
 
 gg_stablepath
 
-
 ##### Performance depending on the dimensions #####
 
 library(ggplot2)
@@ -162,4 +161,4 @@ ggplot(res, aes(x = cp, y = mean)) +
 
 
 
-fit$oob_SDloss
+
