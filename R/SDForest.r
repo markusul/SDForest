@@ -673,6 +673,10 @@ evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n,
   # evaluate a split at partition branch on covariate j at the splitpoint s
   # index: index of observations in branch
   # dividing observation in branch
+  if (sum(X_branch_j > s) < min_sample | sum(X_branch_j <= s) < min_sample){
+    return(list('dloss' = 0, j = j, s = s, branch = branch))
+  }
+
   e_next <- matrix(0, n, 1)
   e_next[index[X_branch_j > s]] <- 1
 
