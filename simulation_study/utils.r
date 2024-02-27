@@ -2,8 +2,8 @@ source("R/SDForest.r")
 library(ranger)
 library(parallel)
 
-performance_measure <- function(n, p, q, n_test, eff){
-    data <- simulate_data_nonlinear(q, p, n+n_test, 4, eff)
+performance_measure <- function(n, p, q, n_test){
+    data <- simulate_data_nonlinear(q, p, n+n_test, 4)
     data_train <- data.frame(data$X[1:n,], Y = data$Y[1:n])
     data_test <- data.frame(data$X[(n+1):(n+n_test),], Y = data$Y[(n+1):(n+n_test)])
 
@@ -18,20 +18,3 @@ performance_measure <- function(n, p, q, n_test, eff){
 
     return(c(SDF = mse, ranger = mse2))
 }
-
-n <- 500
-p <- 500
-q <- 20
-n_test <- 500
-
-N_rep <- 2
-
-eff_seq <- seq(0, 499, 50)
-eff_seq <- c(0, 499)
-
-
-print('start')
-start <- Sys.time()
-perf_eff <- lapply(1:N_rep, function(i) sapply(eff_seq, function(eff) performance_measure(n, p, q, n_test, eff)))
-print('done')
-print(Sys.time() - start)

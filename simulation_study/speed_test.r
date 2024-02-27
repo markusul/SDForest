@@ -1,8 +1,8 @@
 source("R/SDForest.r")
 multicore <- T
 
-p <- 1000
-n <- 1000
+p <- 5000
+n <- 5000
 q <- 20
 
 n_test <- 500
