@@ -7,6 +7,7 @@ n <- 100
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
 
+
 fit <- SDTree(x = data$X, y = data$Y)
 plot(fit)
 plot(prune(fit, 0.1))
@@ -138,3 +139,26 @@ sum((E_tilde / sqrt(sum(E_tilde**2)))**2)
 
 
 SMUT::eigenMapMatMult(u, SMUT::eigenMapMatMult(t(u), Q))
+
+
+
+A <- matrix(rnorm(10 * 5), ncol = 5)
+A
+
+A
+
+d <- qr(A)
+d$qr
+
+Q_prime <- qr.Q(d)
+
+Pi_A <- tcrossprod(Q_prime)
+
+
+W <- diag(10) - Pi_A
+
+t(W) == W
+
+
+library(matlib)
+QR(A)
