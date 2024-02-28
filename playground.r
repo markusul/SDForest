@@ -162,7 +162,7 @@ sum((E_tilde / sqrt(sum(E_tilde**2)))**2)
 SMUT::eigenMapMatMult(u, SMUT::eigenMapMatMult(t(u), Q))
 
 
-
+source("R/SDForest.r")
 A <- matrix(rnorm(10 * 5), ncol = 5)
 A
 
@@ -183,3 +183,38 @@ t(W) == W
 
 library(matlib)
 QR(A)
+
+source("R/SDForest.r")
+data <- simulate_data_nonlinear(5, 100, 100, 4)
+
+X <- data$X
+A <- data$H[, 1:2]
+Y <- data$Y
+
+fit <- SDForest(x = X, y = Y)
+fit2 <- SDForest(x = X, y = Y, A = A)
+
+mean((fit$predictions - data$f_X)**2)
+mean((fit2$predictions - data$f_X)**2)
+
+X <- data$X
+
+plot(svd(X)$d)
+
+Q_prime <- qr.Q(qr(A))
+Pi_A <- tcrossprod(Q_prime)
+W <- diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
+
+
+X_prime <- W %*% X
+
+plot(svd(X_prime)$d)
+
+Q <- get_Q(X_prime, 'trim')
+
+plot(svd(Q %*% W %*% X)$d)
+
+svd(get_Q(X, 'trim') %*% X)$d
+
+
+
