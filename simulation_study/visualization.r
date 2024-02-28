@@ -114,7 +114,6 @@ gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') +
 
 gg_stablepath
 
-
 ##### Performance depending on the dimensions #####
 
 library(ggplot2)
@@ -132,6 +131,30 @@ ggplot(perf_n, aes(x = n, y = error, col = method)) +
   ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
 
+load('simulation_study/results/perf_p.RData')
+
+perf_p <- do.call(rbind, perf_p)
+perf_p <- data.frame(perf_p, rownames(perf_p), row.names = NULL)
+names(perf_p) <- c(p_seq, 'method')
+
+perf_p <- gather(perf_p, p, error, -method)
+
+ggplot(perf_p, aes(x = p, y = error, col = method)) + 
+  geom_boxplot() + theme_bw() + xlab('Number of features') + 
+  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
+
+
+load('simulation_study/results/perf_q.RData')
+
+perf_q <- do.call(rbind, perf_q)
+perf_q <- data.frame(perf_q, rownames(perf_q), row.names = NULL)
+names(perf_q) <- c(q_seq, 'method')
+
+perf_q <- gather(perf_q, q, error, -method)
+
+ggplot(perf_q, aes(x = q, y = error, col = method)) + 
+  geom_boxplot() + theme_bw() + xlab('Number of confounders') + 
+  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
 
 ##### Regularization performance #####
@@ -162,4 +185,4 @@ ggplot(res, aes(x = cp, y = mean)) +
 
 
 
-fit$oob_SDloss
+

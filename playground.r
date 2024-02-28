@@ -1,16 +1,20 @@
 source("R/SDForest.r")
 library(ggplot2)
 
-p <- 100
-n <- 100
+p <- 5000
+n <- 5000
 
 set.seed(2024)
 data <- simulate_data_nonlinear(20, p, n, 4)
 
 
+start <- Sys.time()
+svd(data$X)$d
+end <- Sys.time()
+end - start
+
 fit <- SDTree(x = data$X, y = data$Y)
-plot(fit)
-plot(prune(fit, 0.1))
+
 
 cv.SDTree(x = data$X, y = data$Y)
 prune(fit, 0.52)

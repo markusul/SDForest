@@ -7,7 +7,7 @@ performance_measure <- function(n, p, q, n_test, eff){
     data_train <- data.frame(data$X[1:n,], Y = data$Y[1:n])
     data_test <- data.frame(data$X[(n+1):(n+n_test),], Y = data$Y[(n+1):(n+n_test)])
 
-    fit <- SDForest(Y ~ ., data_train, cp = 0, multicore = F)
+    fit <- SDForest(Y ~ ., data_train, cp = 0, multicore = T)
     fit2 <- ranger(Y ~ ., data_train, num.trees = 100, importance = 'impurity', mtry = floor(0.9 * ncol(data_train)))
 
     pred <- predict(fit, data_test)
@@ -24,10 +24,14 @@ p <- 500
 q <- 20
 n_test <- 500
 
-N_rep <- 100
+N_rep <- 2
 
-eff_seq <- seq(0, 500, 10)
+eff_seq <- seq(0, 499, 50)
+eff_seq <- c(0, 499)
+
 
 print('start')
-perf_eff <- mclapply(1:N_rep, function(i) sapply(eff_seq, function(eff) performance_measure(n, p, q, n_test, eff)), mc.cores = n_cores)
+start <- Sys.time()
+perf_eff <- lapply(1:N_rep, function(i) sapply(eff_seq, function(eff) performance_measure(n, p, q, n_test, eff)))
 print('done')
+print(Sys.time() - start)

@@ -24,11 +24,11 @@ p <- 500
 q <- 20
 n_test <- 500
 
-N_rep <- 100
+N_rep <- 10
 
-n_seq <- seq(100, 1000, 100)
-p_seq <- seq(100, 1000, 100)
-q_seq <- seq(0, 100, 10)
+n_seq <- seq(100, 1000, 200)
+p_seq <- seq(100, 1000, 200)
+q_seq <- seq(0, 100, 20)
 
 
 print('start')
