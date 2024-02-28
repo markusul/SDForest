@@ -1,6 +1,23 @@
 source("R/SDForest.r")
 library(ggplot2)
 
+set.seed(22)
+n <- 12
+p <- 2
+X <- matrix(rnorm(n * p), ncol = p)
+
+y <- X %*% rnorm(p)
+
+X[2:n, 1] <- 1
+svd(X)$d
+
+get_Q(X, 'trim')
+
+res <- SDForest(x = X, y = y)
+res
+
+
+
 p <- 5000
 n <- 5000
 

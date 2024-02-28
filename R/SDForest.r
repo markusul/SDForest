@@ -58,7 +58,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
   D_tilde[is.na(D_tilde)] <- 1
-
+  # TODO: diag(1 - D_tilde) works only for p > 1
   Q <- switch(modes[type], diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                           { # pca
                               d_pca <- rep(1, length(sv$d))
@@ -698,7 +698,7 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
   X_branch <- X[index, ]
 
   # all possible split points
-  s <- find_s(unique(X_branch), min_sample, p)
+  s <- find_s(X_branch, min_sample, p)
 
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
@@ -716,7 +716,7 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
 
 find_s <- function(X, min_sample, p){
   # finds all the reasnable splitting points in a data matrix
-  
+
   if(p == 1){
     X <- matrix(X, ncol = 1)
   }
@@ -728,8 +728,16 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(X_sort))){
-    X_sort <- matrix(X_sort, ncol = 1)
+    print('hallo')
+    X_sort <- matrix(X_sort, ncol = p)
   }
+
+  X_sort <- unique(X_sort)
+  if(nrow(X_sort) == 1){
+    print('hallo1')
+    return(X_sort)
+  }
+
   # find middlepoints between observed x values
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
@@ -743,7 +751,8 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(s))){
-    s <- matrix(s, ncol = 1)
+    print('hallo2')
+    s <- matrix(s, ncol = p)
   }
 
   return(s)
