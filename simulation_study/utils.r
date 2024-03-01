@@ -16,5 +16,5 @@ performance_measure <- function(n, p, q, n_test, eff){
     mse <- (data$f_X[(n+1):(n+n_test)] - pred)
     mse2 <- (data$f_X[(n+1):(n+n_test)] - pred2)
 
-    return(c(SDF = mse, ranger = mse2))
+    return(list(SDF = mse, ranger = mse2))
 }
