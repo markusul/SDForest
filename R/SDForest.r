@@ -58,7 +58,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   tau <- quantile(sv$d, trim_quantile)
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
   D_tilde[is.na(D_tilde)] <- 1
-
+  # TODO: diag(1 - D_tilde) works only for p > 1
   Q <- switch(modes[type], diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
                           { # pca
                               d_pca <- rep(1, length(sv$d))
@@ -70,6 +70,14 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
                          ) # no_deconfounding
   return(Q)
 }
+
+get_W <- function(A, gamma){
+  Q_prime <- qr.Q(qr(A))
+  Pi_A <- tcrossprod(Q_prime)
+  W <- diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
+  return(W)
+}
+
 
 condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   if(is.character(j)){
@@ -173,7 +181,8 @@ plot.condDependence <- function(object, n_examples = 19){
 #' # TODO: add example
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+                   Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
+                   A = NULL, gamma = 0.5){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -194,14 +203,23 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   if(n < 2 * min_sample) stop('n must be at least 2 * min_sample')
 
   # estimate spectral transformation
+  if(!is.null(A)){
+    if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(gamma < 0 | gamma > 1) stop('gamma must be between 0 and 1')
+    if(!is.matrix(A)) stop('A must be a matrix')
+    if(nrow(A) != n) stop('A must have n rows')
+    W <- get_W(A, gamma)
+  }else {
+    W <- diag(n)
+  }
 
   if(is.null(Q)){
-    Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
+    Q <- get_Q(W %*% X, Q_type, trim_quantile, confounding_dim)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
-
+  Q <- Q %*% W
 
   # calculate first estimate
   E <- matrix(1, n, 1)
@@ -535,7 +553,8 @@ plot.SDTree <- function(object){
 #### SDForest functions ####
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
-                     Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL){
+                     Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
+                     A = NULL, gamma = 0.5){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -550,13 +569,25 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
 
+  if(!is.null(A)){
+    if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(gamma < 0 | gamma > 1) stop('gamma must be between 0 and 1')
+    if(!is.matrix(A)) stop('A must be a matrix')
+    if(nrow(A) != n) stop('A must have n rows')
+    W <- get_W(A, gamma)
+  }else {
+    W <- diag(n)
+  }
+
   # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
+    Q <- get_Q(W %*% X, Q_type, trim_quantile, confounding_dim)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
+
+  Q <- Q %*% W
 
   # mtry
   if(is.null(mtry)){
@@ -573,7 +604,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     if(locatexec::is_unix()){
       res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
-                                            trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry), 
+                                            trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                                            A = A, gamma = gamma), 
                                             mc.cores = n_cores)
     }else{
       cl <- parallel::makeCluster(n_cores)
@@ -582,13 +614,15 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                     "find_s", "evaluate_splitt", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
-                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
+                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                  A = A, gamma = gamma))
       parallel::stopCluster(cl = cl)
     }
   }else{
     res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
-                                              trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry))
+                                              trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                                              A = A, gamma = gamma))
   }
 
   # ensemble predictions for each observation
@@ -698,7 +732,7 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
   X_branch <- X[index, ]
 
   # all possible split points
-  s <- find_s(unique(X_branch), min_sample, p)
+  s <- find_s(X_branch, min_sample, p)
 
   res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
             X_branch_j <- if(p == 1) X_branch else X_branch[, j]
@@ -716,7 +750,7 @@ get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
 
 find_s <- function(X, min_sample, p){
   # finds all the reasnable splitting points in a data matrix
-  
+
   if(p == 1){
     X <- matrix(X, ncol = 1)
   }
@@ -728,8 +762,16 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(X_sort))){
-    X_sort <- matrix(X_sort, ncol = 1)
+    print('hallo')
+    X_sort <- matrix(X_sort, ncol = p)
   }
+
+  X_sort <- unique(X_sort)
+  if(nrow(X_sort) == 1){
+    print('hallo1')
+    return(X_sort)
+  }
+
   # find middlepoints between observed x values
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
@@ -743,7 +785,8 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(s))){
-    s <- matrix(s, ncol = 1)
+    print('hallo2')
+    s <- matrix(s, ncol = p)
   }
 
   return(s)
