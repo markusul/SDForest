@@ -146,15 +146,17 @@ ggplot(perf_p, aes(x = p, y = error, col = method)) +
 
 load('simulation_study/results/perf_q.RData')
 
-perf_q <- do.call(rbind, perf_q)
-perf_q <- data.frame(perf_q, rownames(perf_q), row.names = NULL)
-names(perf_q) <- c(q_seq, 'method')
+perf_q <- lapply(perf_q, function(n) cbind(t(sapply(n, function(x)sapply(x, mean))), q = q_seq))
 
-perf_q <- gather(perf_q, q, error, -method)
+perf_q <- do.call(rbind, perf_q)
+perf_q <- data.frame(perf_q)
+perf_q$q <- as.factor(perf_q$q)
+
+perf_q <- gather(perf_q, 'method', error, -q)
 
 ggplot(perf_q, aes(x = q, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of confounders') + 
-  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
+  ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
 
 
 ##### Regularization performance #####
