@@ -1,6 +1,97 @@
 source("R/SDForest.r")
 library(ggplot2)
 
+m <- 5
+p <- 100
+n <- 100
+q <- 4
+
+
+complexity <- 5
+# random parameter for fourier basis
+beta <- runif(m * complexity * 2, -1, 1)
+# random confounding covariates H
+H <- matrix(rnorm(n * q, 0, 1), nrow = n)
+# random correlation matrix cov(X, H)
+Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+
+# random coefficient vector delta
+delta <- rnorm(q, 0, 1)
+# random error term
+E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+if(q == 0){
+    X <- E
+}else{
+    X <- H %*% Gamma + E
+}
+# random sparse subset of covariates in X
+js <- sample(1:p, m)
+# generate f_X
+f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+
+# generate Y
+Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
+
+
+H_test <- matrix(rnorm(n * q, 0, 1), nrow = n)
+H_test[, 1:2] <- H_test[, 1:2] + 10
+E_test <- matrix(rnorm(n * p, 0, 1), nrow = n)
+X_test <- H_test %*% Gamma + E_test
+f_X_test <- apply(X_test, 1, function(x) f_four(x, beta, js))
+Y_test <- f_X_test + H_test %*% delta + rnorm(n, 0, 0.1)
+
+library(ranger)
+train_data <- data.frame(X, Y)
+
+res0 <- ranger(Y ~ ., train_data, num.trees = 100, importance = 'impurity', mtry = floor(0.9 * ncol(X)))
+res1 <- SDForest(Y ~ ., train_data)
+res2 <- SDForest(Y ~ ., train_data, A = H[, 1:2], gamma = 2, Q_type = 'no_deconfounding')
+res3 <- SDForest(Y ~ ., train_data, A = H[, 1:2], gamma = 2, Q_type = 'trim')
+res4 <- SDForest(Y ~ ., train_data, A = H[, 1:2], gamma = 0.5, Q_type = 'no_deconfounding')
+res5 <- SDForest(Y ~ ., train_data, A = H[, 1:2], gamma = 0.5, Q_type = 'trim')
+
+res0_test <- predict(res0, data.frame(X_test))$predictions
+res1_test <- predict(res1, data.frame(X_test))
+res2_test <- predict(res2, data.frame(X_test))
+res3_test <- predict(res3, data.frame(X_test))
+res4_test <- predict(res4, data.frame(X_test))
+res5_test <- predict(res5, data.frame(X_test))
+
+mean((res0$predictions - f_X)**2)
+mean((res1$predictions - f_X)**2)
+mean((res2$predictions - f_X)**2)
+mean((res3$predictions - f_X)**2)
+mean((res4$predictions - f_X)**2)
+mean((res5$predictions - f_X)**2)
+
+print('a')
+mean((res0$predictions - Y)**2)
+mean((res1$predictions - Y)**2)
+mean((res2$predictions - Y)**2)
+mean((res3$predictions - Y)**2)
+mean((res4$predictions - Y)**2)
+mean((res5$predictions - Y)**2)
+
+print('b')
+mean((res0_test - f_X_test)**2)
+mean((res1_test - f_X_test)**2)
+mean((res2_test - f_X_test)**2)
+mean((res3_test - f_X_test)**2)
+mean((res4_test - f_X_test)**2)
+mean((res5_test - f_X_test)**2)
+
+print('c')
+mean((res0_test - Y_test)**2)
+mean((res1_test - Y_test)**2)
+mean((res2_test - Y_test)**2)
+mean((res3_test - Y_test)**2)
+mean((res4_test - Y_test)**2)
+mean((res5_test - Y_test)**2)
+
+
+
+
+
 set.seed(22)
 n <- 12
 p <- 2

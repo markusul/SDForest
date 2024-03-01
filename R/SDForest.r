@@ -205,7 +205,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # estimate spectral transformation
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
-    if(gamma < 0 | gamma > 1) stop('gamma must be between 0 and 1')
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
     W <- get_W(A, gamma)
@@ -571,7 +570,6 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
-    if(gamma < 0 | gamma > 1) stop('gamma must be between 0 and 1')
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
     W <- get_W(A, gamma)
