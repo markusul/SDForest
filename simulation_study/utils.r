@@ -2,8 +2,8 @@ source("R/SDForest.r")
 library(ranger)
 library(parallel)
 
-performance_measure <- function(n, p, q, n_test){
-    data <- simulate_data_nonlinear(q, p, n+n_test, 4)
+performance_measure <- function(n, p, q, n_test, eff){
+    data <- simulate_data_nonlinear(q, p, n+n_test, 4, eff)
     data_train <- data.frame(data$X[1:n,], Y = data$Y[1:n])
     data_test <- data.frame(data$X[(n+1):(n+n_test),], Y = data$Y[(n+1):(n+n_test)])
 
@@ -13,8 +13,8 @@ performance_measure <- function(n, p, q, n_test){
     pred <- predict(fit, data_test)
     pred2 <- predict(fit2, data_test)$predictions
 
-    mse <- mean((data$f_X[(n+1):(n+n_test)] - pred)^2)
-    mse2 <- mean((data$f_X[(n+1):(n+n_test)] - pred2)^2)
+    mse <- (data$f_X[(n+1):(n+n_test)] - pred)
+    mse2 <- (data$f_X[(n+1):(n+n_test)] - pred2)
 
     return(c(SDF = mse, ranger = mse2))
 }
