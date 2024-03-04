@@ -5,10 +5,10 @@ p <- 500
 
 n_test <- 500
 
-N_rep <- 2
+N_rep <- 10
 
 seq <- seq(0, 100, 20)
-seq <- c(0, 100)
+#seq <- c(0, 100)
 
 
 print('start')
