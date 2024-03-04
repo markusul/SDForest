@@ -115,46 +115,49 @@ gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') +
 gg_stablepath
 
 ##### Performance depending on the dimensions #####
+load_perf <- function(path, agg_fun){
+  load(path)
+  perf <- lapply(perf, function(n) cbind(t(sapply(n, function(x)sapply(x, mean))), seq = seq))
+
+  perf <- do.call(rbind, perf)
+  perf <- data.frame(perf)
+  perf$seq <- as.factor(perf$seq)
+
+  perf <- gather(perf, 'method', error, -seq)
+  perf
+}
 
 library(ggplot2)
 library(tidyr)
-load('simulation_study/results/perf_n.RData')
+
+files <- list.files('simulation_study/results/perf_n')
+perf_n <- lapply(paste0('simulation_study/results/perf_n/', files), load_perf)
 
 perf_n <- do.call(rbind, perf_n)
-perf_n <- data.frame(perf_n, rownames(perf_n), row.names = NULL)
-names(perf_n) <- c(n_seq, 'method')
 
-perf_n <- gather(perf_n, n, error, -method)
-
-ggplot(perf_n, aes(x = n, y = error, col = method)) + 
+ggplot(perf_n, aes(x = seq, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of training samples') + 
   ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
 
-load('simulation_study/results/perf_p.RData')
+files <- list.files('simulation_study/results/perf_p')
+perf_p <- lapply(paste0('simulation_study/results/perf_p/', files), load_perf)
 
-perf_p <- do.call(rbind, perf_p)
-perf_p <- data.frame(perf_p, rownames(perf_p), row.names = NULL)
-names(perf_p) <- c(p_seq, 'method')
+perf_qp<- do.call(rbind, perf_p)
 
-perf_p <- gather(perf_p, p, error, -method)
-
-ggplot(perf_p, aes(x = p, y = error, col = method)) + 
+ggplot(perf_p, aes(x = seq, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of features') + 
   ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
 
 
-load('simulation_study/results/perf_q.RData')
 
-perf_q <- lapply(perf_q, function(n) cbind(t(sapply(n, function(x)sapply(x, mean))), q = q_seq))
+
+files <- list.files('simulation_study/results/perf_q')
+perf_q <- lapply(paste0('simulation_study/results/perf_q/', files), load_perf)
 
 perf_q <- do.call(rbind, perf_q)
-perf_q <- data.frame(perf_q)
-perf_q$q <- as.factor(perf_q$q)
 
-perf_q <- gather(perf_q, 'method', error, -q)
-
-ggplot(perf_q, aes(x = q, y = error, col = method)) + 
+ggplot(perf_q, aes(x = seq, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of confounders') + 
   ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
 
