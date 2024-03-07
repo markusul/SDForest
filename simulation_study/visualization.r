@@ -115,9 +115,14 @@ gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') +
 gg_stablepath
 
 ##### Performance depending on the dimensions #####
+agg_fun <- function(x){
+  mean(x**2)
+}
+
+
 load_perf <- function(path, agg_fun){
   load(path)
-  perf <- lapply(perf, function(n) cbind(t(sapply(n, function(x)sapply(x, mean))), seq = seq))
+  perf <- lapply(perf, function(n) cbind(t(sapply(n, function(x)sapply(x, agg_fun))), seq = seq))
 
   perf <- do.call(rbind, perf)
   perf <- data.frame(perf)
@@ -131,7 +136,8 @@ library(ggplot2)
 library(tidyr)
 
 files <- list.files('simulation_study/results/perf_n')
-perf_n <- lapply(paste0('simulation_study/results/perf_n/', files), load_perf)
+perf_n <- lapply(paste0('simulation_study/results/perf_n/', files), 
+  load_perf, agg_fun = agg_fun)
 
 perf_n <- do.call(rbind, perf_n)
 
@@ -141,9 +147,10 @@ ggplot(perf_n, aes(x = seq, y = error, col = method)) +
 
 
 files <- list.files('simulation_study/results/perf_p')
-perf_p <- lapply(paste0('simulation_study/results/perf_p/', files), load_perf)
+perf_p <- lapply(paste0('simulation_study/results/perf_p/', files), 
+  load_perf, agg_fun = agg_fun)
 
-perf_qp<- do.call(rbind, perf_p)
+perf_p<- do.call(rbind, perf_p)
 
 ggplot(perf_p, aes(x = seq, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of features') + 
@@ -153,7 +160,8 @@ ggplot(perf_p, aes(x = seq, y = error, col = method)) +
 
 
 files <- list.files('simulation_study/results/perf_q')
-perf_q <- lapply(paste0('simulation_study/results/perf_q/', files), load_perf)
+perf_q <- lapply(paste0('simulation_study/results/perf_q/', files), 
+  load_perf, agg_fun = agg_fun)
 
 perf_q <- do.call(rbind, perf_q)
 
@@ -189,5 +197,14 @@ ggplot(res, aes(x = cp, y = mean)) +
 
 
 
+#### Sparsity performance ####
 
+files <- list.files('simulation_study/results/perf_eff')
+perf_eff <- lapply(paste0('simulation_study/results/perf_eff/', files), 
+  load_perf, agg_fun = agg_fun)
 
+perf_eff <- do.call(rbind, perf_eff)
+
+ggplot(perf_eff, aes(x = seq, y = error, col = method)) + 
+  geom_boxplot() + theme_bw() + xlab("Number of affected covariates") + 
+  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
