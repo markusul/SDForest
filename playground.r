@@ -3,8 +3,18 @@ library(ggplot2)
 
 m <- 5
 p <- 100
-n <- 100
+n <- 500
 q <- 4
+
+data <- simulate_data_nonlinear(q, p, n, m)
+data
+
+A <- (sign(data$H[, 1:2])+1)/2
+A <- cbind(A, rep(0, n))
+A
+
+res <- SDForest(x = data$X, y = data$Y, A = A, gamma = 2, Q_type = 'trim', max_size = 50)
+res$predictions
 
 
 complexity <- 5
