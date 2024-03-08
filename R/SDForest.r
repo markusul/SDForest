@@ -553,7 +553,7 @@ plot.SDTree <- function(object){
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5){
+                     A = NULL, gamma = 0.5, max_size = 1000){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -593,7 +593,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
 
   # bootstrap samples
-  ind <- lapply(1:nTree, function(x)sample(1:n, n, replace = T))
+  ind <- lapply(1:nTree, function(x)sample(1:n, min(n, max_size), replace = T))
 
   if(multicore){
     if(!is.null(mc.cores)){
@@ -603,7 +603,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
                                             trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                            A = A, gamma = gamma), 
+                                            A = A[i, ], gamma = gamma), 
                                             mc.cores = n_cores)
     }else{
       cl <- parallel::makeCluster(n_cores)
@@ -613,14 +613,14 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                  A = A, gamma = gamma))
+                  A = A[i, ], gamma = gamma))
       parallel::stopCluster(cl = cl)
     }
   }else{
     res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                              A = A, gamma = gamma))
+                                              A = A[i, ], gamma = gamma))
   }
 
   # ensemble predictions for each observation
@@ -677,7 +677,7 @@ predict.SDForest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
-
+#TODO: tree analysis how many trees are needed
 
 #TODO: permutation importance
 #TODO: print function
