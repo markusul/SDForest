@@ -136,6 +136,7 @@ library(ggplot2)
 library(tidyr)
 
 files <- list.files('simulation_study/results/perf_n')
+length(files)
 perf_n <- lapply(paste0('simulation_study/results/perf_n/', files), 
   load_perf, agg_fun = agg_fun)
 
@@ -147,6 +148,8 @@ ggplot(perf_n, aes(x = seq, y = error, col = method)) +
 
 
 files <- list.files('simulation_study/results/perf_p')
+length(files)
+
 perf_p <- lapply(paste0('simulation_study/results/perf_p/', files), 
   load_perf, agg_fun = agg_fun)
 
@@ -160,6 +163,8 @@ ggplot(perf_p, aes(x = seq, y = error, col = method)) +
 
 
 files <- list.files('simulation_study/results/perf_q')
+length(files)
+
 perf_q <- lapply(paste0('simulation_study/results/perf_q/', files), 
   load_perf, agg_fun = agg_fun)
 
@@ -200,6 +205,7 @@ ggplot(res, aes(x = cp, y = mean)) +
 #### Sparsity performance ####
 
 files <- list.files('simulation_study/results/perf_eff')
+length(files)
 perf_eff <- lapply(paste0('simulation_study/results/perf_eff/', files), 
   load_perf, agg_fun = agg_fun)
 
