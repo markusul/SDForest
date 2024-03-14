@@ -153,7 +153,7 @@ length(files)
 perf_p <- lapply(paste0('simulation_study/results/perf_p/', files), 
   load_perf, agg_fun = agg_fun)
 
-perf_p<- do.call(rbind, perf_p)
+perf_p <- do.call(rbind, perf_p)
 
 ggplot(perf_p, aes(x = seq, y = error, col = method)) + 
   geom_boxplot() + theme_bw() + xlab('Number of features') + 
