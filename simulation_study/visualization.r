@@ -175,6 +175,19 @@ ggplot(perf_q, aes(x = seq, y = error, col = method)) +
   ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
 
 
+files <- list.files('simulation_study/results/perf_max')
+length(files)
+
+perf_max <- lapply(paste0('simulation_study/results/perf_max/', files), 
+  load_perf, agg_fun = agg_fun)
+
+perf_max <- do.call(rbind, perf_max)
+
+ggplot(perf_max, aes(x = seq, y = error, col = method)) + 
+  geom_boxplot() + theme_bw() + xlab('Subsample size') + 
+  ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
+
+
 ##### Regularization performance #####
 
 load('simulation_study/results/regularization_performance.RData')
