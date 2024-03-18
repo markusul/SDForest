@@ -7,7 +7,7 @@ n_test <- 500
 
 N_rep <- 10
 
-seq <- seq(10, 500, 50)
+seq <- seq(10, 510, 50)
 #eff_seq <- c(0, 499)
 
 
