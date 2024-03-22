@@ -84,19 +84,25 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
     return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta, H = H, A = A))
 }
 
-data <- simulate_data_nonlinear(0, 100, 100, 1, a = 3)
+set.seed(7)
+data <- simulate_data_nonlinear(0, 100, 200, 1, a = 3)
+
+a <- 1
+X_train <- data$X[data$A != a, ]
+Y_train <- data$Y[data$A != a]
+A_train <- as.matrix(data$A[data$A != a])
 
 # fit SDForest
-sdf <- SDForest(x = data$X, y = data$Y, Q_type = 'no_deconfounding')
+sdf <- SDForest(x = X_train, y = Y_train, Q_type = 'no_deconfounding')
+sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 10, Q_type = 'no_deconfounding')
+sdf0 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0, Q_type = 'no_deconfounding')
+sdfd <- SDForest(x = X_train, y = Y_train)
 
-a <- unique(data$A)[1]
-sdf2 <- SDForest(x = data$X[data$A != a, ], y = data$Y[data$A != a], A = as.matrix(data$A[data$A != a]), gamma = 10, Q_type = 'no_deconfounding')
-sdf3 <- SDForest(x = data$X[data$A != a, ], y = data$Y[data$A != a])
 
 sdf2$var_names
 
-plot(data$X[, data$j], data$Y, col = as.factor(data$A), ylim = c(-4, 0))
-points(data$X[, data$j], sdf$predictions, col = '#204dca', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdf2, data.frame(data$X)), col = '#ae20ca', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdf3, data.frame(data$X)), col = '#4a0186', pch = 20, cex = 0.5)
+A_train
+
+plot(data$X[, data$j], data$Y, pch = data$A, ylim = c(min(data$Y, data$f_X), max(data$Y, data$f_X)))
+points(data$X[, data$j], predict(sdf10, data.frame(data$X)),, col = '#204dca', pch = 20, cex = 0.5)
 points(data$X[, data$j], data$f_X, col = '#0c960c', pch = 20, cex = 0.5)
