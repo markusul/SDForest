@@ -3,6 +3,130 @@ source("R/SDForest_gpu.r")
 library('ranger')
 
 m <- 5
+p <- 500
+n <- 5000
+q <- 4
+
+
+simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
+    #simulate data with confounding and non-linear f_X
+    # q: number of confounding covariates in H
+    # p: number of covariates in X
+    # n: number of observations
+    # m: number of covariates with a causal effect on Y
+
+    m <- min(m, p)
+
+    n_A_levels <- a
+
+    if(a == 0){
+        A <- rep(0, n)
+    }else{
+        A_levels <- 1:n_A_levels
+        A <- sample(A_levels, n, replace = TRUE)
+    }
+
+    alpha_1 <- rnorm(p)
+    alpha_2 <- rnorm(q)
+    alpha_3 <- rnorm(1)
+
+    # complexity of f_X
+    complexity <- 5
+    # random parameter for fourier basis
+    beta <- runif(m * complexity * 2, -1, 1)
+
+    # random confounding covariates H
+    if(q == 0){
+        H <- matrix(0, nrow = n, ncol = 1)
+        
+        # random correlation matrix cov(X, H)
+        Gamma <- matrix(0, nrow = 1, ncol = p)
+
+        # random coefficient vector delta
+        delta <- 0
+    }else{
+        H <- matrix(rnorm(n * q, 0, 1), nrow = n)
+        H <- H + A %*% t(alpha_2)
+
+        # random correlation matrix cov(X, H)
+        Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
+
+        # random coefficient vector delta
+        delta <- rnorm(q, 0, 1)
+    }
+
+
+
+    if(!is.null(eff)){
+        non_effected <- p - eff
+        if(non_effected <= 0) stop('eff must be smaller than p or NULL')
+        
+        Gamma[, sample(1:p, non_effected)] <- 0
+    }
+
+
+
+    # random error term
+    E <- matrix(rnorm(n * p, 0, 1), nrow = n)
+
+    X <- A %*% t(alpha_1) + H %*% Gamma + E
+  
+    # random sparse subset of covariates in X
+    js <- sample(1:p, m)
+
+    # generate f_X
+    f_X <- apply(X, 1, function(x) f_four(x, beta, js))
+    
+    # generate Y
+    Y <- f_X + H %*% delta + A %*% t(alpha_3) + rnorm(n, 0, 0.1)
+  
+    #return data
+    return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta, H = H, A = A))
+}
+
+set.seed(7)
+data <- simulate_data_nonlinear(1, 100, 100, 1, a = 3)
+
+a <- 3
+X_train <- data$X[data$A != a, ]
+Y_train <- data$Y[data$A != a]
+A_train <- as.matrix(data$A[data$A != a])
+
+# fit SDForest
+sdf <- SDForest(x = X_train, y = Y_train, Q_type = 'no_deconfounding')
+sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100, Q_type = 'no_deconfounding')
+sdf0 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0, Q_type = 'no_deconfounding')
+sdfd <- SDForest(x = X_train, y = Y_train)
+
+
+sdf2$var_names
+
+A_train
+
+plot(data$X[, data$j], data$Y, pch = data$A, ylim = c(min(data$Y, data$f_X), max(data$Y, data$f_X)))
+points(data$X[, data$j], predict(sdf, data.frame(data$X)), col = '#204dca', pch = 20, cex = 0.5)
+points(data$X[, data$j], data$f_X, col = '#0c960c', pch = 20, cex = 0.5)
+
+
+path <- regPath(sdfd, multicore = TRUE, oob = T)
+dev.off()
+plot(path)
+plotOOB(path)
+
+path$varImp_path
+
+plot(path10)
+plotOOB(path10)
+dev.off()
+
+
+
+
+source("R/SDForest_gpu.r")
+
+library('ranger')
+
+m <- 5
 p <- 1000
 n <- 1000
 q <- 4
@@ -27,136 +151,3 @@ d - c
 
 max(fit1$predictions - fit2$predictions)
 
-
-
-
-
-lm.fit(X_gpu, Y_gpu)$coefficients
-dat <- data.frame(X, Y)
-GPUglm(dat, formula = Y ~ ., family = gaussian())$coefficients
-
-#linear model using glm.fit.gpu
-utils::data(anorexia, package = "MASS")
-anorex_glm <- glm(Postwt ~ Prewt + Treat + offset(Prewt),
-                  family = gaussian(), data = anorexia)
-summary(anorex_glm)
-x <- model.matrix(~Treat+Prewt,data=anorexia)
-y <- as.matrix(anorexia$Postwt)
-s1_glm <- glm.fit(x=x,y=y)
-s1_gpu <- glm.fit.GPU(x=x,y=y)
-
-a <- Sys.time()
-fit2 <- SDTree(x = data$X, y = data$Y)
-b <- Sys.time()
-
-b -a
-
-fit2$predictions == fit$predictions
-
-
-install.packages("tensorflow")
-library(tensorflow)
-install_tensorflow(version = "nightly-gpu")
-library(GPUmatrix)
-
-X_gpu <- gpu.matrix(X, device = 'cuda')
-
-svd(X_gpu)
-
-?gpu.matrix
-
-X_gpu@gm$device
-
-svd(X_gpu)
-
-
-X_gpu %*% t(X_gpu)
-
-
-Gm <- gpu.matrix(c(1:20)+40,10,2, device = 'cuda')
-
-m <- matrix(rnorm(5000), 1000)
-mg <- gpu.matrix(m)
-Gm
-mg
-
-svd(mg)
-
-
-m <- matrix(c(1:20)+40,10,2)
-Gm <- gpu.matrix(c(1:20)+40,10,2)
-
-head(tcrossprod(m),1)
-head(tcrossprod(Gm),1)
-
-
-
-install.packages("torch")
-library(torch)
-install_torch()
-
-library(GPUmatrix)
-
-n <- 1000
-p <- 1000
-X <- matrix(rnorm(n * p), nrow = n)
-b <- matrix(rnorm(p), nrow = p)
-G <- gpu.matrix(X, device= 'cuda')
-g <- gpu.matrix(b, device= 'cuda')
-
-a <- Sys.time()
-x <- lapply(1:100, function(rep) X - b %*% (t(b) %*% X))
-b <- Sys.time()
-x <- lapply(1:100, function(rep) G - g %*% (t(g) %*% G))
-c <- Sys.time()
-
-b - a
-c - b
-
-
-get_all_splitt <- function(branch, X, n, min_sample, p, E){
-  # finds the best splitts for every covariate in branch
-  # returns the best splitpoint for every covariate and the resulting loss decrease
-
-  # observations belonging to branch
-  index <- which(E[, branch] == 1)
-
-  X_branch <- X[index, ]
-
-  # all possible split points
-  s <- find_s(X_branch, min_sample, p)
-
-  
-
-  res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
-            X_branch_j <- if(p == 1) X_branch else X_branch[, j]
-            eval <- evaluate_splitt(branch = branch, j = j, 
-              s = x, index = index, X_branch_j = X_branch_j, n = n, 
-              min_sample = min_sample)
-            return(eval)})})
-
-  res <- lapply(res, function(x)do.call(rbind, x))
-  res_opt <- lapply(res, function(x)x[which.max(x[, 1]), ])
-  res_opt <- do.call(rbind, res_opt)
-
-  return(matrix(unlist(res_opt), ncol = 4, byrow = F))
-}
-
-evaluate_splitt <- function(branch, j, s, index, X_branch_j, n, min_sample){
-  # evaluate a split at partition branch on covariate j at the splitpoint s
-  # index: index of observations in branch
-  # dividing observation in branch
-  if (sum(X_branch_j > s) < min_sample | sum(X_branch_j <= s) < min_sample){
-    return(list('dloss' = 0, j = j, s = s, branch = branch))
-  }
-
-  e_next <- e_next * 0
-  e_next[index[X_branch_j > s]] <- 1
-
-  u_next_prime <- Q_temp %*% e_next
-  u_next_size <- sum(u_next_prime ** 2)
-
-  dloss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
-
-  return(list('dloss' = as.numeric(dloss), j = j, s = s, branch = branch))
-}

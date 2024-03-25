@@ -35,6 +35,8 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'no_deconfounding')
 #' @export
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
+  if(type == 'no_deconfounding') return(diag(nrow(X)))
+
   svd_error <- function(X, f = 1, count = 1){
     tryCatch({
       svd(X * f)
@@ -182,7 +184,7 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5){
+                   A = NULL, gamma = NULL){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -205,6 +207,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # estimate spectral transformation
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(is.vector(A)) A <- matrix(A, ncol = 1)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
     W <- get_W(A, gamma)
@@ -553,7 +556,7 @@ plot.SDTree <- function(object){
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5, max_size = 1000){
+                     A = NULL, gamma = NULL, max_size = 1000){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -570,6 +573,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(is.vector(A)) A <- matrix(A, ncol = 1)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
     W <- get_W(A, gamma)
@@ -657,8 +661,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
-                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
-                 oob_ind = oob_ind, X = X, Y = Y, Q = Q)
+                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, oob_predictions = oob_predictions,
+                 var_importance = var_imp, oob_ind = oob_ind, X = X, Y = Y, Q = Q)
   class(output) <- 'SDForest'
   return(output)
 }
@@ -671,6 +675,9 @@ predict.SDForest <- function(object, newdata){
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
   X <- newdata[, object$var_names]
+
+  if(is.null(dim(X))) X <- matrix(X, ncol = 1)
+
   if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
@@ -760,7 +767,6 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(X_sort))){
-    print('hallo')
     X_sort <- matrix(X_sort, ncol = p)
   }
 
