@@ -234,8 +234,8 @@ source("R/SDForest_gpu.r")
 library('ranger')
 
 m <- 5
-p <- 3000
-n <- 3000
+p <- 5000
+n <- 5000
 q <- 4
 
 data <- simulate_data_nonlinear(q, p, n, m)
@@ -243,30 +243,27 @@ data <- simulate_data_nonlinear(q, p, n, m)
 X <- data$X
 Y <- data$Y
 
-
 a <- Sys.time()
-fit1 <- SDTree(x = X, y = Y)
+fit1 <- SDTree(x = X, y = Y, cp = 0.01, Q_type = 'no_deconfounding')
 b <- Sys.time()
+b - a
 
-source("R/SDForest.r")
+#source("R/SDForest.r")
 c <- Sys.time()
-fit2 <- SDTree(x = X, y = Y)
+fit2 <- rpart::rpart(Y ~ ., data = data.frame(X, Y), cp = 0.01)
 d <- Sys.time()
 
 b - a
 d - c
+fit2$y == Y
+predict(fit2, data.frame(X)) - fit1$predictions
+data$j
+sort(fit1$var_importance, decreasing = TRUE)[1:6]
 
-max(fit1$predictions - fit2$predictions)
 
-
-
-data <- simulate_data_nonlinear(q, 300, 300, m)
+data <- simulate_data_nonlinear(q, 3000, 3000, m)
 X <- data$X
 Y <- data$Y
-
-a <- Sys.time()
-lhj <- lapply(1:10000, function(i)t(X) %*% X)
-b <- Sys.time()
 
 X_gpu <- gpu.matrix(X)
 Y_gpu <- gpu.matrix(Y)
@@ -285,5 +282,29 @@ library(GPUmatrix)
 
 
 
-X <- matrix(0, 5000, 5000 * 5000/3)
+tot <- 5000 * 5000
+ 
+2e+07
+1000000000
+800000000
+k <- tot / 1000
+
+X <- matrix(0, nrow = k, ncol = 1000)
 X_gpu <- gpu.matrix(X)
+
+X_gpu %*% t(X_gpu)
+
+rm(X)
+gc()
+X_gpu <- as.matrix(X_gpu)
+
+rm(X_gpu)
+
+
+for(i in 1:100){
+    print(i)
+    X_gpu <- gpu.matrix(X)
+    Y <- t(X_gpu) %*% X
+}
+
+torch::

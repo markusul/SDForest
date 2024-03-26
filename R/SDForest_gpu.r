@@ -73,6 +73,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
                           },
                          diag(n)
                          ) # no_deconfounding
+  rm(U, sv)
   return(Q)
 }
 
@@ -247,6 +248,241 @@ Q = NULL
 A = NULL
 gamma = 0.5
 
+
+SDTree2 <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
+                   Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
+                   A = NULL, gamma = 0.5){
+  input_data <- data.handler(formula = formula, data = data, x = x, y = y)
+  X <- input_data$X
+  Y <- input_data$Y
+
+  # number of observations
+  n <- dim(X)[1]
+  # number of covariates
+  p <- dim(X)[2]
+
+  m <- max_leaves - 1
+  # check validity of input
+  if(n != length(Y)) stop('X and Y must have the same number of observations')
+  if(m < 1) stop('max_leaves must be larger than 1')
+  if(min_sample < 1) stop('min_sample must be larger than 0')
+  if(cp < 0) stop('cp must be at least 0')
+  if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
+  if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
+  if(n < 2 * min_sample) stop('n must be at least 2 * min_sample')
+
+  # estimate spectral transformation
+  if(!is.null(A)){
+    if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(!is.matrix(A)) stop('A must be a matrix')
+    if(nrow(A) != n) stop('A must have n rows')
+    W <- get_W(A, gamma)
+  }else {
+    W <- gpu.matrix(diag(n))
+  }
+
+  if(is.null(Q)){
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim)
+  }else{
+    if(!is.matrix(Q)) stop('Q must be a matrix')
+    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
+  }
+  Q <- Q %*% W
+  rm(W)
+
+  # calculate first estimate
+  E <- matrix(1, n, 1)
+
+  E_tilde <- gpu.matrix(rowSums(Q))
+
+  u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
+  Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
+
+  Y_tilde <- Q %*% Y
+
+  # solve linear model
+  c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+
+  #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
+
+  loss_start <- sum((Y_tilde - c_hat) ** 2) / n
+  loss_temp <- loss_start
+
+  # initialize tree
+  tree <- data.tree::Node$new(name = '1', value = as.numeric(c_hat), 
+    dloss = as.numeric(loss_start), cp = 10)
+
+  # memory for optimal splits
+  memory <- lapply(1:(m + 1), function(rep) matrix(0, p, 4))
+  potential_splitts <- 1
+
+  # variable importance
+  var_imp <- rep(0, p)
+  names(var_imp) <- colnames(X)
+
+  after_mtry <- 0
+  
+  for(i in 1:m){
+    # iterate over all possible splits every time
+    # for slow but slightly better solution
+    if(!fast){
+      potential_splitts <- 1:i
+      to_small <- unlist(lapply(potential_splitts, function(x){sum(E[, x] == 1) < min_sample*2}))
+      potential_splitts <- potential_splitts[!to_small]
+    }
+
+    #iterate over new to estimate splits
+    for(branch in potential_splitts){
+      #best_splitts <- get_all_splitt(branch = branch, X = X, 
+      #                               n = n, min_sample = min_sample, p = p, E = as.matrix(E))
+      index <- which(E[, branch] == 1)
+      X_branch <- X[index, ]
+
+      s <- find_s(X_branch, min_sample, p)
+      
+      E_next_cpu <- matrix(0, n, p * nrow(s))
+      for(i_s in 1:nrow(s)){          
+        for(j in 1:p){
+          E_next_cpu[, (j - 1) * nrow(s) + i_s] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+        }
+      }
+      
+      E_next <- gpu.matrix(E_next_cpu)
+      U_next_prime <- as.matrix(Q_temp %*% E_next)
+      
+      U_next_size <- colSums(U_next_prime) ** 2
+      
+      dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+      
+      eval <- matrix(dloss, nrow(s), p)
+      
+      is_opt <- apply(eval, 2, which.max)
+      memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
+
+    }
+
+    if(i > after_mtry && !is.null(mtry)){
+      Losses_dec <- lapply(memory, function(branch){
+        branch[sample(1:p, mtry), ]})
+      Losses_dec <- do.call(rbind, Losses_dec)
+    }else {
+       Losses_dec <- do.call(rbind, memory)
+    }
+
+    if(max(Losses_dec[, 1]) <= 0){
+      break
+    }
+    loc <- which.max(Losses_dec[, 1])
+    best_branch <- Losses_dec[loc, 4]
+    j <- Losses_dec[loc, 2]
+    s <- Losses_dec[loc, 3]
+
+    # divide observations in leave
+    index <- which(E[, best_branch] == 1)
+    index_n_branches <- index[X[index, j] > s]
+
+
+    # new indicator matrix
+    E <- cbind(E, matrix(0, n, 1))
+    E[index_n_branches, best_branch] <- 0
+    E[index_n_branches, i+1] <- 1
+
+
+    E_best_branch <- E[, best_branch]
+    E_best_branch <- gpu.matrix(E_best_branch)
+
+    E_tilde <- as.matrix(E_tilde)
+    E_tilde_branch <- E_tilde[, best_branch]
+    E_tilde[, best_branch] <- as.matrix(Q %*% E_best_branch)
+    E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
+
+    E_tilde <- gpu.matrix(E_tilde)
+
+    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+
+    e_next <- gpu.matrix(E[, i + 1])
+    u_next_prime <- Q_temp %*% e_next
+    u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
+
+    Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
+
+    # check if loss decrease is larger than minimum loss decrease
+    # and if linear model could be estimated
+
+    if(sum(is.na(as.matrix(c_hat))) > 0){
+      warning('singulaer matrix QE, tree might be to large, consider increasing cp')
+      break
+    }
+
+    loss_dec <- loss_temp - loss(Y_tilde, E_tilde %*% c_hat)
+    loss_temp <- loss_temp - loss_dec
+
+    if(loss_dec <= cp * loss_start){
+      break
+    }
+    # add loss decrease to variable importance
+    var_imp[j] <- var_imp[j] + as.numeric(loss_dec)
+
+    # select leave to split
+    if(tree$height == 1){
+      leave <- tree
+    }else{
+      leaves <- tree$leaves
+      leave <- leaves[[which(tree$Get('name', filterFun = data.tree::isLeaf) == best_branch)]]
+    }
+
+    # save split rule
+    leave$j <- j
+    leave$s <- s
+
+    leave$res_dloss <- as.numeric(loss_dec)
+
+    # add new leaves
+    leave$AddChild(best_branch, value = 0, dloss = as.numeric(loss_dec), cp = as.numeric(loss_dec / loss_start), 
+      decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = as.numeric(loss_dec), cp = as.numeric(loss_dec / loss_start), 
+      decision = 'yes', n_samples = sum(E[, i + 1] == 1))
+
+    # add estimates to tree leaves
+    for(l in tree$leaves){
+      l$value <- as.numeric(c_hat[as.numeric(l$name)])
+    }
+
+    # the two new partitions need to be checked for optimal splits in next iteration
+    potential_splitts <- c(best_branch, i + 1)
+
+    # a partition with less than min_sample observations or unique samples are not available for further splits
+    to_small <- unlist(lapply(potential_splitts, function(x){length(unique(X[which(E[, x] == 1), 1])) < min_sample * 2}))
+    if(sum(to_small) > 0){
+      for(el in potential_splitts[to_small]){
+        # to small partitions cannot decrease the loss
+        memory[[el]] <- matrix(0, p, 4)
+      }
+      potential_splitts <- potential_splitts[!to_small]
+    }
+  }
+
+  # print warning if maximum splitts was reached, one might want to increase m
+  if(i == m){
+    warning('maximum number of iterations was reached, consider increasing m!')
+  }
+
+  # predict the test set
+  f_X_hat <- predict_outsample(tree, X)
+
+  var_names <- colnames(data.frame(X))
+  names(var_imp) <- var_names
+
+  # labels for the nodes
+  tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
+  tree$Do(leave_names, filterFun = data.tree::isLeaf)
+
+  res <- list(predictions = f_X_hat, tree = tree, var_names = var_names, var_importance = var_imp)
+  class(res) <- 'SDTree'
+  return(res)
+}
+
+
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
                    A = NULL, gamma = 0.5){
@@ -296,9 +532,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
 
   Y_tilde <- Q %*% Y
-
-  e_next <- gpu.matrix(0, n, 1)
-  #Y_tilde <- gpu.matrix(Y_tilde, device = 'cuda')
   
   # solve linear model
   c_hat <- qr.coef(qr(E_tilde), Y_tilde)
@@ -331,38 +564,37 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       potential_splitts <- potential_splitts[!to_small]
     }
 
-    e_next_cpu <- as.matrix(e_next)
     Q_temp_cpu <- as.matrix(Q_temp)
     Y_tilde_cpu <- as.matrix(Y_tilde)
 
     #iterate over new to estimate splits
     for(branch in potential_splitts){
-      #best_splitts <- get_all_splitt(branch = branch, X = X, 
-      #                               n = n, min_sample = min_sample, p = p, E = as.matrix(E))
-      index <- which(E[, branch] == 1)
+      E_branch <- E[, branch]
+      index <- which(E_branch == 1)
       X_branch <- X[index, ]
-
+    
       s <- find_s(X_branch, min_sample, p)
       
 
       #for(j in 1:p){
-        #eval <- matrix(0, nrow(s), 4)
-        #
-        #for(i_s in 1:nrow(s)){
-        #  X_branch_j <- if(p == 1) X_branch else X_branch[, j]
-        #  if (sum(X_branch_j > s[i_s, j]) < min_sample | sum(X_branch_j <= s[i_s, j]) < min_sample){
-        #    eval[i_s, ] <- c(0, j, s[i_s, j], branch)
-        #  }
-        #  e_next <- e_next_cpu * 0
-        #  e_next[index[X_branch_j > s[i_s, j]]] <- 1
-        #  u_next_prime <- Q_temp_cpu %*% e_next
-        #  u_next_size <- sum(u_next_prime ** 2)
-        #  dloss <- crossprod(u_next_prime, Y_tilde_cpu)**2 / u_next_size
-        #  eval[i_s, ] <- c(dloss, j, s[i_s, j], branch)
-        #}
-        #memory[[branch]][j, ] <- eval[which.max(eval[, 1]), ]
+      #  eval <- matrix(0, nrow(s), 4)
+      #  
+      #  for(i_s in 1:nrow(s)){
+      #    X_branch_j <- if(p == 1) X_branch else X_branch[, j]
+      #    if (sum(X_branch_j > s[i_s, j]) < min_sample | sum(X_branch_j <= s[i_s, j]) < min_sample){
+      #      eval[i_s, ] <- c(0, j, s[i_s, j], branch)
+      #    }
+      #    e_next <- matrix(0, n, 1)
+      #    e_next[index[X_branch_j > s[i_s, j]]] <- 1
+      #    u_next_prime <- Q_temp_cpu %*% e_next
+      #    u_next_size <- sum(u_next_prime ** 2)
+      #    dloss <- crossprod(u_next_prime, Y_tilde_cpu)**2 / u_next_size
+      #    eval[i_s, ] <- c(dloss, j, s[i_s, j], branch)
+      #  }
+      #  memory[[branch]][j, ] <- eval[which.max(eval[, 1]), ]
       #}
       #eval <- matrix(0, nrow(s), p)  
+      #E_next <- matrix(0, n, p)
       #for(i_s in 1:nrow(s)){          
       #  E_next <- E_next * 0
       #  for(j in 1:p){
@@ -371,28 +603,55 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       #  
       #  U_next_prime <- as.matrix(Q_temp %*% E_next)
       #  U_next_size <- colSums(U_next_prime ** 2)
-      #  dloss <- crossprod(U_next_prime, Y_tilde_cpu)**2 / U_next_size
+      #  dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
       #  eval[i_s, ] <- dloss
       #}
       #is_opt <- apply(eval, 2, which.max)
       #memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
-      E_next <- matrix(0, n, p * nrow(s))
-      for(i_s in 1:nrow(s)){          
-        for(j in 1:p){
-          #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
-          E_next[, (j - 1) * nrow(s) + i_s] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+      print(dim(s))
+      #print(n)
+      #print(p)
+      #print(nrow(s))
+      amount <- n * p * nrow(s)
+      if(is.na(amount)) amount <- Inf
+      print(amount)
+      print(amount < 2e+8)
+      if(amount < 2e+8){
+      #if(FALSE){
+        E_next <- matrix(0, n, p * nrow(s))
+        for(i_s in 1:nrow(s)){          
+          for(j in 1:p){
+            #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+            #E_next[, (j - 1) * nrow(s) + i_s] <- E_branch * as.numeric(X[, j] > s[i_s, j])
+            E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * nrow(s) + i_s] <- 1
+          }
+        }
+        #print(dim(E_next))
+
+        U_next_prime <- Q_temp %*% E_next
+        U_next_size <- colSums(U_next_prime ** 2)
+        dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+        eval <- matrix(dloss, nrow(s), p)
+      }else{
+        eval <- matrix(0, nrow(s), p)  
+        E_next <- matrix(0, n, p)
+        for(i_s in 1:nrow(s)){          
+          E_next <- E_next * 0
+          for(j in 1:p){
+            #E_next[, j] <- E_branch * as.numeric(X[, j] > s[i_s, j])
+            E_next[index[X_branch[, j] > s[i_s, j]], j] <- 1
+          }
+          #E_next <- E_branch * t(apply(X, 1, function(x) as.numeric(x > s[i_s, ])))
+          
+          U_next_prime <- Q_temp %*% E_next
+          U_next_size <- colSums(U_next_prime ** 2)
+          dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+          eval[i_s, ] <- dloss
         }
       }
       
-      U_next_prime <- Q_temp %*% E_next
-      U_next_size <- colSums(U_next_prime ** 2)
-      dloss <- crossprod(U_next_prime, Y_tilde)**2 / U_next_size
-
-      eval <- matrix(dloss, nrow(s), p)
-      
       is_opt <- apply(eval, 2, which.max)
       memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
-      #memory[[branch]][j, ] <- c(dloss[is_opt], j, s[is_opt, j], branch)
     }
 
     if(i > after_mtry && !is.null(mtry)){
