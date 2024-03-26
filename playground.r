@@ -234,8 +234,8 @@ source("R/SDForest_gpu.r")
 library('ranger')
 
 m <- 5
-p <- 1000
-n <- 1000
+p <- 3000
+n <- 3000
 q <- 4
 
 data <- simulate_data_nonlinear(q, p, n, m)
@@ -258,3 +258,32 @@ d - c
 
 max(fit1$predictions - fit2$predictions)
 
+
+
+data <- simulate_data_nonlinear(q, 300, 300, m)
+X <- data$X
+Y <- data$Y
+
+a <- Sys.time()
+lhj <- lapply(1:10000, function(i)t(X) %*% X)
+b <- Sys.time()
+
+X_gpu <- gpu.matrix(X)
+Y_gpu <- gpu.matrix(Y)
+
+
+c <- Sys.time()
+lj <- lapply(1:10000, function(i)t(X_gpu) %*% X_gpu)
+d <- Sys.time()
+
+b - a
+d - c
+
+
+
+library(GPUmatrix)
+
+
+
+X <- matrix(0, 5000, 5000 * 5000/3)
+X_gpu <- gpu.matrix(X)

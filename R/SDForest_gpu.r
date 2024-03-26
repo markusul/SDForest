@@ -239,7 +239,7 @@ max_leaves = 50
 cp = 0.01
 min_sample = 5
 mtry = NULL
-fast = TRUE
+fast = F
 Q_type = 'trim'
 trim_quantile = 0.5
 confounding_dim = 0
@@ -288,7 +288,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Q <- Q %*% W
 
   # calculate first estimate
-  E <- gpu.matrix(1, n, 1)
+  E <- matrix(1, n, 1)
 
   E_tilde <- gpu.matrix(rowSums(Q))
 
@@ -321,7 +321,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   names(var_imp) <- colnames(X)
 
   after_mtry <- 0
-
+  
   for(i in 1:m){
     # iterate over all possible splits every time
     # for slow but slightly better solution
@@ -343,31 +343,56 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       X_branch <- X[index, ]
 
       s <- find_s(X_branch, min_sample, p)
+      
 
-      for(j in 1:p){
-        eval <- matrix(0, nrow(s), 4)
-        
-        for(is in 1:nrow(s)){
-          
-          X_branch_j <- if(p == 1) X_branch else X_branch[, j]
-          if (sum(X_branch_j > s[is, j]) < min_sample | sum(X_branch_j <= s[is, j]) < min_sample){
-            eval[is, ] <- c(0, j, s[is, j], branch)
-          }
-          
-          e_next <- e_next_cpu * 0
-          e_next[index[X_branch_j > s[is, j]]] <- 1
-          
-          u_next_prime <- Q_temp_cpu %*% e_next
-          u_next_size <- sum(u_next_prime ** 2)
-
-          dloss <- crossprod(u_next_prime, Y_tilde_cpu)**2 / u_next_size
-
-          eval[is, ] <- c(dloss, j, s[is, j], branch)
-
+      #for(j in 1:p){
+        #eval <- matrix(0, nrow(s), 4)
+        #
+        #for(i_s in 1:nrow(s)){
+        #  X_branch_j <- if(p == 1) X_branch else X_branch[, j]
+        #  if (sum(X_branch_j > s[i_s, j]) < min_sample | sum(X_branch_j <= s[i_s, j]) < min_sample){
+        #    eval[i_s, ] <- c(0, j, s[i_s, j], branch)
+        #  }
+        #  e_next <- e_next_cpu * 0
+        #  e_next[index[X_branch_j > s[i_s, j]]] <- 1
+        #  u_next_prime <- Q_temp_cpu %*% e_next
+        #  u_next_size <- sum(u_next_prime ** 2)
+        #  dloss <- crossprod(u_next_prime, Y_tilde_cpu)**2 / u_next_size
+        #  eval[i_s, ] <- c(dloss, j, s[i_s, j], branch)
+        #}
+        #memory[[branch]][j, ] <- eval[which.max(eval[, 1]), ]
+      #}
+      #eval <- matrix(0, nrow(s), p)  
+      #for(i_s in 1:nrow(s)){          
+      #  E_next <- E_next * 0
+      #  for(j in 1:p){
+      #    E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+      #  }
+      #  
+      #  U_next_prime <- as.matrix(Q_temp %*% E_next)
+      #  U_next_size <- colSums(U_next_prime ** 2)
+      #  dloss <- crossprod(U_next_prime, Y_tilde_cpu)**2 / U_next_size
+      #  eval[i_s, ] <- dloss
+      #}
+      #is_opt <- apply(eval, 2, which.max)
+      #memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
+      E_next <- matrix(0, n, p * nrow(s))
+      for(i_s in 1:nrow(s)){          
+        for(j in 1:p){
+          #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+          E_next[, (j - 1) * nrow(s) + i_s] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
         }
-
-        memory[[branch]][j, ] <- eval[which.max(eval[, 1]), ]
       }
+      
+      U_next_prime <- Q_temp %*% E_next
+      U_next_size <- colSums(U_next_prime ** 2)
+      dloss <- crossprod(U_next_prime, Y_tilde)**2 / U_next_size
+
+      eval <- matrix(dloss, nrow(s), p)
+      
+      is_opt <- apply(eval, 2, which.max)
+      memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
+      #memory[[branch]][j, ] <- c(dloss[is_opt], j, s[is_opt, j], branch)
     }
 
     if(i > after_mtry && !is.null(mtry)){
