@@ -234,30 +234,46 @@ source("R/SDForest_gpu.r")
 library('ranger')
 
 m <- 5
-p <- 5000
-n <- 5000
+p <- 200
+n <- 200
 q <- 4
 
 data <- simulate_data_nonlinear(q, p, n, m)
 
 X <- data$X
 Y <- data$Y
-
+#source("R/SDForest.r")
 a <- Sys.time()
-fit1 <- SDTree(x = X, y = Y, cp = 0.01, Q_type = 'no_deconfounding')
+fit1 <- SDForest(x = X, y = Y, Q_type = 'no_deconfounding')
 b <- Sys.time()
 b - a
 
-#source("R/SDForest.r")
 c <- Sys.time()
-fit2 <- rpart::rpart(Y ~ ., data = data.frame(X, Y), cp = 0.01)
+fit2 <- ranger(Y ~ ., data = data.frame(X, Y), num.trees = 100, mtry = floor(0.5 * p), 
+    min.node.size = 3)
 d <- Sys.time()
 
 b - a
 d - c
-fit2$y == Y
-predict(fit2, data.frame(X)) - fit1$predictions
-data$j
+
+fit1$oob_loss
+fit2$prediction.error
+
+max(abs(fit1$predictions - fit2$predictions))
+plot(fit1$predictions, fit2$predictions)
+
+library('rpart')
+
+fit3 <- rpart::rpart(Y ~ ., data = data.frame(X, Y), 
+    control = rpart.control(cp = 0, minsplit = 6, xval =1))
+max(abs(predict(fit3, data.frame(X)) - fit1$predictions))
+
+plot(predict(fit3, data.frame(X)))
+points(fit1$predictions, col = 'red')
+
+print(fit1$tree, 'value', 's', 'j', 'label', 'cp')
+fit3
+
 sort(fit1$var_importance, decreasing = TRUE)[1:6]
 
 
