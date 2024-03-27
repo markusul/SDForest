@@ -1,4 +1,4 @@
-source("R/SDForest.r")
+source("R/SDForest_gpu.r")
 
 library('ranger')
 
@@ -21,8 +21,10 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
     }
 
     alpha_1 <- rnorm(p)
-    alpha_2 <- rnorm(q)
-    alpha_3 <- rnorm(1)
+    #alpha_2 <- rnorm(q)
+    #alpha_3 <- rnorm(1)
+    alpha_2 <- 0
+    alpha_3 <- 0
 
     # complexity of f_X
     complexity <- 5
@@ -79,10 +81,10 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
     return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta, H = H, A = A, dep = dep))
 }
 
-set.seed(2)
-data <- simulate_data_nonlinear(1, 10, 300, 1, a = 3)
+set.seed(22)
+data <- simulate_data_nonlinear(1, 50, 200, 1, a = 3)
 
-n <- 2000
+n <- 200
 q <- 1
 p <- 10
 
@@ -133,14 +135,16 @@ X_train <- data$X[data$A != a, ]
 Y_train <- data$Y[data$A != a]
 A_train <- as.matrix(data$A[data$A != a])
 
+
+
 # fit SDForest
 sdf <- SDForest(x = X_train, y = Y_train, Q_type = 'no_deconfounding')
-sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 10, Q_type = 'no_deconfounding')
+sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100, Q_type = 'no_deconfounding')
 sdf0 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0, 
     Q_type = 'no_deconfounding')
 sdfd <- SDForest(x = X_train, y = Y_train)
 sdfda <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0)
-
+sdfda10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100)
 
 
 plot(data$X[, data$j], data$Y, pch = data$A, ylim = c(min(data$Y, data$f_X), max(data$Y, data$f_X)))
@@ -149,6 +153,8 @@ points(data$X[, data$j], predict(sdf10, data.frame(data$X)), col = '#aa0caf', pc
 points(data$X[, data$j], predict(sdf0, data.frame(data$X)), col = '#af0c58', pch = 20, cex = 0.5)
 points(data$X[, data$j], predict(sdfd, data.frame(data$X)), col = '#0c9caf', pch = 20, cex = 0.5)
 points(data$X[, data$j], predict(sdfda, data.frame(data$X)), col = '#84e64c', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdfda10, data.frame(data$X)), col = 'blue', pch = 21, cex = 0.5)
+
 points(data$X[, data$j], data$f_X, col = '#0c960c', pch = 20, cex = 0.5)
 title('n = 200, p = 200, q = 1')
 legend('bottomright', legend = c('gam = 1', 'gam = 100', 'gam = 0', 'trim', 'gam = 0 + trim', 'true causal'), 

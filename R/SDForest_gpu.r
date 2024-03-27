@@ -213,6 +213,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # estimate spectral transformation
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
     W <- get_W(A, gamma, gpu)
