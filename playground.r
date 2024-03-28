@@ -16,13 +16,15 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
     if(a == 0){
         A <- rep(0, n)
     }else{
-        A_levels <- 1:n_A_levels
-        A <- sample(A_levels, n, replace = TRUE)
+        #A_levels <- 1:n_A_levels
+        #A <- sample(A_levels, n, replace = TRUE)
+        A <- rnorm(n, 0, 1)
     }
 
-    alpha_1 <- rnorm(p)
+    alpha_1 <- rnorm(p, 1, 0.1)
     #alpha_2 <- rnorm(q)
     #alpha_3 <- rnorm(1)
+    #alpha_1 <- 1
     alpha_2 <- 0
     alpha_3 <- 0
 
@@ -48,7 +50,7 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL, a = 0){
         Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
 
         # random coefficient vector delta
-        delta <- rnorm(q, 0, 1)
+        delta <- rnorm(q, 0, 2)
     }
 
 
@@ -127,35 +129,67 @@ points(data$X[, data$j], predict(sdfd, data.frame(data$X)), col = '#0c9caf', pch
 points(data$X[, data$j], predict(sdfda, data.frame(data$X)), col = '#84e64c', pch = 20, cex = 0.5)
 
 
+set.seed(2)
+data <- simulate_data_nonlinear(1, 1, 400, 1, a = 3)
+X <- data$X
+Y <- data$Y
 
+#a <- 3
+#X_train <- data$X[data$A != a, ]
+#Y_train <- data$Y[data$A != a]
+#A_train <- as.matrix(data$A[data$A != a])
 
-
-a <- 3
-X_train <- data$X[data$A != a, ]
-Y_train <- data$Y[data$A != a]
-A_train <- as.matrix(data$A[data$A != a])
+X_train <- data$X
+Y_train <- data$Y
+A_train <- as.matrix(data$A)
 
 
 
 # fit SDForest
-sdf <- SDForest(x = X_train, y = Y_train, Q_type = 'no_deconfounding')
-sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100, Q_type = 'no_deconfounding')
+sdf <- SDForest(x = X_train, y = Y_train, Q_type = 'no_deconfounding', cp = 0, mtry = 1)
+sdf10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 1000000, Q_type = 'no_deconfounding', mtry = 1, cp = 0)
+
+
+
 sdf0 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0, 
     Q_type = 'no_deconfounding')
 sdfd <- SDForest(x = X_train, y = Y_train)
 sdfda <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 0)
-sdfda10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100)
+sdfda10 <- SDForest(x = X_train, y = Y_train, A = A_train, gamma = 100000, cp = 0.1)
+
+predict_outsample(sdf10$forest[[1]]$tree, sdf10$X)
+prune(sdf10, cp = 0.1)
+path <- regPath(sdf10, multicore = F, oob = T)
+plotOOB(path)
+sdf
+sdf10$X
+
+X_pred <- data.frame(data$X)
+names(X_pred) <- sdf$var_names
+
+W <- get_W(A_train, gamma = 10000)
+fit_linA <- lm.fit(x = W %*% X, y = W %*% Y)$coefficients
+pred_linA <- data$X %*% fit_linA
+
+fit_lin <- lm.fit(x = X, y = Y)$coefficients
+pred_lin <- data$X %*% fit_lin
 
 
-plot(data$X[, data$j], data$Y, pch = data$A, ylim = c(min(data$Y, data$f_X), max(data$Y, data$f_X)))
-points(data$X[, data$j], predict(sdf, data.frame(data$X)), col = '#204dca', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdf10, data.frame(data$X)), col = '#aa0caf', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdf0, data.frame(data$X)), col = '#af0c58', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdfd, data.frame(data$X)), col = '#0c9caf', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdfda, data.frame(data$X)), col = '#84e64c', pch = 20, cex = 0.5)
-points(data$X[, data$j], predict(sdfda10, data.frame(data$X)), col = 'blue', pch = 21, cex = 0.5)
+points(data$X[, data$j], pred_linA, col = 'red')
+points(data$X[, data$j], pred_lin, col = 'blue')
+
+
+plot(data$X[, data$j], data$Y, ylim = c(min(data$Y, data$f_X), max(data$Y, data$f_X)))
+points(data$X[, data$j], predict(sdf, X_pred), col = '#204dca', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdf10, X_pred), col = '#aa0caf', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdf0, X_pred), col = '#af0c58', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdfd, X_pred), col = '#0c9caf', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdfda, X_pred), col = '#84e64c', pch = 20, cex = 0.5)
+points(data$X[, data$j], predict(sdfda10, X_pred), col = 'blue', pch = 21, cex = 0.5)
 
 points(data$X[, data$j], data$f_X, col = '#0c960c', pch = 20, cex = 0.5)
+
+
 title('n = 200, p = 200, q = 1')
 legend('bottomright', legend = c('gam = 1', 'gam = 100', 'gam = 0', 'trim', 'gam = 0 + trim', 'true causal'), 
     col = c('#204dca', '#aa0caf', '#af0c58', '#0c9caf', '#84e64c', '#0c960c'), pch = 20, cex = 1)
@@ -313,7 +347,7 @@ k <- tot / 1000
 
 X <- matrix(0, nrow = k, ncol = 1000)
 X_gpu <- gpu.matrix(X)
-
+X_gpu@type
 X_gpu %*% t(X_gpu)
 
 rm(X)
@@ -328,5 +362,3 @@ for(i in 1:100){
     X_gpu <- gpu.matrix(X)
     Y <- t(X_gpu) %*% X
 }
-
-torch::

@@ -36,6 +36,13 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'no_deconfounding')
 #' @export
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE){
+  if(type == 'no_deconfounding') {
+    Q <- diag(nrow(X))
+    if(gpu) Q <- gpu.matrix(Q)
+    return(Q)
+  }
+
+
   svd_error <- function(X, f = 1, count = 1){
     tryCatch({
       svd(X * f)
@@ -44,6 +51,14 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
         if(count > 5) stop('svd did not converge')
         return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
   }
+
+  if(ncol(X) == 1){
+    warning('only one covariate, no deconfounding possible')
+    Q <- diag(nrow(X))
+    if(gpu) Q <- gpu.matrix(Q)
+    return(Q)
+  }
+
 
   # X: covariates
   # type: type of deconfounding
@@ -282,7 +297,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     for(branch in potential_splitts){
       E_branch <- E[, branch]
       index <- which(E_branch == 1)
-      X_branch <- X[index, ]
+      X_branch <- as.matrix(X[index, ])
     
       s <- find_s(X_branch, min_sample, p)
       n_splits <- nrow(s)
@@ -698,6 +713,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   # mtry
   if(is.null(mtry)){
     mtry <- floor(0.5 * p)
+    if(mtry < 1) mtry <- 1
   }
 
   # bootstrap samples
@@ -778,7 +794,7 @@ predict.SDForest <- function(object, newdata){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
-  X <- newdata[, object$var_names]
+  X <- as.matrix(newdata[, object$var_names])
   if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
@@ -824,7 +840,7 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(X_sort))){
-    print('hallo')
+    #print('hallo')
     X_sort <- matrix(X_sort, ncol = p)
   }
 
@@ -847,7 +863,7 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(s))){
-    print('hallo2')
+    #print('hallo2')
     s <- matrix(s, ncol = p)
   }
 
@@ -948,7 +964,7 @@ prune.SDForest <- function(forest, cp, oob = T){
     forest$oob_loss <- loss(forest$Y, oob_predictions)
 
     # predict with all trees
-    pred <- do.call(cbind, lapply(forest$forest, function(x){predict_outsample(x$tree, forest$X)}))
+    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, forest$X))}))
     
     # use mean over trees as final prediction
     f_X_hat <- rowMeans(pred)
@@ -956,7 +972,7 @@ prune.SDForest <- function(forest, cp, oob = T){
   }
 
   # variable importance
-  forest$var_importance <- rowMeans(sapply(forest$forest, function(x){x$var_importance}))  
+  forest$var_importance <- rowMeans(as.matrix(sapply(forest$forest, function(x){matrix(x$var_importance)})))  
 
   return(forest)
 }
