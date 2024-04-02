@@ -289,7 +289,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # for slow but slightly better solution
     if(!fast){
       potential_splitts <- 1:i
-      to_small <- unlist(lapply(potential_splitts, function(x){sum(E[, x] == 1) < min_sample*2}))
+      to_small <- sapply(potential_splitts, function(x){sum(E[, x]) < min_sample*2})
       potential_splitts <- potential_splitts[!to_small]
     }
 
@@ -299,9 +299,16 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       index <- which(E_branch == 1)
       X_branch <- as.matrix(X[index, ])
     
-      s <- find_s(X_branch, min_sample, p)
-      n_splits <- nrow(s)
+      s <- find_s(X_branch)
+      if(min_sample > 1) {
+        s <- s[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
+      }
 
+      all_n_splits <- apply(s, 2, function(x) length(unique(x)))
+      all_idx <- cumsum(all_n_splits)
+      n_splits <- mean(all_n_splits)
+
+      
       #for(j in 1:p){
       #  eval <- matrix(0, nrow(s), 4)
       #  
@@ -344,40 +351,51 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       #print(amount < 2e+8)
       if(amount < 2e+8){
       #if(FALSE){
-        E_next <- matrix(0, n, p * n_splits)
-        for(i_s in 1:n_splits){          
-          for(j in 1:p){
+        E_next <- matrix(0, n, p * all_idx[p])
+        for(j in 1:p){
+          s_j <- s[, j]
+          s_j <- unique(s_j)
+          for(i_s in 1:all_n_splits[j]){
             #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
             #E_next[, (j - 1) * nrow(s) + i_s] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-            E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * n_splits + i_s] <- 1
+            #E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * n_splits + i_s] <- 1
+            E_next[index[X_branch[, j] > s_j[i_s]], sum(all_idx[j-1], i_s)] <- 1
           }
         }
-        #print(dim(E_next))
-
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
-        dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-        eval <- matrix(dloss, n_splits, p)
+        dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+        #eval <- matrix(dloss, n_splits, p)
+        eval <- matrix(-Inf, nrow(s), p)
+        for(m in 1:p){
+          #for(k in 1:all_n_splits[m]){
+          #  eval[k, m] <- dloss[sum(all_n_splits[0:(m-1)]) + k]
+          #}
+          eval[1:all_n_splits[m], m] <- dloss[sum(all_idx[m-1], 1):all_idx[m]]
+        }
+
+
       }else{
-        eval <- matrix(0, n_splits, p)  
-        E_next <- matrix(0, n, p)
-        for(i_s in 1:n_splits){          
-          E_next <- E_next * 0
-          for(j in 1:p){
+        eval <- matrix(-Inf, nrow(s), p)
+        
+        for(j in 1:p){
+          s_j <- s[, j]
+          s_j <- unique(s_j)
+          E_next <- matrix(0, n, all_n_splits[j])
+          for(i_s in 1:all_n_splits[j]){
             #E_next[, j] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-            E_next[index[X_branch[, j] > s[i_s, j]], j] <- 1
+            E_next[index[X_branch[, j] > s_j[i_s]], i_s] <- 1
           }
           #E_next <- E_branch * t(apply(X, 1, function(x) as.numeric(x > s[i_s, ])))
           
           U_next_prime <- Q_temp %*% E_next
           U_next_size <- colSums(U_next_prime ** 2)
-          dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-          eval[i_s, ] <- dloss
+          dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+          eval[1:all_n_splits[j], j] <- dloss
         }
       }
-      
       is_opt <- apply(eval, 2, which.max)
-      memory[[branch]] <- t(sapply(1:p, function(j) c(eval[is_opt[j], j], j, s[is_opt[j], j], branch)))
+      memory[[branch]] <- t(sapply(1:p, function(j) c(eval[is_opt[j], j], j, unique(s[, j])[is_opt[j]], branch)))
     }
 
 
@@ -468,7 +486,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     potential_splitts <- c(best_branch, i + 1)
 
     # a partition with less than min_sample observations or unique samples are not available for further splits
-    to_small <- unlist(lapply(potential_splitts, function(x){length(unique(X[which(E[, x] == 1), 1])) < min_sample * 2}))
+    to_small <- sapply(potential_splitts, function(x){sum(E[, x]) < min_sample * 2})
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
         # to small partitions cannot decrease the loss
@@ -854,25 +872,21 @@ leave_names <- function(node){
 }
 
 
-find_s <- function(X, min_sample, p){
+find_s <- function(X){
   # finds all the reasnable splitting points in a data matrix
-
+  p <- ncol(X)
   if(p == 1){
     X <- matrix(X, ncol = 1)
   }
   n <- nrow(X)
 
   X_sort <- apply(X, 2, sort, method = 'quick')
-  if(min_sample > 1) {
-    X_sort <- X_sort[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
-  }
   
   if(is.null(dim(X_sort))){
     #print('hallo')
     X_sort <- matrix(X_sort, ncol = p)
   }
 
-  X_sort <- unique(X_sort)
   if(nrow(X_sort) == 1){
     print('hallo1')
     return(X_sort)
@@ -972,24 +986,36 @@ prune.SDTree <- function(object, cp){
   return(object)
 }
 
-prune.SDForest <- function(forest, cp, oob = T){
-  n <- length(forest$Y)
-
+prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
   pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
   forest$forest <- pruned_forest
 
   if(oob){
+    if(is.null(X)) X <- forest$X
+    if(is.null(Y)) Y <- forest$Y
+    if(is.null(Q)) Q <- forest$Q
+    if(is.null(X) | is.null(Y)){
+      stop('X, Y and Q must either be provided or in the object')
+    }
+
+    n <- length(Y)
+
+    if(is.null(Q)) {
+      Q <- diag(n)
+      warning('Q was not provided, using Identity matrix')
+    }
+
     oob_predictions <- unlist(lapply(1:n, function(i){
       if(length(forest$oob_ind[[i]]) == 0){
         return(NA)
       }
       predictions <- lapply(forest$oob_ind[[i]], function(model){
-        predict_outsample(forest$forest[[model]]$tree, forest$X[i, ])
+        predict_outsample(forest$forest[[model]]$tree, X[i, ])
       })
       return(mean(unlist(predictions)))
     }))
-    forest$oob_SDloss <- loss(forest$Q %*% forest$Y, forest$Q %*% oob_predictions)
-    forest$oob_loss <- loss(forest$Y, oob_predictions)
+    forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+    forest$oob_loss <- loss(Y, oob_predictions)
 
     # predict with all trees
     pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, forest$X))}))
@@ -1020,7 +1046,7 @@ regPath.SDTree <- function(object){
   return(paths)
 }
 
-regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL){
+regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL){
   cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
   
   if(multicore){
@@ -1028,14 +1054,14 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL){
       n_cores <- mc.cores
     }
     res <- parallel::mclapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob)
+      pruned_object <- prune(object, cp, oob = oob, X = NULL, Y = NULL, Q = NULL)
       return(list(var_importance = pruned_object$var_importance, 
                   oob_SDloss = pruned_object$oob_SDloss, 
                   oob_loss = pruned_object$oob_loss))}, 
                   mc.cores = n_cores)
   }else{
     res <- pbapply::pblapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob)
+      pruned_object <- prune(object, cp, oob = oob, X = NULL, Y = NULL, Q = NULL)
       return(list(var_importance = pruned_object$var_importance, 
                   oob_SDloss = pruned_object$oob_SDloss, 
                   oob_loss = pruned_object$oob_loss))})

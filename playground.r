@@ -130,7 +130,7 @@ points(data$X[, data$j], predict(sdfda, data.frame(data$X)), col = '#84e64c', pc
 
 
 set.seed(2)
-data <- simulate_data_nonlinear(1, 200, 200, 1, a = 3)
+data <- simulate_data_nonlinear(1, 100, 100, 1, a = 3)
 X <- data$X
 Y <- data$Y
 
@@ -380,3 +380,33 @@ for(i in 1:100){
 
 
 sdf$oob_ind
+
+source("R/SDForest_gpu.r")
+X[X[, 123] < 0.1, 123] <- -1
+X[X[, 123] > 5.9, 123] <- 9
+X[(X[, 123] > -1) & (X[, 123] < 9), 123] <- 3
+
+res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding')
+res
+
+library('rpart')
+res2 <- rpart(Y ~ ., data = data.frame(X, Y), control = rpart.control(cp = 0.01, minsplit = 5, xval =1))
+res2
+
+
+X_branch <- X
+X_branch[, 1] <- 3
+
+X <- matrix(rnorm(10), nrow = 10, ncol = 10, byrow = TRUE)
+Y <- rnorm(10)
+
+SDTree(x = X, y = Y)
+
+
+
+sdf <- SDForest(x = X, y = Y, Q_type = 'no_deconfounding', nTree = 10)
+sdf$var_importance
+
+regPath(sdf, oob = T, X = X, Y = Y)
+prune(sdf, cp = 0.1)
+
