@@ -130,7 +130,7 @@ points(data$X[, data$j], predict(sdfda, data.frame(data$X)), col = '#84e64c', pc
 
 
 set.seed(2)
-data <- simulate_data_nonlinear(1, 1, 400, 1, a = 3)
+data <- simulate_data_nonlinear(1, 200, 200, 1, a = 3)
 X <- data$X
 Y <- data$Y
 
@@ -362,3 +362,21 @@ for(i in 1:100){
     X_gpu <- gpu.matrix(X)
     Y <- t(X_gpu) %*% X
 }
+
+
+
+sdf$oob_loss
+
+pred <- predictOOB(sdf, X_train)
+mean((Y_train - pred)**2)
+sdf$oob_loss
+
+
+sdf$X
+
+for(i in 1:100){
+    predict_outsample(sdf$forest[[i]]$tree, X_train)
+}
+
+
+sdf$oob_ind

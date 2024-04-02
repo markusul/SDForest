@@ -675,7 +675,7 @@ plot.SDTree <- function(object){
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5, max_size = 1000, gpu = FALSE){
+                     A = NULL, gamma = 0.5, max_size = 1000, gpu = FALSE, return_data = FALSE){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -753,15 +753,16 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                          function(train)c(1:n)[-train]), 
                          function(x) any(x == i)))))
 
-  oob_predictions <- unlist(lapply(1:n, function(i){
+  oob_predictions <- sapply(1:n, function(i){
     if(length(oob_ind[[i]]) == 0){
       return(NA)
     }
-    predictions <- lapply(oob_ind[[i]], function(model){
-      predict_outsample(res[[model]]$tree, X[i, ])
+    xi <- X[i, ]
+    predictions <- sapply(oob_ind[[i]], function(model){
+      predict_outsample(res[[model]]$tree, xi)
     })
-    return(mean(unlist(predictions)))
-  }))
+    return(mean(predictions))
+  })
 
   oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
   oob_loss <- loss(Y, oob_predictions)
@@ -782,9 +783,36 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
-                 oob_ind = oob_ind, X = X, Y = Y, Q = Q)
+                 oob_ind = oob_ind)
+  if(return_data){
+    output$X <- X
+    output$Y <- Y
+    output$Q <- Q
+  }
   class(output) <- 'SDForest'
   return(output)
+}
+
+predictOOB <- function(object, X = NULL){
+  if(is.null(X)){
+    X <- object$X
+  }
+  if(!is.matrix(X)) stop('X must be a matrix and either provided or in the object')
+
+  n <- nrow(X)
+  oob_ind <- object$oob_ind
+
+  oob_predictions <- sapply(1:n, function(i){
+    if(length(oob_ind[[i]]) == 0){
+      return(NA)
+    }
+    xi <- X[i, ]
+    predictions <- sapply(oob_ind[[i]], function(model){
+      predict_outsample(object$forest[[model]]$tree, xi)
+    })
+    return(mean(predictions))
+  })
+  return(oob_predictions)
 }
 
 predict.SDForest <- function(object, newdata){
