@@ -382,17 +382,20 @@ for(i in 1:100){
 sdf$oob_ind
 
 source("R/SDForest_gpu.r")
-X[X[, 123] < 0.1, 123] <- -1
-X[X[, 123] > 5.9, 123] <- 9
-X[(X[, 123] > -1) & (X[, 123] < 9), 123] <- 3
+set.seed(2)
+data <- simulate_data_nonlinear(1, 1000, 1000, 1)
+X <- data$X
+Y <- data$Y
 
-res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding')
+res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', gpu_size = 4e+08, gpu = T)
 res
 
+
 library('rpart')
-res2 <- rpart(Y ~ ., data = data.frame(X, Y), control = rpart.control(cp = 0.01, minsplit = 5, xval =1))
+res2 <- rpart(Y ~ ., data = data.frame(X, Y), control = rpart.control(cp = 0.01, minsplit = 10, xval =1))
 res2
 
+max(res$predictions - predict(res2, data.frame(X)))
 
 X_branch <- X
 X_branch[, 1] <- 3
@@ -402,10 +405,9 @@ Y <- rnorm(10)
 
 SDTree(x = X, y = Y)
 
-set.seed(2)
-data <- simulate_data_nonlinear(1, 100, 100, 1)
-X <- data$X
-Y <- data$Y
+
+
+fit1 <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding')
 
 
 

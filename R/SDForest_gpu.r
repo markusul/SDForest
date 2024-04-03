@@ -205,7 +205,7 @@ plot.condDependence <- function(object, n_examples = 19){
 
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 200, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5, gpu = FALSE){
+                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 2e+8){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -216,6 +216,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   p <- dim(X)[2]
 
   m <- max_leaves - 1
+  gpu_size <- gpu_size / n
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('max_leaves must be larger than 1')
@@ -306,9 +307,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
       all_n_splits <- apply(s, 2, function(x) length(unique(x)))
       all_idx <- cumsum(all_n_splits)
-      n_splits <- mean(all_n_splits)
 
-      
       #for(j in 1:p){
       #  eval <- matrix(0, nrow(s), 4)
       #  
@@ -345,12 +344,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       #print(n)
       #print(p)
       #print(nrow(s))
-      amount <- n * all_idx[p]
+      amount <- all_idx[p]
       if(is.na(amount)) amount <- Inf
-      #print(amount)
-      #print(amount < 2e+8)
-      if(amount < 2e+8){
-      #if(FALSE){
+      print(amount)
+      print(amount < gpu_size)
+      #if(amount < gpu_size){
+      if(FALSE){
         E_next <- matrix(0, n, all_idx[p])
         for(j in 1:p){
           s_j <- s[, j]
@@ -378,22 +377,65 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
       }else{
         eval <- matrix(-Inf, nrow(s), p)
-        
-        for(j in 1:p){
-          s_j <- s[, j]
-          s_j <- unique(s_j)
-          E_next <- matrix(0, n, all_n_splits[j])
-          for(i_s in 1:all_n_splits[j]){
-            #E_next[, j] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-            E_next[index[X_branch[, j] > s_j[i_s]], i_s] <- 1
+        done_splits <- 0
+        p_top <- 0
+        while(p_top < p){
+          c_all_idx <- all_idx - done_splits
+          p_low <- p_top + 1
+          possible <- which(c_all_idx < gpu_size)
+
+          p_top <- possible[length(possible)]
+          #p_top <- min(p_top, p)
+          print(p_low)
+          print(p_top)
+          c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
+          E_next <- matrix(0, n, c_n_splits)
+          for(j in p_low:p_top){
+            s_j <- s[, j]
+            s_j <- unique(s_j)
+            for(i_s in 1:all_n_splits[j]){
+              #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
+              #E_next[, (j - 1) * nrow(s) + i_s] <- E_branch * as.numeric(X[, j] > s[i_s, j])
+              #E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * n_splits + i_s] <- 1
+              E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
+            }
           }
-          #E_next <- E_branch * t(apply(X, 1, function(x) as.numeric(x > s[i_s, ])))
-          
+          if(gpu) E_next <- gpu.matrix(E_next)
+          print(dim(E_next))
           U_next_prime <- Q_temp %*% E_next
+          print(dim(U_next_prime))
           U_next_size <- colSums(U_next_prime ** 2)
           dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-          eval[1:all_n_splits[j], j] <- dloss
+          #eval <- matrix(dloss, n_splits, p)
+          
+          for(m in p_low:p_top){
+            #for(k in 1:all_n_splits[m]){
+            #  eval[k, m] <- dloss[sum(all_n_splits[0:(m-1)]) + k]
+            #}
+            #print(sum(all_n_splits[p_low-1], 1))
+            #print(all_n_splits[m])
+            eval[1:all_n_splits[m], m] <- dloss[sum(c_all_idx[m-1], 1):c_all_idx[m]]
+          }
+          done_splits <- done_splits + c_n_splits
         }
+
+        #eval <- matrix(-Inf, nrow(s), p)
+        #
+        #for(j in 1:p){
+        #  s_j <- s[, j]
+        #  s_j <- unique(s_j)
+        #  E_next <- matrix(0, n, all_n_splits[j])
+        #  for(i_s in 1:all_n_splits[j]){
+        #    #E_next[, j] <- E_branch * as.numeric(X[, j] > s[i_s, j])
+        #    E_next[index[X_branch[, j] > s_j[i_s]], i_s] <- 1
+        #  }
+        #  #E_next <- E_branch * t(apply(X, 1, function(x) as.numeric(x > s[i_s, ])))
+        #  
+        #  U_next_prime <- Q_temp %*% E_next
+        #  U_next_size <- colSums(U_next_prime ** 2)
+        #  dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+        #  eval[1:all_n_splits[j], j] <- dloss
+        #}
       }
       is_opt <- apply(eval, 2, which.max)
       memory[[branch]] <- t(sapply(1:p, function(j) c(eval[is_opt[j], j], j, unique(s[, j])[is_opt[j]], branch)))
@@ -710,7 +752,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
-  if(gpu & multicore) warning('gpu and multicore cannot be used together, no gpu is used in multicore mode')
+  if(gpu & multicore) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
@@ -754,8 +796,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     }else{
       cl <- parallel::makeCluster(n_cores)
       doParallel::registerDoParallel(cl)
-      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
-                                    "find_s", "evaluate_splitt", "loss", "predict_outsample", 
+      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
+                                    "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
@@ -807,9 +849,9 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
                  oob_ind = oob_ind)
   if(return_data){
-    output$X <- X
-    output$Y <- Y
-    output$Q <- Q
+    output$X <- as.matrix(X)
+    output$Y <- as.matrix(Y)
+    output$Q <- as.matrix(Q)
   }
   class(output) <- 'SDForest'
   return(output)
@@ -900,13 +942,13 @@ find_s <- function(X){
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
   # for runtime reasons
-  if(dim(s)[1] > 1000){
-    s <- s[seq(1, dim(s)[1], 20), ]
-  }else if (dim(s)[1] > 200) {
-    s <- s[seq(1, dim(s)[1], 5), ]
-  }else if (dim(s)[1] > 100) {
-    s <- s[seq(1, dim(s)[1], 2), ]
-  }
+  #if(dim(s)[1] > 1000){
+  #  s <- s[seq(1, dim(s)[1], 20), ]
+  #}else if (dim(s)[1] > 200) {
+  #  s <- s[seq(1, dim(s)[1], 5), ]
+  #}else if (dim(s)[1] > 100) {
+  #  s <- s[seq(1, dim(s)[1], 2), ]
+  #}
   
   if(is.null(dim(s))){
     #print('hallo2')
