@@ -216,7 +216,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   p <- dim(X)[2]
 
   m <- max_leaves - 1
-  gpu_size <- gpu_size / n
+  mem_size <- mem_size / n
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('max_leaves must be larger than 1')
@@ -308,139 +308,40 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       all_n_splits <- apply(s, 2, function(x) length(unique(x)))
       all_idx <- cumsum(all_n_splits)
 
-      #for(j in 1:p){
-      #  eval <- matrix(0, nrow(s), 4)
-      #  
-      #  for(i_s in 1:nrow(s)){
-      #    X_branch_j <- if(p == 1) X_branch else X_branch[, j]
-      #    if (sum(X_branch_j > s[i_s, j]) < min_sample | sum(X_branch_j <= s[i_s, j]) < min_sample){
-      #      eval[i_s, ] <- c(0, j, s[i_s, j], branch)
-      #    }
-      #    e_next <- matrix(0, n, 1)
-      #    e_next[index[X_branch_j > s[i_s, j]]] <- 1
-      #    u_next_prime <- Q_temp_cpu %*% e_next
-      #    u_next_size <- sum(u_next_prime ** 2)
-      #    dloss <- crossprod(u_next_prime, Y_tilde_cpu)**2 / u_next_size
-      #    eval[i_s, ] <- c(dloss, j, s[i_s, j], branch)
-      #  }
-      #  memory[[branch]][j, ] <- eval[which.max(eval[, 1]), ]
-      #}
-      #eval <- matrix(0, nrow(s), p)  
-      #E_next <- matrix(0, n, p)
-      #for(i_s in 1:nrow(s)){          
-      #  E_next <- E_next * 0
-      #  for(j in 1:p){
-      #    E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
-      #  }
-      #  
-      #  U_next_prime <- as.matrix(Q_temp %*% E_next)
-      #  U_next_size <- colSums(U_next_prime ** 2)
-      #  dloss <- as.matrix(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-      #  eval[i_s, ] <- dloss
-      #}
-      #is_opt <- apply(eval, 2, which.max)
-      #memory[[branch]] <- cbind(sapply(1:p, function(j) eval[is_opt[j], j]), 1:p, sapply(1:p, function(j) s[is_opt[j], j]), matrix(branch, p))
-      #print(dim(s))
-      #print(n)
-      #print(p)
-      #print(nrow(s))
-      amount <- all_idx[p]
-      if(is.na(amount)) amount <- Inf
-      print(amount)
-      print(amount < gpu_size)
-      #if(amount < gpu_size){
-      if(FALSE){
-        E_next <- matrix(0, n, all_idx[p])
-        for(j in 1:p){
+      eval <- matrix(-Inf, nrow(s), p)
+      done_splits <- 0
+      p_top <- 0
+      while(p_top < p){
+        c_all_idx <- all_idx - done_splits
+        p_low <- p_top + 1
+        possible <- which(c_all_idx < mem_size)
+        p_top <- possible[length(possible)]
+        #p_top <- min(p_top, p)
+        print(p_low)
+        print(p_top)
+        c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
+        E_next <- matrix(0, n, c_n_splits)
+        for(j in p_low:p_top){
           s_j <- s[, j]
           s_j <- unique(s_j)
           for(i_s in 1:all_n_splits[j]){
-            #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
-            #E_next[, (j - 1) * nrow(s) + i_s] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-            #E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * n_splits + i_s] <- 1
-            E_next[index[X_branch[, j] > s_j[i_s]], sum(all_idx[j-1], i_s)] <- 1
+            E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
           }
         }
+        if(gpu) E_next <- gpu.matrix(E_next)
 
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
         dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-        #eval <- matrix(dloss, n_splits, p)
-        eval <- matrix(-Inf, nrow(s), p)
-        for(m in 1:p){
-          #for(k in 1:all_n_splits[m]){
-          #  eval[k, m] <- dloss[sum(all_n_splits[0:(m-1)]) + k]
-          #}
-          eval[1:all_n_splits[m], m] <- dloss[sum(all_idx[m-1], 1):all_idx[m]]
+        
+        for(m in p_low:p_top){
+          eval[1:all_n_splits[m], m] <- dloss[sum(c_all_idx[m-1], 1):c_all_idx[m]]
         }
-
-
-      }else{
-        eval <- matrix(-Inf, nrow(s), p)
-        done_splits <- 0
-        p_top <- 0
-        while(p_top < p){
-          c_all_idx <- all_idx - done_splits
-          p_low <- p_top + 1
-          possible <- which(c_all_idx < gpu_size)
-
-          p_top <- possible[length(possible)]
-          #p_top <- min(p_top, p)
-          print(p_low)
-          print(p_top)
-          c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
-          E_next <- matrix(0, n, c_n_splits)
-          for(j in p_low:p_top){
-            s_j <- s[, j]
-            s_j <- unique(s_j)
-            for(i_s in 1:all_n_splits[j]){
-              #E_next[, j] <- E[, branch] * as.numeric(X[, j] > s[i_s, j])
-              #E_next[, (j - 1) * nrow(s) + i_s] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-              #E_next[index[X_branch[, j] > s[i_s, j]], (j - 1) * n_splits + i_s] <- 1
-              E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
-            }
-          }
-          if(gpu) E_next <- gpu.matrix(E_next)
-          print(dim(E_next))
-          U_next_prime <- Q_temp %*% E_next
-          print(dim(U_next_prime))
-          U_next_size <- colSums(U_next_prime ** 2)
-          dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-          #eval <- matrix(dloss, n_splits, p)
-          
-          for(m in p_low:p_top){
-            #for(k in 1:all_n_splits[m]){
-            #  eval[k, m] <- dloss[sum(all_n_splits[0:(m-1)]) + k]
-            #}
-            #print(sum(all_n_splits[p_low-1], 1))
-            #print(all_n_splits[m])
-            eval[1:all_n_splits[m], m] <- dloss[sum(c_all_idx[m-1], 1):c_all_idx[m]]
-          }
-          done_splits <- done_splits + c_n_splits
-        }
-
-        #eval <- matrix(-Inf, nrow(s), p)
-        #
-        #for(j in 1:p){
-        #  s_j <- s[, j]
-        #  s_j <- unique(s_j)
-        #  E_next <- matrix(0, n, all_n_splits[j])
-        #  for(i_s in 1:all_n_splits[j]){
-        #    #E_next[, j] <- E_branch * as.numeric(X[, j] > s[i_s, j])
-        #    E_next[index[X_branch[, j] > s_j[i_s]], i_s] <- 1
-        #  }
-        #  #E_next <- E_branch * t(apply(X, 1, function(x) as.numeric(x > s[i_s, ])))
-        #  
-        #  U_next_prime <- Q_temp %*% E_next
-        #  U_next_size <- colSums(U_next_prime ** 2)
-        #  dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
-        #  eval[1:all_n_splits[j], j] <- dloss
-        #}
+        done_splits <- done_splits + c_n_splits
       }
       is_opt <- apply(eval, 2, which.max)
       memory[[branch]] <- t(sapply(1:p, function(j) c(eval[is_opt[j], j], j, unique(s[, j])[is_opt[j]], branch)))
     }
-
 
     if(i > after_mtry && !is.null(mtry)){
       Losses_dec <- lapply(memory, function(branch){

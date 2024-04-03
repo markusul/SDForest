@@ -387,7 +387,7 @@ data <- simulate_data_nonlinear(1, 1000, 1000, 1)
 X <- data$X
 Y <- data$Y
 
-res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', gpu_size = 4e+08, gpu = T)
+res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', gpu = T)
 res
 
 
