@@ -383,9 +383,11 @@ sdf$oob_ind
 
 source("R/SDForest_gpu.r")
 set.seed(2)
-data <- simulate_data_nonlinear(1, 1000, 1000, 1)
+data <- simulate_data_nonlinear(1, 5, 1000, 1)
 X <- data$X
 Y <- data$Y
+
+X[, 1] <- 3
 
 res <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', gpu = T)
 res

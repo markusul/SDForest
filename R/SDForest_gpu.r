@@ -667,7 +667,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(W %*% X, Q_type, trim_quantile, confounding_dim, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim, gpu)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -843,13 +843,13 @@ find_s <- function(X){
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
 
   # for runtime reasons
-  #if(dim(s)[1] > 1000){
-  #  s <- s[seq(1, dim(s)[1], 20), ]
-  #}else if (dim(s)[1] > 200) {
-  #  s <- s[seq(1, dim(s)[1], 5), ]
-  #}else if (dim(s)[1] > 100) {
-  #  s <- s[seq(1, dim(s)[1], 2), ]
-  #}
+  if(dim(s)[1] > 1000){
+    s <- s[seq(1, dim(s)[1], 20), ]
+  }else if (dim(s)[1] > 200) {
+    s <- s[seq(1, dim(s)[1], 5), ]
+  }else if (dim(s)[1] > 100) {
+    s <- s[seq(1, dim(s)[1], 2), ]
+  }
   
   if(is.null(dim(s))){
     #print('hallo2')
