@@ -345,13 +345,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       #print(n)
       #print(p)
       #print(nrow(s))
-      amount <- n * p * n_splits
+      amount <- n * all_idx[p]
       if(is.na(amount)) amount <- Inf
       #print(amount)
       #print(amount < 2e+8)
       if(amount < 2e+8){
       #if(FALSE){
-        E_next <- matrix(0, n, p * all_idx[p])
+        E_next <- matrix(0, n, all_idx[p])
         for(j in 1:p){
           s_j <- s[, j]
           s_j <- unique(s_j)
@@ -362,6 +362,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
             E_next[index[X_branch[, j] > s_j[i_s]], sum(all_idx[j-1], i_s)] <- 1
           }
         }
+
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
         dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
@@ -427,7 +428,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     E[index_n_branches, i+1] <- 1
 
     E_tilde_branch <- E_tilde[, best_branch]
+    suppressWarnings({
     E_tilde[, best_branch] <- Q %*% E[, best_branch]
+    })
     E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
 
     #RcppEigen::fastLmPure(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
@@ -707,6 +710,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
+  if(gpu & multicore) warning('gpu and multicore cannot be used together, no gpu is used in multicore mode')
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
@@ -936,7 +940,7 @@ predict_outsample <- function(tree, X){
 
 loss <- function(Y, f_X){
   # MSE
-  return(sum((Y - f_X)^2) / length(Y))
+  return(as.numeric(sum((Y - f_X)^2) / length(Y)))
 }
 
 pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
@@ -995,7 +999,7 @@ prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
     if(is.null(Y)) Y <- forest$Y
     if(is.null(Q)) Q <- forest$Q
     if(is.null(X) | is.null(Y)){
-      stop('X, Y and Q must either be provided or in the object')
+      stop('X and Y must either be provided or in the object')
     }
 
     n <- length(Y)
@@ -1005,20 +1009,12 @@ prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
       warning('Q was not provided, using Identity matrix')
     }
 
-    oob_predictions <- unlist(lapply(1:n, function(i){
-      if(length(forest$oob_ind[[i]]) == 0){
-        return(NA)
-      }
-      predictions <- lapply(forest$oob_ind[[i]], function(model){
-        predict_outsample(forest$forest[[model]]$tree, X[i, ])
-      })
-      return(mean(unlist(predictions)))
-    }))
+    oob_predictions <- predictOOB(forest, X)
     forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
     forest$oob_loss <- loss(Y, oob_predictions)
 
     # predict with all trees
-    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, forest$X))}))
+    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, X))}))
     
     # use mean over trees as final prediction
     f_X_hat <- rowMeans(pred)
@@ -1054,14 +1050,14 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
       n_cores <- mc.cores
     }
     res <- parallel::mclapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X = NULL, Y = NULL, Q = NULL)
+      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
       return(list(var_importance = pruned_object$var_importance, 
                   oob_SDloss = pruned_object$oob_SDloss, 
                   oob_loss = pruned_object$oob_loss))}, 
                   mc.cores = n_cores)
   }else{
     res <- pbapply::pblapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X = NULL, Y = NULL, Q = NULL)
+      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
       return(list(var_importance = pruned_object$var_importance, 
                   oob_SDloss = pruned_object$oob_SDloss, 
                   oob_loss = pruned_object$oob_loss))})

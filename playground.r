@@ -402,11 +402,29 @@ Y <- rnorm(10)
 
 SDTree(x = X, y = Y)
 
+set.seed(2)
+data <- simulate_data_nonlinear(1, 100, 100, 1)
+X <- data$X
+Y <- data$Y
 
 
-sdf <- SDForest(x = X, y = Y, Q_type = 'no_deconfounding', nTree = 10)
+
+start <- Sys.time()
+sdf <- SDForest(x = X, y = Y, Q_type = 'no_deconfounding', gpu = T, multicore = T, return_data = F)
+end <- Sys.time()
+end - start
+
 sdf$var_importance
 
-regPath(sdf, oob = T, X = X, Y = Y)
-prune(sdf, cp = 0.1)
 
+path <- regPath(sdf, oob = T, X = X, Y = Y, multicore = T, mc.cores = 10)
+
+plotOOB(path)
+plot(path)
+
+path2 <- stabilitySelection(sdf, multicore = T, mc.cores = 10)
+plot(path2)
+
+prune(sdf, cp = 0.1, oob = T, X = X, Y = Y)
+
+predictOOB(sdf, X)
