@@ -432,3 +432,71 @@ plot(path2)
 prune(sdf, cp = 0.1, oob = T, X = X, Y = Y)
 
 predictOOB(sdf, X)
+
+true_function <- function(beta, js){
+    res <- list(beta = beta, js = js)
+    class(res) <- 'true_function'
+    return(res)
+}
+
+predict.true_function <- function(object, newdata){
+    f_X <- apply(newdata, 1, function(x) f_four(x, object$beta, object$js))
+    return(f_X)
+}
+
+plotDep <- function(object, n_examples = 19){
+  ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
+  preds <- object$preds
+  x_seq <- object$x_seq
+  
+  sample_examples <- sample(1:dim(preds)[2], n_examples)
+  for(i in sample_examples){
+      pred_data <- data.frame(x = x_seq, y = preds[, i])
+      ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
+  }
+
+  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
+                    ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
+  ggdep <- ggdep + ggplot2::geom_point(data = data.frame(x = object$xj, y = -5), 
+                    ggplot2::aes(x = x, y = y), col = 'black', size = 1,shape = 108)
+  ggdep <- ggdep + ggplot2::ylab('f(x)')
+  ggdep <- ggdep + ggplot2::xlim(quantile(object$xj, 0.05), quantile(object$xj, 0.95))
+  if(is.character(object$j)){
+    ggdep <- ggdep + ggplot2::xlab(object$j)
+  }else{
+    ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
+  }
+  ggdep + ggplot2::ylim(-5, 6)
+}
+
+
+source("R/SDForest.r")
+multicore <- T
+
+p <- 500
+n <- 500
+q <- 20
+
+n_test <- 500
+
+set.seed(22)
+data <- simulate_data_nonlinear(q, p, n + n_test, 4)
+data_test <- data
+data_test$Y <- data_test$Y[(n+1):(n+n_test)]
+data_test$X <- data_test$X[(n+1):(n+n_test),]
+data_test$f_X <- data_test$f_X[(n+1):(n+n_test)]
+
+data$X <- data$X[1:n,]
+data$Y <- matrix(data$Y[1:n])
+data$f_X <- data$f_X[1:n]
+
+
+true_f <- true_function(data$beta, data$j)
+
+dep_f_1 <- condDependence(true_f, data$j[1], data$X)
+dep_f_2 <- condDependence(true_f, data$j[2], data$X)
+dep_f_3 <- condDependence(true_f, data$j[3], data$X)
+dep_f_4 <- condDependence(true_f, data$j[4], data$X)
+
+
+grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, nrow = 2)

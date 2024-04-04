@@ -47,6 +47,8 @@ source('R/SDForest.r')
 library(gridExtra)
 library(ggplot2)
 library(ranger)
+library(ggsci)
+library(ggpubr)
 
 ##### default experiment #####
 
@@ -64,22 +66,45 @@ dep_f_3 <- condDependence(true_f, data$j[3], data$X)
 dep_f_4 <- condDependence(true_f, data$j[4], data$X)
 
 data$j
-sort(fit$var_importance, decreasing = T)[1:6]
-sort(fit2$variable.importance, decreasing = T)[1:6]
+imp_1 <- fit$var_importance / max(fit$var_importance)
+imp_2 <- fit2$variable.importance / max(fit2$variable.importance)
 
-plot(fit$var_importance / max(fit$var_importance), col = 'blue', 
+sort(imp_1, decreasing = T)[1:6]
+sort(imp_2, decreasing = T)[1:6]
+
+plot(imp_1, col = 'blue', 
   ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance', pch = 3)
-points(fit2$variable.importance / max(fit2$variable.importance), 
-  col = 'red', pch = 2)
+points(imp_2, col = 'red', pch = 2)
 points(data$j, rep(1, length(data$j)), col = 'green', pch = 20)
 
-grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), 
-  plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, 
-  top = 'Conditional dependence of the true function')
+true_imp <- rep('blue', length(imp_1))
+true_imp[data$j] <- 'green'
+plot(log(imp_1), log(imp_2), col = true_imp, pch = 20,
+  xlab = 'Variable importance SDForest', ylab = 'Variable importance ranger')
 
-grid.arrange(plotDep(dep_1), plotDep(dep_2), 
-  plotDep(dep_3), plotDep(dep_4), ncol = 2, 
-  top = 'Conditional dependence of the SDForest')
+
+ggdep1 <- plotDep(dep_1) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep2 <- plotDep(dep_2) + 
+  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep3 <- plotDep(dep_3) +
+  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep4 <- plotDep(dep_4) +
+  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
+  ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
 
 ranger_fit <- ranger_fun(fit2)
 
@@ -88,9 +113,28 @@ dep_r_2 <- condDependence(ranger_fit, data$j[2], data.frame(data$X))
 dep_r_3 <- condDependence(ranger_fit, data$j[3], data.frame(data$X))
 dep_r_4 <- condDependence(ranger_fit, data$j[4], data.frame(data$X))
 
-grid.arrange(plotDep(dep_r_1), plotDep(dep_r_2), 
-  plotDep(dep_r_3), plotDep(dep_r_4), ncol = 2, 
-  top = 'Conditional dependence of the ranger')
+ggdep1_r <- plotDep(dep_r_1) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep2_r <- plotDep(dep_r_2) +
+  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep3_r <- plotDep(dep_r_3) + 
+  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep4_r <- plotDep(dep_r_4) +
+  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 1.5) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggarrange(ggdep1_r, ggdep2_r, ggdep3_r, ggdep4_r,
+  ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
 
 gg_regpath <- ggplot()
 for(i in 1:ncol(reg_path$varImp_path)){
@@ -142,10 +186,12 @@ perf_n <- lapply(paste0('simulation_study/results/perf_n/', files),
 
 perf_n <- do.call(rbind, perf_n)
 
-ggplot(perf_n, aes(x = seq, y = error, col = method)) + 
-  geom_boxplot() + theme_bw() + xlab('Number of training samples') + 
-  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
+gg_n <- ggplot(perf_n, aes(x = seq, y = error, fill = method)) + 
+  geom_boxplot(outlier.size = 0.4) + theme_bw() + xlab('Number of training samples') + 
+  ylab('Mean squared error') + scale_fill_tron()
 
+gg_n
+ggsave(filename = "simulation_study/figures/n.jpeg", plot = gg_n, width = 6, height = 4)
 
 files <- list.files('simulation_study/results/perf_p')
 length(files)
@@ -155,10 +201,12 @@ perf_p <- lapply(paste0('simulation_study/results/perf_p/', files),
 
 perf_p <- do.call(rbind, perf_p)
 
-ggplot(perf_p, aes(x = seq, y = error, col = method)) + 
-  geom_boxplot() + theme_bw() + xlab('Number of features') + 
-  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
+gg_p <- ggplot(perf_p, aes(x = seq, y = error, fill = method)) + 
+  geom_boxplot(outlier.size = 0.4) + theme_bw() + xlab('Number of covariates') + 
+  ylab('Mean squared error') + scale_fill_tron()
 
+gg_p
+ggsave(filename = "simulation_study/figures/p.jpeg", plot = gg_p, width = 6, height = 4)
 
 
 
@@ -170,10 +218,12 @@ perf_q <- lapply(paste0('simulation_study/results/perf_q/', files),
 
 perf_q <- do.call(rbind, perf_q)
 
-ggplot(perf_q, aes(x = seq, y = error, col = method)) + 
-  geom_boxplot() + theme_bw() + xlab('Number of confounders') + 
-  ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
+gg_q <- ggplot(perf_q, aes(x = seq, y = error, fill = method)) + 
+  geom_boxplot(outlier.size = 0.4) + theme_bw() + xlab('Number of confounders') + 
+  ylab('Mean error') + scale_fill_tron()
+gg_q
 
+ggsave(filename = "simulation_study/figures/q.jpeg", plot = gg_q, width = 6, height = 4)
 
 files <- list.files('simulation_study/results/perf_max')
 length(files)
@@ -183,10 +233,12 @@ perf_max <- lapply(paste0('simulation_study/results/perf_max/', files),
 
 perf_max <- do.call(rbind, perf_max)
 
-ggplot(perf_max, aes(x = seq, y = error, col = method)) + 
-  geom_boxplot() + theme_bw() + xlab('Subsample size') + 
-  ylab('Mean error') + ggtitle('Performance of SDForest and ranger')
+gg_max <- ggplot(perf_max, aes(x = seq, y = error, fill = method)) + 
+  geom_boxplot(outlier.size = 0.4) + theme_bw() + xlab('Subsample size') + 
+  ylab('Mean error') + scale_fill_tron()
+gg_max
 
+ggsave(filename = "simulation_study/figures/max.jpeg", plot = gg_max, width = 6, height = 4)
 
 ##### Regularization performance #####
 
@@ -205,14 +257,16 @@ res_reg_l <- gather(res_reg_l, key = 'type', value = 'l', -cp)
 res <- merge(res_reg_mean, res_reg_u)
 res <- merge(res, res_reg_l)
 
-library(ggplot2)
 
-ggplot(res, aes(x = cp, y = mean)) + 
-  geom_line(aes(col = type)) + 
+gg_reg <- ggplot(res, aes(x = cp, y = mean)) + 
+  geom_line(aes(col = type, linetype = type)) + 
   geom_ribbon(aes(ymin = l, ymax = u, fill = type), alpha = 0.2) + 
-  theme_bw() + xlab('Complexity parameter') + ylab('Mean squared error') + 
-  ggtitle('Regularization performance of SDForest')
+  theme_bw() + xlab('Complexity parameter') + ylab('Mean squared error') +
+  guides(fill = guide_legend(title = NULL), linetype = guide_legend(title = NULL), 
+    col = guide_legend(title = NULL))
 
+gg_reg
+ggsave(filename = "simulation_study/figures/reg.jpeg", plot = gg_reg, width = 6, height = 4)
 
 
 #### Sparsity performance ####
@@ -224,6 +278,9 @@ perf_eff <- lapply(paste0('simulation_study/results/perf_eff/', files),
 
 perf_eff <- do.call(rbind, perf_eff)
 
-ggplot(perf_eff, aes(x = seq, y = error, col = method)) + 
-  geom_boxplot() + theme_bw() + xlab("Number of affected covariates") + 
-  ylab('Mean squared error') + ggtitle('Performance of SDForest and ranger')
+gg_eff <- ggplot(perf_eff, aes(x = seq, y = error, fill = method)) + 
+  geom_boxplot(outlier.size = 0.4) + theme_bw() + xlab("Number of affected covariates") + 
+  ylab('Mean squared error') + scale_fill_tron()
+
+gg_eff
+ggsave(filename = "simulation_study/figures/eff.jpeg", plot = gg_eff, width = 6, height = 4)
