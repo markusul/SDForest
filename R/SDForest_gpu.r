@@ -985,7 +985,7 @@ regPath <- function(object, ...) UseMethod('regPath')
 
 regPath.SDTree <- function(object, cp_seq = NULL){
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  res <- pbapply::pblapply(cp_seq, function(cp){
+  res <- lapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
     return(list(var_importance = pruned_object$var_importance))})
 
@@ -1023,10 +1023,10 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
 
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
-stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL, cp_seq = NULL){
+stabilitySelection.SDForest <- function(object, cp_seq = NULL){
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
 
-  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, multicore = multicore, mc.cores = mc.cores)$varImp_path > 0)
+  imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
 
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
