@@ -103,6 +103,8 @@ get_W <- function(A, gamma, gpu = FALSE){
 
 
 condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
+
+  j_name <- j
   if(is.character(j)){
     j <- which(names(X) == j)
   }
@@ -141,7 +143,7 @@ condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
-  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j, xj = X[, j])
+  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j_name, xj = X[, j])
   class(res) <- 'condDependence'
   return(res)
 }
