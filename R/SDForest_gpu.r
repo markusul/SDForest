@@ -935,8 +935,17 @@ prune.SDTree <- function(object, cp){
   return(object)
 }
 
-prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
-  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
+prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL, multicore = F, mc.cores = NULL){
+
+  if(multicore){
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    pruned_forest <- parallel::mclapply(forest$forest, function(x)prune(x, cp), mc.cores = n_cores)
+  }else{
+    pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
+  }
+   
   forest$forest <- pruned_forest
 
   if(oob){
@@ -974,9 +983,9 @@ prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
 
 regPath <- function(object, ...) UseMethod('regPath')
 
-regPath.SDTree <- function(object){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  res <- lapply(cp_seq, function(cp){
+regPath.SDTree <- function(object, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  res <- pbapply::pblapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
     return(list(var_importance = pruned_object$var_importance))})
 
@@ -987,26 +996,15 @@ regPath.SDTree <- function(object){
   return(paths)
 }
 
-regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
   
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    res <- parallel::mclapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))}, 
-                  mc.cores = n_cores)
-  }else{
-    res <- pbapply::pblapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))})
-  }
+
+  res <- pbapply::pblapply(cp_seq, function(cp){
+    pruned_object <- prune(object, cp, oob = oob, X, Y, Q, multicore, mc.cores)
+    return(list(var_importance = pruned_object$var_importance, 
+                oob_SDloss = pruned_object$oob_SDloss, 
+                oob_loss = pruned_object$oob_loss))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
   if(!oob){
@@ -1025,17 +1023,11 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
 
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
-stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL){
-  cp_seq <- regPath(object$forest[[1]])$cp
+stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
 
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    imp <- parallel::mclapply(object$forest, function(x)regPath(x)$varImp_path > 0, mc.cores = n_cores)
-  }else{
-    imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
-  }
+  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, multicore = multicore, mc.cores = mc.cores)$varImp_path > 0)
+
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
   names(imp) <- object$var_names
