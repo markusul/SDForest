@@ -142,7 +142,7 @@ for(i in 1:ncol(reg_path$varImp_path)){
     y = reg_path$varImp_path[, i]), aes(x = x, y = y), 
     col = if(i %in% data$j)'#d11010' else 'grey')
 }
-gg_regpath <- gg_regpath + theme_bw() + xlab('Complexity parameter') + 
+gg_regpath <- gg_regpath + theme_bw() + xlab('Regularization: cp') + 
   ylab('Variable importance') + ggtitle('Variable importance path')
 
 gg_regpath
@@ -153,7 +153,7 @@ for(i in 1:ncol(stable_path$varImp_path)){
     y = stable_path$varImp_path[, i]), aes(x = x, y = y), 
     col = if(i %in% data$j)'#d11010' else 'grey')
 }
-gg_stablepath <- gg_stablepath + theme_bw() + xlab('Complexity parameter: cp') + 
+gg_stablepath <- gg_stablepath + theme_bw() + xlab('Regularization: cp') + 
   ylab('Variable importance') + ggtitle('Stability selection path')
 
 gg_stablepath
@@ -261,7 +261,7 @@ res <- merge(res, res_reg_l)
 gg_reg <- ggplot(res, aes(x = cp, y = mean)) + 
   geom_line(aes(col = type, linetype = type)) + 
   geom_ribbon(aes(ymin = l, ymax = u, fill = type), alpha = 0.2) + 
-  theme_bw() + xlab('Complexity parameter') + ylab('Mean squared error') +
+  theme_bw() + xlab('Regularization: cp') + ylab('Mean squared error') +
   guides(fill = guide_legend(title = NULL), linetype = guide_legend(title = NULL), 
     col = guide_legend(title = NULL))
 
