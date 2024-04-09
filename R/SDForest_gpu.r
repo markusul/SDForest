@@ -8,6 +8,14 @@
 #library(igraph)
 #library(data.tree)
 library(GPUmatrix)
+
+if(installTorch()){
+  gpu_type <- 'torch'
+}else {
+  gpu_type <- 'tensorflow'
+}
+
+
 #' @importFrom Rdpack reprompt
 
 n_cores <- parallel::detectCores()
@@ -38,7 +46,7 @@ if(n_cores > 1 && n_cores <= 24){
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE){
   if(type == 'no_deconfounding') {
     Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q)
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
     return(Q)
   }
 
@@ -55,7 +63,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
   if(ncol(X) == 1){
     warning('only one covariate, no deconfounding possible')
     Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q)
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
     return(Q)
   }
 
@@ -77,7 +85,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
   # TODO: diag(1 - D_tilde) works only for p > 1
 
   U <- sv$u
-  if(gpu) U <- gpu.matrix(U)
+  if(gpu) U <- gpu.matrix(U, type = gpu_type)
 
   Q <- switch(modes[type], diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
                           { # pca
@@ -93,7 +101,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
 }
 
 get_W <- function(A, gamma, gpu = FALSE){
-  if(gpu) A <- gpu.matrix(A)
+  if(gpu) A <- gpu.matrix(A, type = gpu_type)
 
   Q_prime <- qr.Q(qr(A))
   Pi_A <- tcrossprod(Q_prime)
@@ -238,7 +246,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   }else {
     
     W <- diag(n)
-    if(gpu) W <- gpu.matrix(W)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   if(is.null(Q)){
@@ -254,7 +262,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   E_tilde <- matrix(rowSums(Q))
   if(gpu){
-    E_tilde <- gpu.matrix(E_tilde)
+    E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
   }
   
   
@@ -264,8 +272,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Y_tilde <- Q %*% Y
   
   # solve linear model
-  c_hat <- qr.coef(qr(E_tilde), Y_tilde)
-  c_hat <- as.numeric(c_hat)
+  if(gpu_type == 'tensorflow'){
+    c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+  }else{
+    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    c_hat <- as.numeric(c_hat)
+  }
 
   #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
 
@@ -330,7 +342,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
             E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
           }
         }
-        if(gpu) E_next <- gpu.matrix(E_next)
+        if(gpu) E_next <- gpu.matrix(E_next, type = gpu_type)
 
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
@@ -376,11 +388,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     suppressWarnings({
     E_tilde[, best_branch] <- Q %*% E[, best_branch]
     })
-    E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
+    E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
-    #RcppEigen::fastLmPure(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
-    #lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
-    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    if(gpu_type == 'tensorflow'){
+      c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+    }else{
+      c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    }
 
     u_next_prime <- Q_temp %*% E[, i + 1]
     u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
@@ -664,7 +678,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     W <- get_W(A, gamma, gpu)
   }else {
     W <- diag(n)
-    if(gpu) W <- gpu.matrix(W)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   # estimate spectral transformation
