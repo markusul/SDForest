@@ -470,11 +470,11 @@ plotDep <- function(object, n_examples = 19){
 }
 
 
-source("R/SDForest.r")
-multicore <- T
+source("R/SDForest_gpu.r")
+multicore <- F
 
-p <- 500
-n <- 500
+p <- 100
+n <- 100
 q <- 20
 
 n_test <- 500
@@ -490,13 +490,23 @@ data$X <- data$X[1:n,]
 data$Y <- matrix(data$Y[1:n])
 data$f_X <- data$f_X[1:n]
 
+colnames(data$X) <- paste('cov', 1:p, sep = '')
 
-true_f <- true_function(data$beta, data$j)
+fit <- SDForest(x = data$X, y = data$Y, return_data = T)
 
-dep_f_1 <- condDependence(true_f, data$j[1], data$X)
-dep_f_2 <- condDependence(true_f, data$j[2], data$X)
-dep_f_3 <- condDependence(true_f, data$j[3], data$X)
-dep_f_4 <- condDependence(true_f, data$j[4], data$X)
+fit_tree <- SDTree(x = data$X, y = data$Y)
 
+plot(regPath(fit_tree))
+prune(fit_tree, 0)
 
-grid.arrange(plotDep(dep_f_1), plotDep(dep_f_2), plotDep(dep_f_3), plotDep(dep_f_4), ncol = 2, nrow = 2)
+path <- regPath(fit, oob = F)
+plot(path, T, selection = which(fit$var_importance > 0.02))
+plotOOB(path)
+path$varImp_path
+
+fit$var_names
+stable_path <- stabilitySelection(fit)
+plot(stable_path)
+
+r <- regPath(fit$forest[[1]])
+r$varImp_path

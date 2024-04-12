@@ -330,9 +330,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
         p_low <- p_top + 1
         possible <- which(c_all_idx < mem_size)
         p_top <- possible[length(possible)]
-        #p_top <- min(p_top, p)
-        print(p_low)
-        print(p_top)
+
         c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
         E_next <- matrix(0, n, c_n_splits)
         for(j in p_low:p_top){
@@ -941,7 +939,6 @@ varImp.SDForest <- function(object){
 prune <- function(object, ...) UseMethod('prune')
 
 prune.SDTree <- function(object, cp){
-  object$tree <- data.tree::Clone(object$tree)
   data.tree::Prune(object$tree, function(x) x$cp > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
@@ -998,12 +995,16 @@ prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL, mu
 regPath <- function(object, ...) UseMethod('regPath')
 
 regPath.SDTree <- function(object, cp_seq = NULL){
+  object$tree <- data.tree::Clone(object$tree)
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
+
   res <- lapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
     return(list(var_importance = pruned_object$var_importance))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
+  colnames(varImp_path) <- object$var_names
 
   paths <- list(cp = cp_seq, varImp_path = varImp_path)
   class(paths) <- 'paths'
@@ -1012,7 +1013,11 @@ regPath.SDTree <- function(object, cp_seq = NULL){
 
 regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  
+  cp_seq <- sort(cp_seq)
+  object$forest <- lapply(object$forest, function(tree){
+    tree$tree <- data.tree::Clone(tree$tree)
+    return(tree)
+    })
 
   res <- pbapply::pblapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp, oob = oob, X, Y, Q, multicore, mc.cores)
@@ -1021,6 +1026,7 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
                 oob_loss = pruned_object$oob_loss))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
+  colnames(varImp_path) <- object$var_names
   if(!oob){
     paths <- list(cp = cp_seq, varImp_path = varImp_path)
     class(paths) <- 'paths'
@@ -1039,19 +1045,25 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
 stabilitySelection.SDForest <- function(object, cp_seq = NULL){
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
 
-  imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
+  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, cp_seq)$varImp_path > 0)
 
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
-  names(imp) <- object$var_names
+  colnames(imp) <- object$var_names
   paths <- list(cp = cp_seq, varImp_path = imp)
   class(paths) <- 'paths'
   return(paths)
 }
 
-plot.paths <- function(object, plotly = F){
-  imp_data <- data.frame(object$varImp_path, cp = object$cp)
+plot.paths <- function(object, plotly = F, selection = NULL){
+  varImp_path <- object$varImp_path
+  if(!is.null(selection)){
+    varImp_path <- varImp_path[, selection]
+  }
+
+  imp_data <- data.frame(varImp_path, cp = object$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
   
   gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
