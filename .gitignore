@@ -1,5 +1,6 @@
 /slurm
 /outfiles
+/results
 
 # History files
 .Rhistory

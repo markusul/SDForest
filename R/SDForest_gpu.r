@@ -8,6 +8,14 @@
 #library(igraph)
 #library(data.tree)
 library(GPUmatrix)
+
+if(installTorch()){
+  gpu_type <- 'torch'
+}else {
+  gpu_type <- 'tensorflow'
+}
+
+
 #' @importFrom Rdpack reprompt
 
 n_cores <- parallel::detectCores()
@@ -38,7 +46,7 @@ if(n_cores > 1 && n_cores <= 24){
 get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE){
   if(type == 'no_deconfounding') {
     Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q)
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
     return(Q)
   }
 
@@ -55,7 +63,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
   if(ncol(X) == 1){
     warning('only one covariate, no deconfounding possible')
     Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q)
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
     return(Q)
   }
 
@@ -77,7 +85,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
   # TODO: diag(1 - D_tilde) works only for p > 1
 
   U <- sv$u
-  if(gpu) U <- gpu.matrix(U)
+  if(gpu) U <- gpu.matrix(U, type = gpu_type)
 
   Q <- switch(modes[type], diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
                           { # pca
@@ -93,7 +101,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE
 }
 
 get_W <- function(A, gamma, gpu = FALSE){
-  if(gpu) A <- gpu.matrix(A)
+  if(gpu) A <- gpu.matrix(A, type = gpu_type)
 
   Q_prime <- qr.Q(qr(A))
   Pi_A <- tcrossprod(Q_prime)
@@ -103,14 +111,18 @@ get_W <- function(A, gamma, gpu = FALSE){
 
 
 condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
+
+  j_name <- j
   if(is.character(j)){
     j <- which(names(X) == j)
   }
 
   if(is.null(X)){
-    X <- data.frame(object$X)
+    X <- object$X
     if(is.null(X)) stop('X must be provided if it is not part of the object')
+    
   }
+  X <- data.frame(X)
 
   if(!is.numeric(j)) stop('j must be a numeric or character')
   if(j > ncol(X)) stop('j must be smaller than p')
@@ -141,7 +153,7 @@ condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
-  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j, xj = X[, j])
+  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j_name, xj = X[, j])
   class(res) <- 'condDependence'
   return(res)
 }
@@ -236,7 +248,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   }else {
     
     W <- diag(n)
-    if(gpu) W <- gpu.matrix(W)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   if(is.null(Q)){
@@ -252,7 +264,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   E_tilde <- matrix(rowSums(Q))
   if(gpu){
-    E_tilde <- gpu.matrix(E_tilde)
+    E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
   }
   
   
@@ -262,8 +274,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Y_tilde <- Q %*% Y
   
   # solve linear model
-  c_hat <- qr.coef(qr(E_tilde), Y_tilde)
-  c_hat <- as.numeric(c_hat)
+  if(gpu_type == 'tensorflow'){
+    c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+  }else{
+    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    c_hat <- as.numeric(c_hat)
+  }
 
   #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
 
@@ -316,9 +332,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
         p_low <- p_top + 1
         possible <- which(c_all_idx < mem_size)
         p_top <- possible[length(possible)]
-        #p_top <- min(p_top, p)
-        print(p_low)
-        print(p_top)
+
         c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
         E_next <- matrix(0, n, c_n_splits)
         for(j in p_low:p_top){
@@ -328,7 +342,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
             E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
           }
         }
-        if(gpu) E_next <- gpu.matrix(E_next)
+        if(gpu) E_next <- gpu.matrix(E_next, type = gpu_type)
 
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
@@ -374,11 +388,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     suppressWarnings({
     E_tilde[, best_branch] <- Q %*% E[, best_branch]
     })
-    E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
+    E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
-    #RcppEigen::fastLmPure(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
-    #lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
-    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    if(gpu_type == 'tensorflow'){
+      c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+    }else{
+      c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    }
 
     u_next_prime <- Q_temp %*% E[, i + 1]
     u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
@@ -662,7 +678,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     W <- get_W(A, gamma, gpu)
   }else {
     W <- diag(n)
-    if(gpu) W <- gpu.matrix(W)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   # estimate spectral transformation
@@ -925,7 +941,6 @@ varImp.SDForest <- function(object){
 prune <- function(object, ...) UseMethod('prune')
 
 prune.SDTree <- function(object, cp){
-  object$tree <- data.tree::Clone(object$tree)
   data.tree::Prune(object$tree, function(x) x$cp > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
@@ -933,8 +948,17 @@ prune.SDTree <- function(object, cp){
   return(object)
 }
 
-prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
-  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
+prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL, multicore = F, mc.cores = NULL){
+
+  if(multicore){
+    if(!is.null(mc.cores)){
+      n_cores <- mc.cores
+    }
+    pruned_forest <- parallel::mclapply(forest$forest, function(x)prune(x, cp), mc.cores = n_cores)
+  }else{
+    pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
+  }
+   
   forest$forest <- pruned_forest
 
   if(oob){
@@ -972,41 +996,39 @@ prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL){
 
 regPath <- function(object, ...) UseMethod('regPath')
 
-regPath.SDTree <- function(object){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+regPath.SDTree <- function(object, cp_seq = NULL){
+  object$tree <- data.tree::Clone(object$tree)
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
+
   res <- lapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
     return(list(var_importance = pruned_object$var_importance))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
+  colnames(varImp_path) <- object$var_names
 
   paths <- list(cp = cp_seq, varImp_path = varImp_path)
   class(paths) <- 'paths'
   return(paths)
 }
 
-regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    res <- parallel::mclapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))}, 
-                  mc.cores = n_cores)
-  }else{
-    res <- pbapply::pblapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob, X, Y, Q)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))})
-  }
+regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
+  object$forest <- lapply(object$forest, function(tree){
+    tree$tree <- data.tree::Clone(tree$tree)
+    return(tree)
+    })
+
+  res <- pbapply::pblapply(cp_seq, function(cp){
+    pruned_object <- prune(object, cp, oob = oob, X, Y, Q, multicore, mc.cores)
+    return(list(var_importance = pruned_object$var_importance, 
+                oob_SDloss = pruned_object$oob_SDloss, 
+                oob_loss = pruned_object$oob_loss))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
+  colnames(varImp_path) <- object$var_names
   if(!oob){
     paths <- list(cp = cp_seq, varImp_path = varImp_path)
     class(paths) <- 'paths'
@@ -1023,27 +1045,27 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
 
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
-stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL){
-  cp_seq <- regPath(object$forest[[1]])$cp
+stabilitySelection.SDForest <- function(object, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
 
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    imp <- parallel::mclapply(object$forest, function(x)regPath(x)$varImp_path > 0, mc.cores = n_cores)
-  }else{
-    imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
-  }
+  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, cp_seq)$varImp_path > 0)
+
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
-  names(imp) <- object$var_names
+  colnames(imp) <- object$var_names
   paths <- list(cp = cp_seq, varImp_path = imp)
   class(paths) <- 'paths'
   return(paths)
 }
 
-plot.paths <- function(object, plotly = F){
-  imp_data <- data.frame(object$varImp_path, cp = object$cp)
+plot.paths <- function(object, plotly = F, selection = NULL){
+  varImp_path <- object$varImp_path
+  if(!is.null(selection)){
+    varImp_path <- varImp_path[, selection]
+  }
+
+  imp_data <- data.frame(varImp_path, cp = object$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
   
   gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
