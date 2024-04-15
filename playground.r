@@ -350,7 +350,7 @@ X_gpu <- gpu.matrix(X)
 X_gpu@type
 X_gpu %*% t(X_gpu)
 
-rm(X)
+
 gc()
 X_gpu <- as.matrix(X_gpu)
 
