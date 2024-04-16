@@ -215,7 +215,7 @@ plot.condDependence <- function(object, n_examples = 19){
 
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 200, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 2e+8){
+                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -653,7 +653,7 @@ plot.SDTree <- function(object){
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5, max_size = 1000, gpu = FALSE, return_data = FALSE){
+                     A = NULL, gamma = 0.5, max_size = 1000, gpu = FALSE, return_data = FALSE, mem_size = 1e+7){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -706,7 +706,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
                                             trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                            A = A[i, ], gamma = gamma), 
+                                            A = A[i, ], gamma = gamma, mem_size = mem_size), 
                                             mc.cores = n_cores)
     }else{
       cl <- parallel::makeCluster(n_cores)
@@ -716,14 +716,14 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                  A = A[i, ], gamma = gamma))
+                  A = A[i, ], gamma = gamma, mem_size = mem_size))
       parallel::stopCluster(cl = cl)
     }
   }else{
     res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                              A = A[i, ], gamma = gamma, gpu = gpu))
+                                              A = A[i, ], gamma = gamma, gpu = gpu, mem_size = mem_size))
   }
 
   # ensemble predictions for each observation
