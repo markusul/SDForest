@@ -65,46 +65,50 @@ dep_f_2 <- condDependence(true_f, data$j[2], data$X)
 dep_f_3 <- condDependence(true_f, data$j[3], data$X)
 dep_f_4 <- condDependence(true_f, data$j[4], data$X)
 
-data$j
 imp_1 <- fit$var_importance / max(fit$var_importance)
 imp_2 <- fit2$variable.importance / max(fit2$variable.importance)
+true_imp <- rep('spurious', length(imp_1))
+true_imp[data$j] <- 'causal'
 
-sort(imp_1, decreasing = T)[1:6]
-sort(imp_2, decreasing = T)[1:6]
+imp_data <- data.frame(SDF = imp_1, ranger = imp_2, Covariates = as.factor(true_imp))
 
-plot(imp_1, col = 'blue', 
-  ylim = c(0, 1), xlab = 'Variable', ylab = 'Variable importance', pch = 3)
-points(imp_2, col = 'red', pch = 2)
-points(data$j, rep(1, length(data$j)), col = 'green', pch = 20)
+ggimp <- ggplot(imp_data, aes(x = SDF, y = ranger, col = Covariates)) + 
+  geom_point(size = 0.5) + theme_bw() + xlab('Variable importance SDForest') + 
+  ylab('Variable importance ranger') + scale_color_tron() + ggtitle('Normalized to [0, 1]')
 
-true_imp <- rep('blue', length(imp_1))
-true_imp[data$j] <- 'green'
-plot(log(imp_1), log(imp_2), col = true_imp, pch = 20,
-  xlab = 'Variable importance SDForest', ylab = 'Variable importance ranger')
+ggimp_log <- ggplot(imp_data, aes(x = log(SDF), y = log(ranger), col = Covariates)) + 
+  geom_point(size = 0.5) + theme_bw() + xlab('Variable importance SDForest') + 
+  ylab('Variable importance ranger') + scale_color_tron() + ggtitle('Logarithmic scale')
 
+gg_imp <- ggarrange(ggimp, ggimp_log, ncol = 2, nrow = 1, common.legend = T, legend = 'bottom')
+gg_imp
+
+ggsave(filename = "simulation_study/figures/imp.jpeg", plot = gg_imp, width = 6, height = 4)
 
 ggdep1 <- plotDep(dep_1) + 
-  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep2 <- plotDep(dep_2) + 
-  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep3 <- plotDep(dep_3) +
-  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep4 <- plotDep(dep_4) +
-  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
-ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
+gg_cond_rf <- ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
   ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
+
+ggsave(filename = "simulation_study/figures/cond_rf.jpeg", plot = gg_cond_rf, width = 6, height = 4)
 
 ranger_fit <- ranger_fun(fit2)
 
@@ -114,27 +118,29 @@ dep_r_3 <- condDependence(ranger_fit, data$j[3], data.frame(data$X))
 dep_r_4 <- condDependence(ranger_fit, data$j[4], data.frame(data$X))
 
 ggdep1_r <- plotDep(dep_r_1) + 
-  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep2_r <- plotDep(dep_r_2) +
-  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep3_r <- plotDep(dep_r_3) + 
-  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
 ggdep4_r <- plotDep(dep_r_4) +
-  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 1.5) + 
+  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 0.2) + 
   ggplot2::labs(col = "") + 
   ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
 
-ggarrange(ggdep1_r, ggdep2_r, ggdep3_r, ggdep4_r,
+gg_cond_r <- ggarrange(ggdep1_r, ggdep2_r, ggdep3_r, ggdep4_r,
   ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
+
+ggsave(filename = "simulation_study/figures/cond_r.jpeg", plot = gg_cond_r, width = 6, height = 4)
 
 gg_regpath <- ggplot()
 for(i in 1:ncol(reg_path$varImp_path)){
@@ -143,9 +149,11 @@ for(i in 1:ncol(reg_path$varImp_path)){
     col = if(i %in% data$j)'#d11010' else 'grey')
 }
 gg_regpath <- gg_regpath + theme_bw() + xlab('Regularization: cp') + 
-  ylab('Variable importance') + ggtitle('Variable importance path')
+  ylab('Variable importance') + ggtitle('Variable importance path') +
+  xlim(0, 0.5)
 
 gg_regpath
+
 
 gg_stablepath <- ggplot()
 for(i in 1:ncol(stable_path$varImp_path)){
@@ -153,10 +161,16 @@ for(i in 1:ncol(stable_path$varImp_path)){
     y = stable_path$varImp_path[, i]), aes(x = x, y = y), 
     col = if(i %in% data$j)'#d11010' else 'grey')
 }
-gg_stablepath <- gg_stablepath + theme_bw() + xlab('Regularization: cp') + 
-  ylab('Variable importance') + ggtitle('Stability selection path')
+gg_stablepath <- gg_stablepath + theme_bw() + xlab('Regularization') + 
+  ylab(expression(Pi)) + ggtitle('Stability selection path') +
+  xlim(0, 0.5)
 
 gg_stablepath
+
+gg_paths <- grid.arrange(gg_regpath, gg_stablepath, ncol = 2)
+gg_paths
+
+ggsave(filename = "simulation_study/figures/paths.jpeg", plot = gg_paths, width = 6, height = 4)
 
 ##### Performance depending on the dimensions #####
 agg_fun <- function(x){
@@ -261,7 +275,7 @@ res <- merge(res, res_reg_l)
 gg_reg <- ggplot(res, aes(x = cp, y = mean)) + 
   geom_line(aes(col = type, linetype = type)) + 
   geom_ribbon(aes(ymin = l, ymax = u, fill = type), alpha = 0.2) + 
-  theme_bw() + xlab('Regularization: cp') + ylab('Mean squared error') +
+  theme_bw() + xlab('Regularization: cp') + ylab('Error') +
   guides(fill = guide_legend(title = NULL), linetype = guide_legend(title = NULL), 
     col = guide_legend(title = NULL))
 
