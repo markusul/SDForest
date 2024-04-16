@@ -215,7 +215,7 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @export
 
 
-SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 200, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
+SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 500, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
                    A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 2e+8){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
@@ -652,7 +652,7 @@ plot.SDTree <- function(object){
 }
 
 #### SDForest functions ####
-SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
+SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 5000, 
                      cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
                      A = NULL, gamma = 0.5, max_size = 1000, gpu = FALSE, return_data = FALSE){
@@ -948,46 +948,38 @@ prune.SDTree <- function(object, cp){
   return(object)
 }
 
-prune.SDForest <- function(forest, cp, oob = T, X = NULL, Y = NULL, Q = NULL, multicore = F, mc.cores = NULL){
-
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    pruned_forest <- parallel::mclapply(forest$forest, function(x)prune(x, cp), mc.cores = n_cores)
-  }else{
-    pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
-  }
-   
+prune.SDForest <- function(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = T){
+  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
   forest$forest <- pruned_forest
 
-  if(oob){
-    if(is.null(X)) X <- forest$X
-    if(is.null(Y)) Y <- forest$Y
-    if(is.null(Q)) Q <- forest$Q
-    if(is.null(X) | is.null(Y)){
-      stop('X and Y must either be provided or in the object')
-    }
+  if(is.null(X)) X <- forest$X
+  if(is.null(Y)) Y <- forest$Y
+  if(is.null(Q)) Q <- forest$Q
+  if(is.null(X) | is.null(Y)){
+    stop('X and Y must either be provided or in the object')
+  }
 
-    n <- length(Y)
+  n <- length(Y)
 
-    if(is.null(Q)) {
-      Q <- diag(n)
-      warning('Q was not provided, using Identity matrix')
-    }
+  if(is.null(Q)) {
+    Q <- diag(n)
+    warning('Q was not provided, using Identity matrix')
+  }
 
-    oob_predictions <- predictOOB(forest, X)
-    forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
-    forest$oob_loss <- loss(Y, oob_predictions)
+  oob_predictions <- predictOOB(forest, X)
+  forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+  forest$oob_loss <- loss(Y, oob_predictions)
 
+  if(pred){
     # predict with all trees
     pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, X))}))
-    
+      
     # use mean over trees as final prediction
     f_X_hat <- rowMeans(pred)
     forest$predictions <- f_X_hat
+  }else {
+    forest$predictions <- NULL
   }
-
   # variable importance
   forest$var_importance <- rowMeans(as.matrix(sapply(forest$forest, function(x){matrix(x$var_importance)})))  
 
@@ -1013,7 +1005,7 @@ regPath.SDTree <- function(object, cp_seq = NULL){
   return(paths)
 }
 
-regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
+regPath.SDForest <- function(object, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
   if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
   cp_seq <- sort(cp_seq)
   object$forest <- lapply(object$forest, function(tree){
@@ -1022,19 +1014,14 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL, X 
     })
 
   res <- pbapply::pblapply(cp_seq, function(cp){
-    pruned_object <- prune(object, cp, oob = oob, X, Y, Q, multicore, mc.cores)
+    pruned_object <- prune(object, cp, X, Y, Q, pred = F)
     return(list(var_importance = pruned_object$var_importance, 
                 oob_SDloss = pruned_object$oob_SDloss, 
                 oob_loss = pruned_object$oob_loss))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
   colnames(varImp_path) <- object$var_names
-  if(!oob){
-    paths <- list(cp = cp_seq, varImp_path = varImp_path)
-    class(paths) <- 'paths'
-    return(paths)
-  }
-  
+
   loss_path <- t(sapply(res, function(x)c(x$oob_SDloss, x$oob_loss)))
   colnames(loss_path) <- c('oob SDE', 'oob MSE')
   paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path, 
@@ -1059,7 +1046,7 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL){
   return(paths)
 }
 
-plot.paths <- function(object, plotly = F, selection = NULL){
+plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
   varImp_path <- object$varImp_path
   if(!is.null(selection)){
     varImp_path <- varImp_path[, selection]
@@ -1067,12 +1054,26 @@ plot.paths <- function(object, plotly = F, selection = NULL){
 
   imp_data <- data.frame(varImp_path, cp = object$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
+
+  if(log_scale){
+    imp_data$importance <- log(imp_data$importance + 1)
+  }
   
   gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
       ggplot2::geom_line() + 
-      ggplot2::theme_bw()
+      ggplot2::theme_bw() + 
+      ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), sides = 'b', col = '#949494')
+
+  if(!is.null(object$cp_min)){
+    gg_path <- gg_path + ggplot2::geom_vline(xintercept = object$cp_min, linetype = 'dashed')
+  }
 
   if(plotly) return(plotly::ggplotly(gg_path))
+
+  if(length(unique(imp_data$covariate)) > 20){
+    gg_path <- gg_path + ggplot2::theme(legend.position = 'none')
+  }
+
   return(gg_path)
 }
 

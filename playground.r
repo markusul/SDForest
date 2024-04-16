@@ -481,15 +481,14 @@ plotDep <- function(object, n_examples = 19){
 
 
 source("R/SDForest_gpu.r")
-multicore <- F
 
 p <- 100
-n <- 100
+n <- 300
 q <- 20
 
 n_test <- 500
 
-set.seed(2024)
+#set.seed(2024)
 data <- simulate_data_nonlinear(q, p, n + n_test, 4)
 data_test <- data
 data_test$Y <- data_test$Y[(n+1):(n+n_test)]
@@ -502,21 +501,98 @@ data$f_X <- data$f_X[1:n]
 
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
-fit <- SDForest(x = data$X, y = data$Y, return_data = T)
+set.seed(42)
+fit <- SDForest(x = data$X, y = data$Y, return_data = T, gpu = T)
+set.seed(42)
+fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, gpu = T, trim_quantile = 0.2)
 
-fit_tree <- SDTree(x = data$X, y = data$Y)
 
-plot(regPath(fit_tree))
-prune(fit_tree, 0)
+data$j
+sort(fit$var_importance, decreasing = T)[1:6]
+sort(fit2$var_importance, decreasing = T)[1:6]
 
-path <- regPath(fit, oob = F)
-plot(path, T, selection = which(fit$var_importance > 0.02))
+path <- regPath(fit)
+path2 <- regPath(fit2)
+
+plot(path, log_scale = T)
+plot(path2)
+
 plotOOB(path)
-path$varImp_path
+plotOOB(path2)
 
-fit$var_names
-stable_path <- stabilitySelection(fit)
-plot(stable_path)
+spath <- stabilitySelection(fit)
+spath2 <- stabilitySelection(fit2)
 
-r <- regPath(fit$forest[[1]])
-r$varImp_path
+plot(spath)
+plot(spath2)
+
+
+
+true_f <- true_function(data$beta, data$j)
+
+dep_f_1 <- condDependence(true_f, data$j[1], data$X)
+dep_f_2 <- condDependence(true_f, data$j[2], data$X)
+dep_f_3 <- condDependence(true_f, data$j[3], data$X)
+dep_f_4 <- condDependence(true_f, data$j[4], data$X)
+
+dep_1 <- condDependence(fit, data$j[1], multicore = T)
+dep_2 <- condDependence(fit, data$j[2], multicore = T)
+dep_3 <- condDependence(fit, data$j[3], multicore = T)
+dep_4 <- condDependence(fit, data$j[4], multicore = T)
+
+library(ggplot2)
+library(ggpubr)
+ggdep1 <- plotDep(dep_1) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 0.2) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep2 <- plotDep(dep_2) + 
+  geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 0.2) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep3 <- plotDep(dep_3) +
+  geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 0.2) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep4 <- plotDep(dep_4) +
+  geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 0.2) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+gg_cond_rf <- ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
+  ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
+gg_cond_rf
+
+
+dep2_1 <- condDependence(fit2, data$j[1], multicore = T)
+dep2_2 <- condDependence(fit2, data$j[2], multicore = T)
+dep2_3 <- condDependence(fit2, data$j[3], multicore = T)
+dep2_4 <- condDependence(fit2, data$j[4], multicore = T)
+
+ggdep1 <- plotDep(dep2_1) + 
+  geom_line(aes(x = dep_f_1$x_seq, y = dep_f_1$preds_mean, col = 'red'), linewidth = 0.2) + 
+  ggplot2::labs(col = "") + 
+  ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep2 <- plotDep(dep2_2) +
+    geom_line(aes(x = dep_f_2$x_seq, y = dep_f_2$preds_mean, col = 'red'), linewidth = 0.2) + 
+    ggplot2::labs(col = "") + 
+    ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep3 <- plotDep(dep2_3) + 
+    geom_line(aes(x = dep_f_3$x_seq, y = dep_f_3$preds_mean, col = 'red'), linewidth = 0.2) + 
+    ggplot2::labs(col = "") + 
+    ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+ggdep4 <- plotDep(dep2_4) + 
+    geom_line(aes(x = dep_f_4$x_seq, y = dep_f_4$preds_mean, col = 'red'), linewidth = 0.2) + 
+    ggplot2::labs(col = "") + 
+    ggplot2::scale_color_manual(values = c("red"), labels = c("True Function"))
+
+gg_cond_rf2 <- ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
+    ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
+gg_cond_rf2
+
