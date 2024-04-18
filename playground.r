@@ -383,7 +383,7 @@ sdf$oob_ind
 
 source("R/SDForest_gpu.r")
 set.seed(2)
-data <- simulate_data_nonlinear(1, 5, 1000, 1)
+data <- simulate_data_nonlinear(1, 400, 100, 5)
 X <- data$X
 Y <- data$Y
 
@@ -482,8 +482,8 @@ plotDep <- function(object, n_examples = 19){
 
 source("R/SDForest_gpu.r")
 
-p <- 100
-n <- 300
+p <- 1000
+n <- 100
 q <- 20
 
 n_test <- 500
@@ -502,9 +502,9 @@ data$f_X <- data$f_X[1:n]
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
 set.seed(42)
-fit <- SDForest(x = data$X, y = data$Y, return_data = T, gpu = T)
+fit <- SDForest(x = data$X, y = data$Y, return_data = T, mtry = 900)
 set.seed(42)
-fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, gpu = T, trim_quantile = 0.2)
+fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, mtry = 5)
 
 
 data$j
@@ -519,6 +519,13 @@ plot(path2)
 
 plotOOB(path)
 plotOOB(path2)
+
+prune(fit, cp = path$cp_min)
+fit$forest
+
+prune(fit2, cp = path2$cp_min)
+fit2$forest
+
 
 spath <- stabilitySelection(fit)
 spath2 <- stabilitySelection(fit2)

@@ -764,7 +764,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
-                 oob_ind = oob_ind)
+                 oob_ind = oob_ind, oo_predictions = oob_predictions)
   if(return_data){
     output$X <- as.matrix(X)
     output$Y <- as.matrix(Y)
