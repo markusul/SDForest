@@ -941,7 +941,7 @@ varImp.SDForest <- function(object){
 prune <- function(object, ...) UseMethod('prune')
 
 prune.SDTree <- function(object, cp){
-  data.tree::Prune(object$tree, function(x) x$cp > cp)
+  data.tree::Prune(object$tree, function(x) max(x$Get('cp')) > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
   object$var_importance <- varImp(object)
