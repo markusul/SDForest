@@ -473,6 +473,15 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
 
+  # cp max of all splits after
+  #tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+  #tree$Do(function(node) {
+  #  cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+  #  node$children[[1]]$cp_max <- cp_max
+  #  node$children[[2]]$cp_max <- cp_max
+  #  }, filterFun = data.tree::isNotLeaf
+  #)
+
   res <- list(predictions = f_X_hat, tree = tree, var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'
   return(res)
@@ -941,7 +950,9 @@ varImp.SDForest <- function(object){
 prune <- function(object, ...) UseMethod('prune')
 
 prune.SDTree <- function(object, cp){
-  data.tree::Prune(object$tree, function(x) max(x$Get('cp')) > cp)
+  #data.tree::Prune(object$tree, function(x) max(x$Get('cp')) > cp)
+  #data.tree::Prune(object$tree, function(x) x$cp > cp)
+  data.tree::Prune(object$tree, function(x) x$cp_max > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
   object$var_importance <- varImp(object)
@@ -1212,4 +1223,18 @@ f_four <- function(x, beta, js){
         # calculate f_X_j
         do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.1 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.1 * x[j])))
         }))
+}
+
+
+update_forest <- function(object){
+  object$forest <- lapply(object$forest, function(tree) {
+    tree$tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+    tree$tree$Do(function(node) {
+      cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+      node$children[[1]]$cp_max <- cp_max
+      node$children[[2]]$cp_max <- cp_max
+      }, filterFun = data.tree::isNotLeaf
+    )
+    return(tree)
+  })
 }

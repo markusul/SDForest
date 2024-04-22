@@ -504,19 +504,34 @@ data$f_X <- data$f_X[1:n]
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
 set.seed(42)
-fit <- SDTree(x = data$X, y = data$Y, mtry = 5, cp = 0)
-tree <- fit$tree
+fit <- SDForest(x = data$X, y = data$Y, mtry = 5, return_data = T)
 
-print(tree, 'cp')
 
-fit <- prune(fit, cp = 0.05)
-print(tree, 'cp')
+tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+tree$Do(function(node) {
+  cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+  node$children[[1]]$cp_max <- cp_max
+  node$children[[2]]$cp_max <- cp_max
+  }, filterFun = data.tree::isNotLeaf
+)
 
-fit <- prune(fit, cp = 0.056)
-print(tree, 'cp')
+update_forest <- function(object){
+  object$forest <- lapply(object$forest, function(tree) {
+    tree$tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+    tree$tree$Do(function(node) {
+      cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+      node$children[[1]]$cp_max <- cp_max
+      node$children[[2]]$cp_max <- cp_max
+      }, filterFun = data.tree::isNotLeaf
+    )
+    return(tree)
+  })
+}
 
-f <- function(x) max(x$Get('cp'))
-tree$Get(f)
+
+update_forest(fit2)
+path <- regPath(fit2)
+
 
 
 prune.SDTree <- function(object, cp){
@@ -529,7 +544,7 @@ prune.SDTree <- function(object, cp){
 
 
 f2 <- function(object, cp){
-  data.tree::Prune(object$tree, function(x) x$cp > cp)
+  data.tree::Prune(object$tree, function(x) x$res_cp > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
   object$var_importance <- varImp(object)
@@ -540,7 +555,7 @@ f2 <- function(object, cp){
 
 
 set.seed(42)
-fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, mtry = 5)
+fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, mtry = 90)
 
 
 data$j
