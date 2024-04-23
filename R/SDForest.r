@@ -350,6 +350,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
         U_next_prime <- Q_temp %*% E_next
         U_next_size <- colSums(U_next_prime ** 2)
         dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+        dloss[is.na(dloss)] <- 0
         
         for(m in p_low:p_top){
           eval[1:all_n_splits[m], m] <- dloss[sum(c_all_idx[m-1], 1):c_all_idx[m]]
@@ -451,7 +452,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     potential_splitts <- c(best_branch, i + 1)
 
     # a partition with less than min_sample observations or unique samples are not available for further splits
-    to_small <- sapply(potential_splitts, function(x){sum(E[, x]) < min_sample * 2})
+    to_small <- sapply(potential_splitts, function(x){
+      new_samples <- nrow(unique(X[as.logical(E[, x]),]))
+      if(is.null(new_samples)) new_samples <- 0
+      (new_samples < min_sample * 2)
+      })
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
         # to small partitions cannot decrease the loss
@@ -477,13 +482,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
 
   # cp max of all splits after
-  #tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
-  #tree$Do(function(node) {
-  #  cp_max <- data.tree::Aggregate(node, 'cp_max', max)
-  #  node$children[[1]]$cp_max <- cp_max
-  #  node$children[[2]]$cp_max <- cp_max
-  #  }, filterFun = data.tree::isNotLeaf
-  #)
+  tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+  tree$Do(function(node) {
+    cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+    node$children[[1]]$cp_max <- cp_max
+    node$children[[2]]$cp_max <- cp_max
+    }, filterFun = data.tree::isNotLeaf
+  )
 
   res <- list(predictions = f_X_hat, tree = tree, var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'

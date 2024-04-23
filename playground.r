@@ -484,14 +484,14 @@ source("R/SDForest.r")
 library(data.tree)
 
 
-p <- 200
-n <- 200
+p <- 2
+n <- 100
 q <- 20
 
 n_test <- 500
 
 #set.seed(2024)
-data <- simulate_data_nonlinear(q, p, n + n_test, 5)
+data <- simulate_data_nonlinear(q, p, n + n_test, 1)
 data_test <- data
 data_test$Y <- data_test$Y[(n+1):(n+n_test)]
 data_test$X <- data_test$X[(n+1):(n+n_test),]
@@ -503,7 +503,15 @@ data$f_X <- data$f_X[1:n]
 
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
-fit <- SDForest(x = data$X, y = data$Y, mtry = 90, Q_type = 'no_deconfounding', gpu = T, nTree = 10, max_size = 50)
+data$X[1:99,  1] <-1
+data$X[50:100, 2] <- 3
+data$X
+
+
+fit <- SDForest(x = data$X, y = data$Y, nTree = 2)
+fit$forest
+
+
 fit2 <- ranger(x = data$X, y = data$Y, importance = 'impurity', num.trees = 200, mtry = 90)
 
 
