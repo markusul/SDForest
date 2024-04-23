@@ -7,6 +7,15 @@
 #library(data.table)## visualize trees
 #library(igraph)
 #library(data.tree)
+library(GPUmatrix)
+
+if(installTorch()){
+  gpu_type <- 'torch'
+}else {
+  gpu_type <- 'tensorflow'
+}
+
+
 #' @importFrom Rdpack reprompt
 
 n_cores <- parallel::detectCores()
@@ -34,8 +43,13 @@ if(n_cores > 1 && n_cores <= 24){
 #' get_Q(X, 'pca', q_hat = 5)
 #' get_Q(X, 'no_deconfounding')
 #' @export
-get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
-  if(type == 'no_deconfounding') return(diag(nrow(X)))
+get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE){
+  if(type == 'no_deconfounding') {
+    Q <- diag(nrow(X))
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
+    return(Q)
+  }
+
 
   svd_error <- function(X, f = 1, count = 1){
     tryCatch({
@@ -45,6 +59,14 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
         if(count > 5) stop('svd did not converge')
         return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
   }
+
+  if(ncol(X) == 1){
+    warning('only one covariate, no deconfounding possible')
+    Q <- diag(nrow(X))
+    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
+    return(Q)
+  }
+
 
   # X: covariates
   # type: type of deconfounding
@@ -61,19 +83,26 @@ get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0){
   D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
   D_tilde[is.na(D_tilde)] <- 1
   # TODO: diag(1 - D_tilde) works only for p > 1
-  Q <- switch(modes[type], diag(n) - sv$u %*% diag(1 - D_tilde) %*% t(sv$u), # DDL_trim
+
+  U <- sv$u
+  if(gpu) U <- gpu.matrix(U, type = gpu_type)
+
+  Q <- switch(modes[type], diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
                           { # pca
                               d_pca <- rep(1, length(sv$d))
                               if(confounding_dim <= 0) stop("the assumed confounding dimension must be larger than zero")
                               d_pca[1:confounding_dim] <- 0
-                              diag(n) - sv$u %*% diag(1 - d_pca) %*% t(sv$u)
+                              diag(n) - U %*% diag(1 - d_pca) %*% t(U)
                           },
                          diag(n)
                          ) # no_deconfounding
+  rm(U, sv)
   return(Q)
 }
 
-get_W <- function(A, gamma){
+get_W <- function(A, gamma, gpu = FALSE){
+  if(gpu) A <- gpu.matrix(A, type = gpu_type)
+
   Q_prime <- qr.Q(qr(A))
   Pi_A <- tcrossprod(Q_prime)
   W <- diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
@@ -82,14 +111,18 @@ get_W <- function(A, gamma){
 
 
 condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
+
+  j_name <- j
   if(is.character(j)){
     j <- which(names(X) == j)
   }
 
   if(is.null(X)){
-    X <- data.frame(object$X)
+    X <- object$X
     if(is.null(X)) stop('X must be provided if it is not part of the object')
+    
   }
+  X <- data.frame(X)
 
   if(!is.numeric(j)) stop('j must be a numeric or character')
   if(j > ncol(X)) stop('j must be smaller than p')
@@ -120,7 +153,7 @@ condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   preds <- do.call(rbind, preds)
   preds_mean <- rowMeans(preds)
 
-  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j, xj = X[, j])
+  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j_name, xj = X[, j])
   class(res) <- 'condDependence'
   return(res)
 }
@@ -149,8 +182,6 @@ plot.condDependence <- function(object, n_examples = 19){
   }
   ggdep
 }
-
-
 
 ##### SDTree functions #####
 
@@ -182,9 +213,11 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @examples
 #' # TODO: add example
 #' @export
-SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
+
+
+SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                   A = NULL, gamma = NULL){
+                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7){
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -194,7 +227,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # number of covariates
   p <- dim(X)[2]
 
+  if(is.null(max_leaves)) max_leaves <- n
+
+
   m <- max_leaves - 1
+  mem_size <- mem_size / n
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('max_leaves must be larger than 1')
@@ -207,16 +244,18 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # estimate spectral transformation
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
-    if(is.vector(A)) A <- matrix(A, ncol = 1)
+    if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    W <- get_W(A, gamma)
+    W <- get_W(A, gamma, gpu)
   }else {
+    
     W <- diag(n)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   if(is.null(Q)){
-    Q <- get_Q(W %*% X, Q_type, trim_quantile, confounding_dim)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim, gpu)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -227,46 +266,98 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   E <- matrix(1, n, 1)
 
   E_tilde <- matrix(rowSums(Q))
-
+  if(gpu){
+    E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
+  }
+  
+  
   u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
   Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
 
   Y_tilde <- Q %*% Y
   
   # solve linear model
-  c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
+  if(gpu_type == 'tensorflow'){
+    c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+  }else{
+    c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    c_hat <- as.numeric(c_hat)
+  }
 
   #c_hat <- lm.fit(E_tilde, Y_tilde)$coefficients
 
-  loss_start <- sum((Y_tilde - c_hat) ** 2) / n
+  loss_start <- as.numeric(sum((Y_tilde - c_hat) ** 2) / n)
   loss_temp <- loss_start
 
   # initialize tree
-  tree <- data.tree::Node$new(name = '1', value = c_hat, dloss = loss_start, cp = 10)
-
+  tree <- data.tree::Node$new(name = '1', value = as.numeric(c_hat), 
+    dloss = as.numeric(loss_start), cp = 10, n_samples = n)
+  
   # memory for optimal splits
-  memory <- list(replicate(m + 1 , matrix(0, p, 4)))
+  #memory <- lapply(1:(m + 1), function(rep) matrix(0, p, 4))
+  memory <- list()
   potential_splitts <- 1
-
+  
   # variable importance
   var_imp <- rep(0, p)
   names(var_imp) <- colnames(X)
-
+  
   after_mtry <- 0
-
+  
   for(i in 1:m){
     # iterate over all possible splits every time
     # for slow but slightly better solution
     if(!fast){
       potential_splitts <- 1:i
-      to_small <- unlist(lapply(potential_splitts, function(x){sum(E[, x] == 1) < min_sample*2}))
+      to_small <- sapply(potential_splitts, function(x){sum(E[, x]) < min_sample*2})
       potential_splitts <- potential_splitts[!to_small]
     }
+
     #iterate over new to estimate splits
     for(branch in potential_splitts){
-      best_splitts <- get_all_splitt(branch = branch, X = X, Y_tilde = Y_tilde, Q_temp = Q_temp, 
-                                     n = n, min_sample = min_sample, p = p, E = E)
-      memory[[branch]] <- best_splitts
+      E_branch <- E[, branch]
+      index <- which(E_branch == 1)
+      X_branch <- as.matrix(X[index, ])
+    
+      s <- find_s(X_branch)
+      if(min_sample > 1) {
+        s <- s[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
+      }
+
+      all_n_splits <- apply(s, 2, function(x) length(unique(x)))
+      all_idx <- cumsum(all_n_splits)
+
+      eval <- matrix(-Inf, nrow(s), p)
+      done_splits <- 0
+      p_top <- 0
+      while(p_top < p){
+        c_all_idx <- all_idx - done_splits
+        p_low <- p_top + 1
+        possible <- which(c_all_idx < mem_size)
+        p_top <- possible[length(possible)]
+
+        c_n_splits <- sum(all_idx[p_top], -all_idx[p_low-1])
+        E_next <- matrix(0, n, c_n_splits)
+        for(j in p_low:p_top){
+          s_j <- s[, j]
+          s_j <- unique(s_j)
+          for(i_s in 1:all_n_splits[j]){
+            E_next[index[X_branch[, j] > s_j[i_s]], sum(c_all_idx[j-1], i_s)] <- 1
+          }
+        }
+        if(gpu) E_next <- gpu.matrix(E_next, type = gpu_type)
+
+        U_next_prime <- Q_temp %*% E_next
+        U_next_size <- colSums(U_next_prime ** 2)
+        dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
+        
+        for(m in p_low:p_top){
+          eval[1:all_n_splits[m], m] <- dloss[sum(c_all_idx[m-1], 1):c_all_idx[m]]
+        }
+        done_splits <- done_splits + c_n_splits
+      }
+      is_opt <- apply(eval, 2, which.max)
+      memory[[branch]] <- t(sapply(1:p, function(j) c(eval[is_opt[j], j], j, unique(s[, j])[is_opt[j]], branch)))
     }
 
     if(i > after_mtry && !is.null(mtry)){
@@ -277,13 +368,14 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
        Losses_dec <- do.call(rbind, memory)
     }
 
-    if(max(Losses_dec[, 1]) <= 0){
-      break
-    }
     loc <- which.max(Losses_dec[, 1])
     best_branch <- Losses_dec[loc, 4]
     j <- Losses_dec[loc, 2]
     s <- Losses_dec[loc, 3]
+
+    if(Losses_dec[loc, 1] <= 0){
+      break
+    }
 
     # divide observations in leave
     index <- which(E[, best_branch] == 1)
@@ -296,10 +388,16 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     E[index_n_branches, i+1] <- 1
 
     E_tilde_branch <- E_tilde[, best_branch]
+    suppressWarnings({
     E_tilde[, best_branch] <- Q %*% E[, best_branch]
-    E_tilde <- cbind(E_tilde, E_tilde_branch - E_tilde[, best_branch])
+    })
+    E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
-    c_hat <- RcppEigen::fastLmPure(E_tilde, Y_tilde)$coefficients
+    if(gpu_type == 'tensorflow'){
+      c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
+    }else{
+      c_hat <- qr.coef(qr(E_tilde), Y_tilde)
+    }
 
     u_next_prime <- Q_temp %*% E[, i + 1]
     u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
@@ -308,12 +406,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
-    if(sum(is.na(c_hat)) > 0){
+
+    if(sum(is.na(as.matrix(c_hat))) > 0){
       warning('singulaer matrix QE, tree might be to large, consider increasing cp')
       break
     }
 
-    loss_dec <- loss_temp - loss(Y_tilde, E_tilde %*% c_hat)
+    loss_dec <- as.numeric(loss_temp - loss(Y_tilde, E_tilde %*% c_hat))
     loss_temp <- loss_temp - loss_dec
 
     if(loss_dec <= cp * loss_start){
@@ -337,10 +436,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     leave$res_dloss <- loss_dec
 
     # add new leaves
-    leave$AddChild(best_branch, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, decision = 'no', n_samples = sum(E[, best_branch] == 1))
-    leave$AddChild(i + 1, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, decision = 'yes', n_samples = sum(E[, i + 1] == 1))
+    leave$AddChild(best_branch, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, 
+      decision = 'no', n_samples = sum(E[, best_branch] == 1))
+    leave$AddChild(i + 1, value = 0, dloss = loss_dec, cp = loss_dec / loss_start, 
+      decision = 'yes', n_samples = sum(E[, i + 1] == 1))
 
     # add estimates to tree leaves
+    c_hat <- as.numeric(c_hat)
     for(l in tree$leaves){
       l$value <- c_hat[as.numeric(l$name)]
     }
@@ -349,7 +451,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     potential_splitts <- c(best_branch, i + 1)
 
     # a partition with less than min_sample observations or unique samples are not available for further splits
-    to_small <- unlist(lapply(potential_splitts, function(x){length(unique(X[which(E[, x] == 1), 1])) < min_sample * 2}))
+    to_small <- sapply(potential_splitts, function(x){sum(E[, x]) < min_sample * 2})
     if(sum(to_small) > 0){
       for(el in potential_splitts[to_small]){
         # to small partitions cannot decrease the loss
@@ -373,6 +475,15 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   # labels for the nodes
   tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
+
+  # cp max of all splits after
+  #tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+  #tree$Do(function(node) {
+  #  cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+  #  node$children[[1]]$cp_max <- cp_max
+  #  node$children[[2]]$cp_max <- cp_max
+  #  }, filterFun = data.tree::isNotLeaf
+  #)
 
   res <- list(predictions = f_X_hat, tree = tree, var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'
@@ -553,10 +664,10 @@ plot.SDTree <- function(object){
 }
 
 #### SDForest functions ####
-SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, max_leaves = 500, 
-                     cp = 0, min_sample = 3, mtry = NULL, multicore = F, mc.cores = NULL, 
+SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
+                     cp = 0, min_sample = 1, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = NULL, max_size = 1000){
+                     A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, mem_size = 1e+7){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -567,23 +678,26 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   # number of covariates
   p <- ncol(X)
 
+  if(is.null(max_size)) max_size <- n
+
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
+  if(gpu & multicore) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
-    if(is.vector(A)) A <- matrix(A, ncol = 1)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    W <- get_W(A, gamma)
+    W <- get_W(A, gamma, gpu)
   }else {
     W <- diag(n)
+    if(gpu) W <- gpu.matrix(W, type = gpu_type)
   }
 
   # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(W %*% X, Q_type, trim_quantile, confounding_dim)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim, gpu)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -594,6 +708,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   # mtry
   if(is.null(mtry)){
     mtry <- floor(0.5 * p)
+    if(mtry < 1) mtry <- 1
   }
 
   # bootstrap samples
@@ -604,27 +719,27 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       n_cores <- mc.cores
     }
     if(locatexec::is_unix()){
-      res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
+      res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
                                             trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                            A = A[i, ], gamma = gamma), 
+                                            A = A[i, ], gamma = gamma, mem_size = mem_size), 
                                             mc.cores = n_cores)
     }else{
       cl <- parallel::makeCluster(n_cores)
       doParallel::registerDoParallel(cl)
-      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler", "get_all_splitt", 
-                                    "find_s", "evaluate_splitt", "loss", "predict_outsample", 
+      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
+                                    "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
-      res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, min_sample = min_sample, 
+      res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                  A = A[i, ], gamma = gamma))
+                  A = A[i, ], gamma = gamma, mem_size = mem_size))
       parallel::stopCluster(cl = cl)
     }
   }else{
-    res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], max_leaves = max_leaves, cp = cp, 
+    res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                              A = A[i, ], gamma = gamma))
+                                              A = A[i, ], gamma = gamma, gpu = gpu, mem_size = mem_size))
   }
 
   # ensemble predictions for each observation
@@ -633,15 +748,16 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                          function(train)c(1:n)[-train]), 
                          function(x) any(x == i)))))
 
-  oob_predictions <- unlist(lapply(1:n, function(i){
+  oob_predictions <- sapply(1:n, function(i){
     if(length(oob_ind[[i]]) == 0){
       return(NA)
     }
-    predictions <- lapply(oob_ind[[i]], function(model){
-      predict_outsample(res[[model]]$tree, X[i, ])
+    xi <- X[i, ]
+    predictions <- sapply(oob_ind[[i]], function(model){
+      predict_outsample(res[[model]]$tree, xi)
     })
-    return(mean(unlist(predictions)))
-  }))
+    return(mean(predictions))
+  })
 
   oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
   oob_loss <- loss(Y, oob_predictions)
@@ -661,10 +777,37 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
-                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, oob_predictions = oob_predictions,
-                 var_importance = var_imp, oob_ind = oob_ind, X = X, Y = Y, Q = Q)
+                 oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
+                 oob_ind = oob_ind, oo_predictions = oob_predictions)
+  if(return_data){
+    output$X <- as.matrix(X)
+    output$Y <- as.matrix(Y)
+    output$Q <- as.matrix(Q)
+  }
   class(output) <- 'SDForest'
   return(output)
+}
+
+predictOOB <- function(object, X = NULL){
+  if(is.null(X)){
+    X <- object$X
+  }
+  if(!is.matrix(X)) stop('X must be a matrix and either provided or in the object')
+
+  n <- nrow(X)
+  oob_ind <- object$oob_ind
+
+  oob_predictions <- sapply(1:n, function(i){
+    if(length(oob_ind[[i]]) == 0){
+      return(NA)
+    }
+    xi <- X[i, ]
+    predictions <- sapply(oob_ind[[i]], function(model){
+      predict_outsample(object$forest[[model]]$tree, xi)
+    })
+    return(mean(predictions))
+  })
+  return(oob_predictions)
 }
 
 predict.SDForest <- function(object, newdata){
@@ -674,10 +817,7 @@ predict.SDForest <- function(object, newdata){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
-  X <- newdata[, object$var_names]
-
-  if(is.null(dim(X))) X <- matrix(X, ncol = 1)
-
+  X <- as.matrix(newdata[, object$var_names])
   if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object[[2]], function(x){predict_outsample(x$tree, X)}))
@@ -708,69 +848,22 @@ leave_names <- function(node){
     node$label <- new_name
 }
 
-evaluate_splitt <- function(branch, j, s, index, X_branch_j, Y_tilde, Q_temp, n, min_sample){
-  # evaluate a split at partition branch on covariate j at the splitpoint s
-  # index: index of observations in branch
-  # dividing observation in branch
-  if (sum(X_branch_j > s) < min_sample | sum(X_branch_j <= s) < min_sample){
-    return(list('dloss' = 0, j = j, s = s, branch = branch))
-  }
 
-  e_next <- matrix(0, n, 1)
-  e_next[index[X_branch_j > s]] <- 1
-
-  u_next_prime <- Q_temp %*% e_next
-  u_next_size <- sum(u_next_prime ** 2)
-
-  dloss <- crossprod(u_next_prime, Y_tilde)**2 / u_next_size
-
-  return(list('dloss' = dloss, j = j, s = s, branch = branch))
-}
-
-get_all_splitt <- function(branch, X, Y_tilde, Q_temp, n, min_sample, p, E){
-  # finds the best splitts for every covariate in branch
-  # returns the best splitpoint for every covariate and the resulting loss decrease
-
-  # observations belonging to branch
-  index <- which(E[, branch] == 1)
-
-  X_branch <- X[index, ]
-
-  # all possible split points
-  s <- find_s(X_branch, min_sample, p)
-
-  res <- lapply(1:p, function(j) {lapply(s[, j], function(x) {
-            X_branch_j <- if(p == 1) X_branch else X_branch[, j]
-            eval <- evaluate_splitt(branch = branch, j = j, 
-              s = x, index = index, X_branch_j = X_branch_j, Y_tilde = Y_tilde, Q_temp = Q_temp, n = n, 
-              min_sample = min_sample)
-            return(eval)})})
-
-  res <- lapply(res, function(x)do.call(rbind, x))
-  res_opt <- lapply(res, function(x)x[which.max(x[, 1]), ])
-  res_opt <- do.call(rbind, res_opt)
-
-  return(matrix(unlist(res_opt), ncol = 4, byrow = F))
-}
-
-find_s <- function(X, min_sample, p){
+find_s <- function(X){
   # finds all the reasnable splitting points in a data matrix
-
+  p <- ncol(X)
   if(p == 1){
     X <- matrix(X, ncol = 1)
   }
   n <- nrow(X)
 
   X_sort <- apply(X, 2, sort, method = 'quick')
-  if(min_sample > 1) {
-    X_sort <- X_sort[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
-  }
   
   if(is.null(dim(X_sort))){
+    #print('hallo')
     X_sort <- matrix(X_sort, ncol = p)
   }
 
-  X_sort <- unique(X_sort)
   if(nrow(X_sort) == 1){
     print('hallo1')
     return(X_sort)
@@ -781,7 +874,7 @@ find_s <- function(X, min_sample, p){
 
   # for runtime reasons
   if(dim(s)[1] > 1000){
-    s <- s[seq(1, dim(s)[1], 100), ]
+    s <- s[seq(1, dim(s)[1], 20), ]
   }else if (dim(s)[1] > 200) {
     s <- s[seq(1, dim(s)[1], 5), ]
   }else if (dim(s)[1] > 100) {
@@ -789,7 +882,7 @@ find_s <- function(X, min_sample, p){
   }
   
   if(is.null(dim(s))){
-    print('hallo2')
+    #print('hallo2')
     s <- matrix(s, ncol = p)
   }
 
@@ -820,7 +913,7 @@ predict_outsample <- function(tree, X){
 
 loss <- function(Y, f_X){
   # MSE
-  return(sum((Y - f_X)^2) / length(Y))
+  return(as.numeric(sum((Y - f_X)^2) / length(Y)))
 }
 
 pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
@@ -862,90 +955,89 @@ varImp.SDForest <- function(object){
 prune <- function(object, ...) UseMethod('prune')
 
 prune.SDTree <- function(object, cp){
-  object$tree <- data.tree::Clone(object$tree)
-  data.tree::Prune(object$tree, function(x) x$cp > cp)
+  #data.tree::Prune(object$tree, function(x) max(x$Get('cp')) > cp)
+  #data.tree::Prune(object$tree, function(x) x$cp > cp)
+  data.tree::Prune(object$tree, function(x) x$cp_max > cp)
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
   object$predictions <- NULL
   object$var_importance <- varImp(object)
   return(object)
 }
 
-prune.SDForest <- function(forest, cp, oob = T){
-  n <- length(forest$Y)
-
+prune.SDForest <- function(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = T){
   pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
   forest$forest <- pruned_forest
 
-  if(oob){
-    oob_predictions <- unlist(lapply(1:n, function(i){
-      if(length(forest$oob_ind[[i]]) == 0){
-        return(NA)
-      }
-      predictions <- lapply(forest$oob_ind[[i]], function(model){
-        predict_outsample(forest$forest[[model]]$tree, forest$X[i, ])
-      })
-      return(mean(unlist(predictions)))
-    }))
-    forest$oob_SDloss <- loss(forest$Q %*% forest$Y, forest$Q %*% oob_predictions)
-    forest$oob_loss <- loss(forest$Y, oob_predictions)
+  if(is.null(X)) X <- forest$X
+  if(is.null(Y)) Y <- forest$Y
+  if(is.null(Q)) Q <- forest$Q
+  if(is.null(X) | is.null(Y)){
+    stop('X and Y must either be provided or in the object')
+  }
 
+  n <- length(Y)
+
+  if(is.null(Q)) {
+    Q <- diag(n)
+    warning('Q was not provided, using Identity matrix')
+  }
+
+  oob_predictions <- predictOOB(forest, X)
+  forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+  forest$oob_loss <- loss(Y, oob_predictions)
+
+  if(pred){
     # predict with all trees
-    pred <- do.call(cbind, lapply(forest$forest, function(x){predict_outsample(x$tree, forest$X)}))
-    
+    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, X))}))
+      
     # use mean over trees as final prediction
     f_X_hat <- rowMeans(pred)
     forest$predictions <- f_X_hat
+  }else {
+    forest$predictions <- NULL
   }
-
   # variable importance
-  forest$var_importance <- rowMeans(sapply(forest$forest, function(x){x$var_importance}))  
+  forest$var_importance <- rowMeans(as.matrix(sapply(forest$forest, function(x){matrix(x$var_importance)})))  
 
   return(forest)
 }
 
 regPath <- function(object, ...) UseMethod('regPath')
 
-regPath.SDTree <- function(object){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+regPath.SDTree <- function(object, cp_seq = NULL){
+  object$tree <- data.tree::Clone(object$tree)
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
+
   res <- lapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp)
     return(list(var_importance = pruned_object$var_importance))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
+  colnames(varImp_path) <- object$var_names
 
   paths <- list(cp = cp_seq, varImp_path = varImp_path)
   class(paths) <- 'paths'
   return(paths)
 }
 
-regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL){
-  cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
-  
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    res <- parallel::mclapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))}, 
-                  mc.cores = n_cores)
-  }else{
-    res <- pbapply::pblapply(cp_seq, function(cp){
-      pruned_object <- prune(object, cp, oob = oob)
-      return(list(var_importance = pruned_object$var_importance, 
-                  oob_SDloss = pruned_object$oob_SDloss, 
-                  oob_loss = pruned_object$oob_loss))})
-  }
+regPath.SDForest <- function(object, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
+  object$forest <- lapply(object$forest, function(tree){
+    tree$tree <- data.tree::Clone(tree$tree)
+    return(tree)
+    })
+
+  res <- pbapply::pblapply(cp_seq, function(cp){
+    pruned_object <- prune(object, cp, X, Y, Q, pred = F)
+    return(list(var_importance = pruned_object$var_importance, 
+                oob_SDloss = pruned_object$oob_SDloss, 
+                oob_loss = pruned_object$oob_loss))})
 
   varImp_path <- t(sapply(res, function(x)x$var_importance))
-  if(!oob){
-    paths <- list(cp = cp_seq, varImp_path = varImp_path)
-    class(paths) <- 'paths'
-    return(paths)
-  }
-  
+  colnames(varImp_path) <- object$var_names
+
   loss_path <- t(sapply(res, function(x)c(x$oob_SDloss, x$oob_loss)))
   colnames(loss_path) <- c('oob SDE', 'oob MSE')
   paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path, 
@@ -956,34 +1048,48 @@ regPath.SDForest <- function(object, oob = F, multicore = F, mc.cores = NULL){
 
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
-stabilitySelection.SDForest <- function(object, multicore = F, mc.cores = NULL){
-  cp_seq <- regPath(object$forest[[1]])$cp
+stabilitySelection.SDForest <- function(object, cp_seq = NULL){
+  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  cp_seq <- sort(cp_seq)
 
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
-    imp <- parallel::mclapply(object$forest, function(x)regPath(x)$varImp_path > 0, mc.cores = n_cores)
-  }else{
-    imp <- pbapply::pblapply(object$forest, function(x)regPath(x)$varImp_path > 0)
-  }
+  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, cp_seq)$varImp_path > 0)
+
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
-  names(imp) <- object$var_names
+  colnames(imp) <- object$var_names
   paths <- list(cp = cp_seq, varImp_path = imp)
   class(paths) <- 'paths'
   return(paths)
 }
 
-plot.paths <- function(object, plotly = F){
-  imp_data <- data.frame(object$varImp_path, cp = object$cp)
+plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
+  varImp_path <- object$varImp_path
+  if(!is.null(selection)){
+    varImp_path <- varImp_path[, selection]
+  }
+
+  imp_data <- data.frame(varImp_path, cp = object$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
+
+  if(log_scale){
+    imp_data$importance <- log(imp_data$importance + 1)
+  }
   
   gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
       ggplot2::geom_line() + 
-      ggplot2::theme_bw()
+      ggplot2::theme_bw() + 
+      ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), sides = 'b', col = '#949494')
+
+  if(!is.null(object$cp_min)){
+    gg_path <- gg_path + ggplot2::geom_vline(xintercept = object$cp_min, linetype = 'dashed')
+  }
 
   if(plotly) return(plotly::ggplotly(gg_path))
+
+  if(length(unique(imp_data$covariate)) > 20){
+    gg_path <- gg_path + ggplot2::theme(legend.position = 'none')
+  }
+
   return(gg_path)
 }
 
@@ -1122,4 +1228,18 @@ f_four <- function(x, beta, js){
         # calculate f_X_j
         do.call(sum, lapply(1:complexity, function(k) beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.1 * x[j]) + beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.1 * x[j])))
         }))
+}
+
+
+update_forest <- function(object){
+  object$forest <- lapply(object$forest, function(tree) {
+    tree$tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
+    tree$tree$Do(function(node) {
+      cp_max <- data.tree::Aggregate(node, 'cp_max', max)
+      node$children[[1]]$cp_max <- cp_max
+      node$children[[2]]$cp_max <- cp_max
+      }, filterFun = data.tree::isNotLeaf
+    )
+    return(tree)
+  })
 }
