@@ -783,7 +783,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   output <- list(predictions = f_X_hat, forest = res, var_names = colnames(data.frame(X)), 
                  oob_loss = oob_loss, oob_SDloss = oob_SDloss, var_importance = var_imp, 
-                 oob_ind = oob_ind, oo_predictions = oob_predictions)
+                 oob_ind = oob_ind, oob_predictions = oob_predictions)
   if(return_data){
     output$X <- as.matrix(X)
     output$Y <- as.matrix(Y)
@@ -1247,4 +1247,49 @@ update_forest <- function(object){
     )
     return(tree)
   })
+}
+
+mergeForest <- function(fit1, fit2){
+  if(any(fit1$var_names != fit2$var_names)) stop('forest must be trained using the same covariates')
+
+  len_1 <- length(fit1$forest)
+  len_2 <- length(fit2$forest)
+  len_new <- len_1 + len_2
+
+  fit1$forest <- c(fit1$forest, fit2$forest)
+  fit1$var_importance <- (fit1$var_importance * len_1 + 
+    fit2$var_importance * len_2) / len_new
+
+  if(all(fit1$X == fit2$X, fit1$Y == fit2$Y, fit1$Q == fit2$Q, 
+    !is.null(fit1$X), !is.null(fit1$Y), !is.null(fit1$Q))){
+    fit1$predictions <- (fit1$predictions * length(fit1$forest) + 
+      fit2$predictions * length(fit2$forest)) / len_new
+
+    oob_weights_1 <- sapply(fit1$oob_ind, length)
+    oob_weights_2 <- sapply(fit2$oob_ind, length)
+    oob_weights_new <- oob_weights_1 + oob_weights_2
+
+    oob_predictions_1 <- fit1$oob_predictions * oob_weights_1
+    oob_predictions_2 <- fit2$oob_predictions * oob_weights_2
+
+    fit1$oob_predictions <- rowSums(cbind(oob_predictions_1, oob_predictions_2), na.rm = T)
+    fit1$oob_predictions <- fit1$oob_predictions / oob_weights_new
+    
+    fit1$oob_ind <- lapply(1:length(fit1$Y), function(i){
+      c(fit1$oob_ind[[i]], fit2$oob_ind[[i]] + len_1)
+    })
+    fit1$oob_SDloss <- loss(fit1$Q %*% fit1$Y, fit1$Q %*% fit1$oob_predictions)
+    fit1$oob_loss <- loss(fit1$Y, fit1$oob_predictions)
+  }else{
+    warning('forests migth be trained on different data')
+    fit1$X <- NULL
+    fit1$Y <- NULL
+    fit1$Q <- NULL
+    fit1$predictions <- NULL
+    fit1$oob_prediction <- NULL
+    fit1$oob_ind <- NULL
+    fit1$oob_loss <- NULL
+    fit1$oob_SDloss <- NULL
+  }
+  return(fit1)
 }
