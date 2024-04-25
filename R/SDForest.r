@@ -1293,3 +1293,26 @@ mergeForest <- function(fit1, fit2){
   }
   return(fit1)
 }
+
+
+toYamlTree <- function(tree){
+  tree$tree <- as.yaml(as.list(tree$tree))
+  return(tree)
+}
+
+fromYamlTree <- function(tree){
+  tree$tree <- as.Node(yaml.load(tree$tree))
+  return(tree)
+}
+
+toYamlForest <- function(forest){
+  forest$forest <- lapply(forest$forest, toYamlTree)
+  return(forest)
+}
+
+fromYamlForest <- function(forest){
+  forest$forest <- lapply(forest$forest, fromYamlTree)
+  return(forest)
+}
+
+#TODO: autoForest adding trees until prediction does not change anymore

@@ -484,14 +484,14 @@ source("R/SDForest.r")
 library(data.tree)
 
 
-p <- 2
-n <- 100
+p <- 500
+n <- 500
 q <- 20
 
 n_test <- 500
 
 #set.seed(2024)
-data <- simulate_data_nonlinear(q, p, n + n_test, 1)
+data <- simulate_data_nonlinear(q, p, n + n_test, 3)
 data_test <- data
 data_test$Y <- data_test$Y[(n+1):(n+n_test)]
 data_test$X <- data_test$X[(n+1):(n+n_test),]
@@ -504,17 +504,79 @@ data$f_X <- data$f_X[1:n]
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
 
-fit1 <- SDForest(x = data$X, y = data$Y, nTree = 10)
+tree <- SDTree(x = data$X, y = data$Y, cp = 0, min_sample = 1)
+
+
+library(yaml)
+
+tree <- fit1$forest[[1]]
+
+
+tree2 <- tree
+
+saveTree(tree2, 'ytree.rda')
+tree2 <- loadTree('ytree.rda')
+
+plot(tree$tree$Get('s') - tree2$tree$Get('s'))
+
+diff(data$X)
+
+tree2$tree$children
+tree$tree$children
+
+
+plot(abs(predict_outsample(tree$tree, data.frame(data$X)) - predict_outsample(tree2$tree, data.frame(data$X))))
+
+
+yTree <- as.yaml(as.list(tree))
+tree
+
+save(tree, file = 'tree.rda')
+save(tree2, file = 'ytree.rda')
+
+
+toYamlTree <- function(tree){
+  tree$tree <- as.yaml(as.list(tree$tree))
+  return(tree)
+}
+
+fromYamlTree <- function(tree){
+  tree$tree <- as.Node(yaml.load(tree$tree))
+  return(tree)
+}
+
+toYamlForest <- function(forest){
+  forest$forest <- lapply(forest$forest, toYamlTree)
+  return(forest)
+}
+
+fromYamlForest <- function(forest){
+  forest$forest <- lapply(forest$forest, fromYamlTree)
+  return(forest)
+}
+
+
+
+
+as.Node(yaml.load(yTree))
+
+
 fit2 <- SDForest(x = data$X, y = data$Y, nTree = 10)
 
 fit1$forest
 
+
 fit2 <- SDForest(x = data$X, y = data$Y, nTree = 10)
-fit <- mergeForest(fit, fit2)
+fit <- mergeForest(fit1, fit2)
 
 fit1$oob_SDloss
 fit2$oob_SDloss
 fit$oob_SDloss
+
+fit <- SDForest(x = data$X, y = data$Y, nTree = 10, mtry = 5)
+path <- regPath(fit)
+plotOOB(path)
+plot(path)
 
 mergeForest <- function(fit1, fit2){
   if(any(fit1$var_names != fit2$var_names)) stop('forest must be trained using the same covariates')
