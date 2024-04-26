@@ -1296,12 +1296,12 @@ mergeForest <- function(fit1, fit2){
 
 
 toYamlTree <- function(tree){
-  tree$tree <- as.yaml(as.list(tree$tree))
+  tree$tree <- yaml::as.yaml(as.list(tree$tree))
   return(tree)
 }
 
 fromYamlTree <- function(tree){
-  tree$tree <- as.Node(yaml.load(tree$tree))
+  tree$tree <- data.tree::as.Node(yaml::yaml.load(tree$tree))
   return(tree)
 }
 

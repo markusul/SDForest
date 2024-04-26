@@ -484,8 +484,8 @@ source("R/SDForest.r")
 library(data.tree)
 
 
-p <- 500
-n <- 500
+p <- 100
+n <- 100
 q <- 20
 
 n_test <- 500
@@ -503,29 +503,37 @@ data$f_X <- data$f_X[1:n]
 
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
+fit <- SDForest(x = data$X, y = data$Y, Q_type = 'no_deconfounding', return_data = T, nTree = 20)
+fit2 <- toYamlForest(fit)
+save(fit2, file = 'ytree.rda')
+rm(fit2)
+load('ytree.rda')
+fit2 <- fromYamlForest(fit2)
 
-tree <- SDTree(x = data$X, y = data$Y, cp = 0, min_sample = 1)
+fit2$oob_predictions
+fit2$oob_loss
+oob_pred <- predictOOB(fit2)
 
+plot(fit$oob_predictions, oob_pred)
 
-library(yaml)
+fit2$oob_loss
+path <- regPath(fit)
+plotOOB(path)
+pred <- predict(fit, as.data.frame(data$X))
+pred2 <- predict(prune(fit, 0), as.data.frame(data$X))
 
-tree <- fit1$forest[[1]]
+fit3 <- prune(fit, 0)
 
+fit$oob_SDloss
+fit3$oob_SDloss
 
-tree2 <- tree
+fit2$oob_loss
+path2$loss_path[1, ]
 
-saveTree(tree2, 'ytree.rda')
-tree2 <- loadTree('ytree.rda')
+path2 <- regPath(fit2)
+plotOOB(path2)
 
-plot(tree$tree$Get('s') - tree2$tree$Get('s'))
-
-diff(data$X)
-
-tree2$tree$children
-tree$tree$children
-
-
-plot(abs(predict_outsample(tree$tree, data.frame(data$X)) - predict_outsample(tree2$tree, data.frame(data$X))))
+max(abs(predictOOB(fit2) - fit2$oob_predictions))
 
 
 yTree <- as.yaml(as.list(tree))
