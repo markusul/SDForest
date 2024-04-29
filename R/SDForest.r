@@ -673,7 +673,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                      cp = 0, min_sample = 1, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
                      A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, 
-                     mem_size = 1e+7, leave_out_ind = NULL){
+                     mem_size = 1e+7, leave_out_ind = NULL, leave_out_envs = NULL, each_trees = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -689,7 +689,12 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
-  if(gpu & multicore) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
+  if(gpu && multicore) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
+  if(!is.null(leave_out_ind) && !is.null(leave_out_envs)) stop('leave_out_ind and leave_out_envs cannot be used together')
+  if(!is.null(leave_out_ind) && any(leave_out_ind > n, leave_out_ind < 1)) stop('leave_out_ind must be smaller than n')
+  if(!is.null(leave_out_envs) && length(leave_out_envs) != n) stop('leave_out_envs must have length n')
+  if(!is.null(leave_out_envs) && any(is.null(each_trees), each_trees < 1)) stop('each_trees must be larger than 0 if leave_out_envs is used')
+
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
@@ -718,6 +723,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
 
   # bootstrap samples
+  #TODO: add support for leave_out_envs
   all_ind <- 1:n
   if(!is.null(leave_out_ind)){
     all_ind <- all_ind[-leave_out_ind]
