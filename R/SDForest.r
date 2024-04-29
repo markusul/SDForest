@@ -672,7 +672,8 @@ plot.SDTree <- function(object){
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
                      cp = 0, min_sample = 1, mtry = NULL, multicore = F, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, mem_size = 1e+7){
+                     A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, 
+                     mem_size = 1e+7, leave_out_ind = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -717,7 +718,11 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
 
   # bootstrap samples
-  ind <- lapply(1:nTree, function(x)sample(1:n, min(n, max_size), replace = T))
+  all_ind <- 1:n
+  if(!is.null(leave_out_ind)){
+    all_ind <- all_ind[-leave_out_ind]
+  }
+  ind <- lapply(1:nTree, function(x)sample(all_ind, min(length(all_ind), max_size), replace = T))
 
   if(multicore){
     if(!is.null(mc.cores)){
@@ -1294,25 +1299,26 @@ mergeForest <- function(fit1, fit2){
   return(fit1)
 }
 
+toList <- function(object, ...) UseMethod('toList')
+fromList <- function(object, ...) UseMethod('fromList')
 
-toYamlTree <- function(tree){
-  tree$tree <- yaml::as.yaml(as.list(tree$tree))
+toList.SDTree <- function(tree){
+  tree$tree <- as.list(tree$tree)
   return(tree)
 }
 
-fromYamlTree <- function(tree){
-  tree$tree <- data.tree::as.Node(yaml::yaml.load(tree$tree))
+fromList.SDTree <- function(tree){
+  tree$tree <- data.tree::as.Node(tree$tree)
   return(tree)
 }
 
-toYamlForest <- function(forest){
-  forest$forest <- lapply(forest$forest, toYamlTree)
+toList.SDForest <- function(forest){
+  forest$forest <- lapply(forest$forest, toList)
   return(forest)
 }
 
-fromYamlForest <- function(forest){
-  forest$forest <- lapply(forest$forest, fromYamlTree)
+fromList.SDForest <- function(forest){
+  forest$forest <- lapply(forest$forest, fromList)
   return(forest)
 }
-
 #TODO: autoForest adding trees until prediction does not change anymore

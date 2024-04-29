@@ -491,7 +491,7 @@ q <- 20
 n_test <- 500
 
 #set.seed(2024)
-data <- simulate_data_nonlinear(q, p, n + n_test, 3)
+data <- simulate_data_nonlinear(q, p, n + n_test, 5)
 data_test <- data
 data_test$Y <- data_test$Y[(n+1):(n+n_test)]
 data_test$X <- data_test$X[(n+1):(n+n_test),]
@@ -503,7 +503,29 @@ data$f_X <- data$f_X[1:n]
 
 colnames(data$X) <- paste('cov', 1:p, sep = '')
 
-fit <- SDForest(x = data$X, y = data$Y, Q_type = 'no_deconfounding', return_data = T, nTree = 20)
+fit1 <- SDForest(x = data$X, y = data$Y, Q_type = 'no_deconfounding', return_data = T, nTree = 100)
+fit2 <- SDForest(x = data$X, y = data$Y, return_data = T, nTree = 100)
+
+cp_seq <- unique((unlist(lapply(fit1$forest, function(x) x$tree$Get('cp_max')))))
+cp_seq[cp_seq > 1] <- 1
+cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
+cp_seq <- c(0, cp_seq)
+path1 <- regPath(fit1, cp_seq = cp_seq)
+cp_seq <- unique((unlist(lapply(fit2$forest, function(x) x$tree$Get('cp_max')))))
+cp_seq[cp_seq > 1] <- 1
+cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
+cp_seq <- c(0, cp_seq)
+path2 <- regPath(fit2, cp_seq = cp_seq)
+
+plotOOB(path1)
+plotOOB(path2)
+
+imp1 <- fit1$var_importance / max(fit1$var_importance)
+imp2 <- fit2$var_importance / max(fit2$var_importance)
+impcol <- rep('black', p)
+impcol[data$j] <- 'blue'
+plot(imp1, imp2, col = impcol)
+
 fit2 <- toYamlForest(fit)
 save(fit2, file = 'ytree.rda')
 rm(fit2)
