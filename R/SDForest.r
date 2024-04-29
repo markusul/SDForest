@@ -798,6 +798,16 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   return(output)
 }
 
+print.SDForest <- function(object){
+  cat("SDForest result\n\n")
+  cat("Number of trees: ", length(object$forest), "\n")
+  cat("Number of covariates: ", length(object$var_names), "\n")
+  if(!is.null(object$oob_loss)){
+    cat("OOB loss: ", round(object$oob_loss, 2), "\n")
+    cat("OOB spectral loss: ", round(object$oob_SDloss, 2), "\n")
+  }
+}
+
 predictOOB <- function(object, X = NULL){
   if(is.null(X)){
     X <- object$X
@@ -1265,7 +1275,7 @@ mergeForest <- function(fit1, fit2){
   fit1$var_importance <- (fit1$var_importance * len_1 + 
     fit2$var_importance * len_2) / len_new
 
-  if(all(fit1$X == fit2$X, fit1$Y == fit2$Y, fit1$Q == fit2$Q, 
+  if(all(dim(fit1$X) == dim(fit2$X)) && all(fit1$X == fit2$X, fit1$Y == fit2$Y, fit1$Q == fit2$Q, 
     !is.null(fit1$X), !is.null(fit1$Y), !is.null(fit1$Q))){
     fit1$predictions <- (fit1$predictions * length(fit1$forest) + 
       fit2$predictions * length(fit2$forest)) / len_new
