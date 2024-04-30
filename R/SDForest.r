@@ -1032,7 +1032,7 @@ regPath <- function(object, ...) UseMethod('regPath')
 
 regPath.SDTree <- function(object, cp_seq = NULL){
   object$tree <- data.tree::Clone(object$tree)
-  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
 
   res <- lapply(cp_seq, function(cp){
@@ -1048,7 +1048,7 @@ regPath.SDTree <- function(object, cp_seq = NULL){
 }
 
 regPath.SDForest <- function(object, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
-  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
   object$forest <- lapply(object$forest, function(tree){
     tree$tree <- data.tree::Clone(tree$tree)
@@ -1075,7 +1075,7 @@ regPath.SDForest <- function(object, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
 stabilitySelection.SDForest <- function(object, cp_seq = NULL){
-  if(is.null(cp_seq)) cp_seq <- c(seq(0, 0.1, 0.001), seq(0.1, 0.5, 0.03), seq(0.5, 1, 0.1))
+  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
 
   imp <- pbapply::pblapply(object$forest, function(x)regPath(x, cp_seq)$varImp_path > 0)
@@ -1086,6 +1086,24 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL){
   paths <- list(cp = cp_seq, varImp_path = imp)
   class(paths) <- 'paths'
   return(paths)
+}
+
+get_cp_seq <- function(object, ...) UseMethod('get_cp_seq')
+
+get_cp_seq.SDTree <- function(object){
+  cp_seq <- unique(object$tree$Get('cp_max'))
+  cp_seq[cp_seq > 1] <- 1
+  cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
+  cp_seq <- c(0, cp_seq)
+  return(cp_seq)
+}
+
+get_cp_seq.SDForest <- function(object){
+  cp_seq <- unique((unlist(lapply(object$forest, function(x) x$tree$Get('cp_max')))))
+  cp_seq[cp_seq > 1] <- 1
+  cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
+  cp_seq <- c(0, cp_seq)
+  return(cp_seq)
 }
 
 plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){

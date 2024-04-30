@@ -1,6 +1,6 @@
 Package: SDForest
 Type: Package
-Tilte: Spectrally Deconfounded Random Forest
+Title: Spectrally Deconfounded Random Forest
 Version: 0.0.1.0
 RoxygenNote: 7.3.0
 Imports: Rdpack
