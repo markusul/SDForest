@@ -1,4 +1,4 @@
-source("R/SDForest_gpu.r")
+source("R/SDForest.r")
 
 library('ranger')
 
@@ -205,44 +205,103 @@ plot(path10)
 plotOOB(path10)
 dev.off()
 
+source("R/SDForest.r")
+n_train <- 500
+n_test <- 500
+r <- 5
+q <- 2
+p <- 50
 
-n_train <- 300
-r <- 2
-q <- 1
-p <- 10
+n_caus <- 1
 
-A <- matrix(rnorm(n_train * r, 0, 1), nrow = n_train)
-H <- matrix(rnorm(n_train * q, 0, 0.01), nrow = n_train)
+var_X <- 1
+var_H <- 2
+var_A <- 1
+var_Y <- 0.01
 
-gamma <- matrix(rnorm(r * p, 0, 1), nrow = r)
-delta <- matrix(rnorm(q * p, 0, 1), nrow = q)
-X <- A %*% gamma + H %*% delta + matrix(rnorm(n_train * p, 0, 1), nrow = n_train)
-Y <- 3 * X[, 2] + 3 * X[, 3] + H - 0.1 * A[, 1] + rnorm(n_train, 0, 1)
+beta_strength <- 1
+delta_strength <- 1
+gamma_strength <- 1
+alpha_1_strength <- 1
+alpha_2_strength <- 1
+alpha_3_strength <- 0
 
-n_test <- 2000
-A_test <- matrix(rnorm(n_test * r, 0, 1), nrow = n_test) * sqrt(10)
-H_test <- matrix(rnorm(n_test * q, 0, 0.1), nrow = n_test)
-X_test <- A_test %*% gamma + H_test %*% delta + matrix(rnorm(n_test * p, 0, 1), nrow = n_test)
-Y_test <- 3 * X_test[, 2] + 3 * X_test[, 3] + H_test - 0.1 * A[, 1] + rnorm(n_test, 0, 1)
+A_shift <- 1000
+
+beta <- matrix(0, nrow = p)
+beta[1:n_caus, ] <- rnorm(n_caus, 0, beta_strength)
+
+delta <- matrix(rnorm(q, 0, delta_strength), nrow = q)
+gamma <- matrix(rnorm(q * p, 0, gamma_strength), nrow = q)
+alpha_1 <- matrix(rnorm(r * p, 0, alpha_1_strength), nrow = r)
+alpha_2 <- matrix(rnorm(r, 0, alpha_2_strength), nrow = r)
+alpha_3 <- matrix(rnorm(r * q, 0, alpha_3_strength), nrow = r)
+
+A <- matrix(rnorm(n_train * r, 0, var_A), nrow = n_train)
+H <- A %*% alpha_3 + matrix(rnorm(n_train * q, 0, var_H), nrow = n_train)
+X <- A %*% alpha_1 + H %*% gamma + matrix(rnorm(n_train * p, 0, var_X), nrow = n_train)
+Y <- X %*% beta + H %*% delta + A %*% alpha_2 + rnorm(n_train, 0, var_Y)
+
+mean(abs(X %*% beta))
+mean(abs(H %*% delta))
+mean(abs(A %*% alpha_2))
+mean(abs(rnorm(n_train, 0, var_Y)))
+
+A_test <- matrix(rnorm(n_test * r, 0, var_A), nrow = n_test) + A_shift
+H_test <- A %*% alpha_3 + matrix(rnorm(n_test * q, 0, var_H), nrow = n_test)
+X_test <- A_test %*% alpha_1 + H_test %*% gamma + matrix(rnorm(n_test * p, 0, var_X), nrow = n_test)
+Y_test <- X_test %*% beta + H_test %*% delta + A_test %*% alpha_2 + rnorm(n_test, 0, var_Y)
+
+W <- get_W(A, gamma = 100)
+Q <- get_Q(X, type = 'trim')
+
+library(glmnet)
+
+fit_lin_cv <- cv.glmnet(x = X, y = Y, alpha = 1, nfolds = 10)
+fit_lin <- glmnet(x = X, y = Y, alpha = 1, lambda = fit_lin_cv$lambda.1se)
+
+fit_linA_cv <- cv.glmnet(x = W %*% X, y = W %*% Y, alpha = 1, nfolds = 10)
+fit_linA <- glmnet(x = W %*% X, y = W %*% Y, alpha = 1, lambda = fit_linA_cv$lambda.1se)
 
 
-W <- get_W(A, gamma = 10)
-fit_linA <- lm.fit(x = W %*% X, y = W %*% Y)$coefficients
-fit_lin <- lm.fit(x = X, y = Y)$coefficients
+fit_linQ_cv <- cv.glmnet(x = Q %*% X, y = Q %*% Y, alpha = 1, nfolds = 10)
 
-pred_lin <- X_test %*% fit_lin
-perf_lin <- quantile(abs(Y_test - pred_lin), seq(0, 1, 0.05))
+fit_linQ <- glmnet(x = Q %*% X, y = Q %*% Y, alpha = 1, lambda = fit_linQ_cv$lambda.1se)
 
-pred_linA <- X_test %*% fit_linA
-perf_linA <- quantile(abs(Y_test - pred_linA), seq(0, 1, 0.05))
+#fit_linA <- lm.fit(x = W %*% X, y = W %*% Y)$coefficients
+#fit_lin <- lm.fit(x = X, y = Y)$coefficients
+#fit_linQ <- lm.fit(x = Q %*% X, y = Q %*% Y)$coefficients
 
-plot(perf_lin, ylim = c(0, max(perf_lin, perf_linA)))
-points(perf_linA, col = 'red')
+coefA <- coef(fit_linA)[-1, 1]
+coef <- coef(fit_lin)[-1, 1]
+coefQ <- coef(fit_linQ)[-1, 1]
 
-plot(X_test[, 2], Y_test)
-points(X_test[, 2], pred_lin, col = 'blue', pch = 20, cex = 0.5)
-points(X_test[, 2], pred_linA, col = 'red', pch = 20, cex = 0.5)
-points(X_test[, 2], 3 * X_test[, 2] + 3 * X_test[, 3], col = 'green', pch = 20, cex = 0.5)
+
+pred_linA <- predict(fit_linA, newx = X_test)[, 1]
+pred_lin <- predict(fit_lin, newx = X_test)[, 1]
+pred_linQ <- predict(fit_linQ, newx = X_test)[, 1]
+
+
+coef_col <- rep('black', p)
+coef_col[1:n_caus] <- '#0ea10e'
+
+ceof_df <- data.frame(beta = abs(beta), fit_linA = abs(coefA), 
+  fit_lin = abs(coef), fit_linQ = abs(coefQ))
+#plot(ceof_df, col = coef_col, pch = 20, cex = 1)
+
+
+par(mfrow = c(1, 2))
+plot(X_test[, 1], Y_test)
+points(X_test[, 1], pred_lin, col = 'blue', pch = 20, cex = 1)
+points(X_test[, 1], pred_linA, col = 'red', pch = 20, cex = 0.8)
+points(X_test[, 1], pred_linQ, col = '#be24b7', pch = 20, cex = 0.5)
+points(X_test[, 1], X_test %*% beta, col = 'green', pch = 20, cex = 0.3)
+
+perf <- data.frame(lin = abs(Y_test - pred_lin), linA = abs(Y_test - pred_linA), 
+  true = abs(Y_test - X_test %*% beta), linQ = abs(Y_test - pred_linQ))
+
+boxplot(perf, col = c('blue', 'red', 'green', '#be24b7'), pch = 20, cex = 0.8)
+
 
 n <- 300
 H <- rnorm(n)
