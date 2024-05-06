@@ -204,13 +204,13 @@ path$varImp_path
 plot(path10)
 plotOOB(path10)
 dev.off()
-
+library(glmnet)
 source("R/SDForest.r")
-n_train <- 500
+n_train <- 503
 n_test <- 500
 r <- 5
 q <- 2
-p <- 50
+p <- 1
 
 n_caus <- 1
 
@@ -248,14 +248,17 @@ mean(abs(A %*% alpha_2))
 mean(abs(rnorm(n_train, 0, var_Y)))
 
 A_test <- matrix(rnorm(n_test * r, 0, var_A), nrow = n_test) + A_shift
-H_test <- A %*% alpha_3 + matrix(rnorm(n_test * q, 0, var_H), nrow = n_test)
+H_test <- A_test %*% alpha_3 + matrix(rnorm(n_test * q, 0, var_H), nrow = n_test)
 X_test <- A_test %*% alpha_1 + H_test %*% gamma + matrix(rnorm(n_test * p, 0, var_X), nrow = n_test)
 Y_test <- X_test %*% beta + H_test %*% delta + A_test %*% alpha_2 + rnorm(n_test, 0, var_Y)
 
 W <- get_W(A, gamma = 100)
-Q <- get_Q(X, type = 'trim')
 
-library(glmnet)
+if(p == 1) {
+  Q <- diag(n_train)
+}else Q <- get_Q(X, type = 'trim')
+
+
 
 fit_lin_cv <- cv.glmnet(x = X, y = Y, alpha = 1, nfolds = 10)
 fit_lin <- glmnet(x = X, y = Y, alpha = 1, lambda = fit_lin_cv$lambda.1se)
