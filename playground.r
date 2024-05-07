@@ -871,3 +871,53 @@ gg_cond_rf2 <- ggarrange(ggdep1, ggdep2, ggdep3, ggdep4,
     ncol = 2, nrow = 2, common.legend = T, legend = 'bottom')
 gg_cond_rf2
 
+
+beta_strength <- 1
+delta_strength <- 1
+gamma_strength <- 1
+alpha_1_strength <- 1
+alpha_2_strength <- 1
+alpha_3_strength <- 0
+
+
+DiagrammeR::grViz("
+digraph {
+  graph []
+  node [shape = plaintext]
+    A [label = 'Smoking']
+    Y [label = 'Lung cancer']
+    C [label = 'Age']
+  edge []
+    A->Y
+    C->A
+    C->Y
+  { rank = same; A; Y }
+}
+")
+
+
+library(igraph)
+
+nodes <- data.frame(name = c('X', 'H', 'Y', 'A'), 
+                    size = c(30, 30, 12, 60), 
+                    color = c('#2ad4f1', 'white', '#32f77d', '#df6c6c'),
+                    label.color = c('black', 'black', 'black', 'black'), 
+                    label.cex = 1.5)
+
+edges <- data.frame(from = c('X', 'H', 'H', 'A', 'A', 'A'), 
+                    to = c('Y', 'Y', 'X', 'X', 'H', 'Y'), 
+                    width = c(1, 10, 1, 1, 1, 1), 
+                    label = c('beta\n', 'delta\n', 'gamma\n', 'alpha 2\n', 'alpha 1\n', 'alpha 3\n'),
+                    color = c('black', 'black', 'black', 'black', 'black', 'black'),
+                    arrow.size = 1, 
+                    label.color = c('black', 'black', 'black', 'black', 'black', 'black'),
+                    label.cex = 1.5, 
+                    label.dist = 1.5)
+
+g <- graph_from_data_frame(edges, directed = T, vertices = nodes)
+
+
+
+set.seed(6)
+coords <- layout.reingold.tilford(barabasi.game(4))
+plot(g, layout = coords)
