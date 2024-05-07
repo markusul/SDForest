@@ -27,7 +27,7 @@ ui <- shinyUI(
   dashboardPage(
     #skin = 'blue',
     
-    dashboardHeader(title = textOutput('sim')),
+    dashboardHeader(title = ''),
     
     dashboardSidebar(
       actionButton("show_dim", label = "Dimensions"),
@@ -67,7 +67,8 @@ ui <- shinyUI(
         condition = "output.shift",
         numericInput("A_shift", label = "Shift of Anchor", value = 1, min = 0, max = 10000), 
         numericInput("A_gamma", label = "gamma Parameter", value = 1, min = 0, max = 10000)
-      )
+      ),
+      textOutput('sim')
     ),
     
     
@@ -80,12 +81,11 @@ ui <- shinyUI(
       
       
       tabBox(#title = 'Binding ELISA',
-        tabPanel(title = 'Positive Control',
+        tabPanel(title = 'Linear Regression',
           fluidRow(box(actionButton("run", "Run simulation"), width = 12)),
-          fluidRow(
-            box(plotOutput("sim_res", height = 250), width = 6), 
-            ),
-          box(plotOutput("graph"), width = 12)
+          fluidRow(box(plotOutput("sim_res"), width = 12)),
+          fluidRow(box(plotOutput("perf"), width = 12)),
+          fluidRow(box(plotOutput("graph"), width = 12))
         ),
         
         width = 12
@@ -97,7 +97,7 @@ ui <- shinyUI(
 # Define server logic required to draw a histogram
 server <- shinyServer(function(input, output, session) {
   #reactive variables
-  rv <- reactiveValues(sim_res = ggplot(), beta = NULL, delta = NULL, gamma = NULL, alpha_1 = NULL, 
+  rv <- reactiveValues(perf = ggplot(), sim_res = ggplot(), beta = NULL, delta = NULL, gamma = NULL, alpha_1 = NULL, 
   alpha_2 = NULL, alpha_3 = NULL, A = NULL, H = NULL, X = NULL, Y = NULL, A_test = NULL, 
   H_test = NULL, X_test = NULL, Y_test = NULL)
   
@@ -199,65 +199,56 @@ server <- shinyServer(function(input, output, session) {
 
     p <- input$p
 
-    print('run')
-
-
     W <- get_W(A, gamma = input$A_gamma)
     Q <- get_Q(X, type = 'trim')
-
-    print('fitting')
 
     fit_lin_cv <- cv.glmnet(x = X, y = Y, alpha = 1, nfolds = 10)
     fit_lin <- glmnet(x = X, y = Y, alpha = 1, lambda = fit_lin_cv$lambda.1se)
 
     fit_linA_cv <- cv.glmnet(x = W %*% X, y = W %*% Y, alpha = 1, nfolds = 10)
     fit_linA <- glmnet(x = W %*% X, y = W %*% Y, alpha = 1, lambda = fit_linA_cv$lambda.1se)
-    print('fitting Q')
 
     fit_linQ_cv <- cv.glmnet(x = Q %*% X, y = Q %*% Y, alpha = 1, nfolds = 10)
-
     fit_linQ <- glmnet(x = Q %*% X, y = Q %*% Y, alpha = 1, lambda = fit_linQ_cv$lambda.1se)
-
-    #fit_linA <- lm.fit(x = W %*% X, y = W %*% Y)$coefficients
-    #fit_lin <- lm.fit(x = X, y = Y)$coefficients
-    #fit_linQ <- lm.fit(x = Q %*% X, y = Q %*% Y)$coefficients
 
     coefA <- coef(fit_linA)[-1, 1]
     coef <- coef(fit_lin)[-1, 1]
     coefQ <- coef(fit_linQ)[-1, 1]
 
-
     pred_linA <- predict(fit_linA, newx = X_test)[, 1]
     pred_lin <- predict(fit_lin, newx = X_test)[, 1]
     pred_linQ <- predict(fit_linQ, newx = X_test)[, 1]
-    print('plotting')
 
     coef_col <- rep('black', p)
     coef_col[1:input$n_caus] <- '#0ea10e'
 
     ceof_df <- data.frame(beta = abs(rv$beta), fit_linA = abs(coefA), 
       fit_lin = abs(coef), fit_linQ = abs(coefQ))
-    #plot(ceof_df, col = coef_col, pch = 20, cex = 1)
 
-
-    #par(mfrow = c(1, 2))
-    #plot(X_test[, 1], Y_test)
-    #points(X_test[, 1], pred_lin, col = 'blue', pch = 20, cex = 1)
-    #points(X_test[, 1], pred_linA, col = 'red', pch = 20, cex = 0.8)
-    #points(X_test[, 1], pred_linQ, col = '#be24b7', pch = 20, cex = 0.5)
-    #points(X_test[, 1], X_test %*% beta, col = 'green', pch = 20, cex = 0.3)
-    print('dada')
     df_res <- data.frame(X_1 = X_test[, 1], Y = Y_test, 
       Anchor = pred_linA, lasso = pred_lin, trim = pred_linQ, 
       True = X_test %*% rv$beta)
     
     df_res <- gather(df_res, key = 'Method', value = 'Y', -X_1)
-    print('plotting')
+
     rv$sim_res <- ggplot(df_res, aes(x = X_1, y = Y, color = Method, pch = Method)) + 
-      geom_point() + 
+      geom_point(size = 1) + 
       theme_bw() + 
       xlab(expression(X[1])) +
-      theme(legend.position = 'bottom')
+      theme(legend.position = 'bottom', legend.title = element_blank())
+
+
+    perf <- data.frame(lasso = (Y_test - pred_lin)**2, Anchor = (Y_test - pred_linA)**2, 
+      True = (Y_test - X_test %*% rv$beta)**2, trim = (Y_test - pred_linQ)**2)
+    
+    perf <- gather(perf, key = 'Method', value = 'MSE')
+    rv$perf <- ggplot(perf, aes(x = Method, y = MSE, fill = Method)) + 
+      geom_boxplot() + 
+      theme_bw() + 
+      ylab('MSE') + 
+      theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+      theme(legend.position = 'none')
+      
   })
 
   
@@ -265,25 +256,39 @@ server <- shinyServer(function(input, output, session) {
     rv$sim_res
   })
 
-  output$graph <- renderPlot({
-    stengths <- c(input$beta_strength, input$delta_strength, input$gamma_strength, 
-      input$alpha_2_strength, input$alpha_1_strength, input$alpha_3_strength)
+  output$perf <- renderPlot({
+    rv$perf
+  })
 
-    
+  output$graph <- renderPlot({
+    strengths <- c(mean(abs(rv$X %*% rv$beta)), mean(abs(rv$H %*% rv$delta)), 
+      mean(abs(rv$H %*% rv$gamma)), mean(abs(rv$A %*% rv$alpha_2)), 
+      mean(abs(rv$A %*% rv$alpha_1)), mean(abs(rv$A %*% rv$alpha_3)))
+
+    effect_present <- as.logical(strengths)
+    label_col <- c('black', 'black', 'black', 'black', 'black', 'black')
+    label_col[!effect_present] <- 'white'
+
+    strengths <- strengths - min(strengths)
+    strengths <- strengths / max(strengths) * 3 + 1
+
+    dims <- c(input$p, input$q, 1, input$r)
+    dims <- dims - min(dims)
+    dims <- dims / max(dims) * 40 + 20 
 
     nodes <- data.frame(name = c('X', 'H', 'Y', 'A'), 
-                        size = c(30, 30, 12, 60), 
+                        size = dims, 
                         color = c('#2ad4f1', 'white', '#32f77d', '#df6c6c'),
                         label.color = c('black', 'black', 'black', 'black'), 
                         label.cex = 1.5)
 
     edges <- data.frame(from = c('X', 'H', 'H', 'A', 'A', 'A'), 
                         to = c('Y', 'Y', 'X', 'X', 'H', 'Y'), 
-                        width = c(1, 10, 1, 1, 1, 1), 
+                        width = strengths, 
                         label = c('beta\n', 'delta\n', 'gamma\n', 'alpha 2\n', 'alpha 1\n', 'alpha 3\n'),
-                        color = c('black', 'black', 'black', 'black', 'black', 'black'),
-                        arrow.size = 1, 
-                        label.color = c('black', 'black', 'black', 'black', 'black', 'black'),
+                        color = effect_present,
+                        arrow.size = 1.5, 
+                        label.color = label_col,
                         label.cex = 1.5, 
                         label.dist = 1.5)
 
