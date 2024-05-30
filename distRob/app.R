@@ -18,9 +18,10 @@ library(english)
 
 library(igraph)
 library(ggplot2)
+library(plotly)
 library(tidyr)
 library(glmnet)
-source("../R/SDForest.r")
+source("SDForest.r")
 
 # Define UI for application that draws a histogram
 ui <- shinyUI(
@@ -33,12 +34,12 @@ ui <- shinyUI(
       actionButton("show_dim", label = "Dimensions"),
       conditionalPanel(
         condition = "output.show_dim",
-        numericInput("n_train", label = "Number of Training Samples", value = 500, min = 1, max = 10000),
-        numericInput("n_test", label = "Number of Test Samples", value = 500, min = 1, max = 10000),            
-        numericInput("p", label = "Number of Features", value = 50, min = 2, max = 10000),
-        numericInput("q", label = "Dimension of hidden Confounding", value = 10, min = 1, max = 10000),
-        numericInput("r", label = "Dimension of observed Anchor", value = 1, min = 1, max = 10000), 
-        numericInput("n_caus", label = "Number of Causal Features", value = 1, min = 1, max = 50),
+        sliderInput("n_train", label = "Number of Training Samples", value = 500, min = 1, max = 10000),
+        sliderInput("n_test", label = "Number of Test Samples", value = 500, min = 1, max = 1000),            
+        sliderInput("p", label = "Number of Features", value = 500, min = 2, max = 1000),
+        sliderInput("q", label = "Dimension of hidden Confounding", value = 2, min = 1, max = 1000),
+        sliderInput("r", label = "Dimension of observed Anchor", value = 4, min = 1, max = 1000), 
+        sliderInput("n_caus", label = "Number of Causal Features", value = 1, min = 1, max = 50),
         ),
 
       #actionButton("data_distribution", label = "Data Distribution"),
@@ -53,20 +54,20 @@ ui <- shinyUI(
       actionButton("effect_strength", label = "Effect Strength"),
       conditionalPanel(
         condition = "output.effect_strength",
-        numericInput("var_Y", label = "Variance of Response", value = 0.01, min = 0, max = 10000),
-        numericInput("beta_strength", label = "beta variance", value = 1, min = 0, max = 10000),
-        numericInput("delta_strength", label = "delta variance", value = 1, min = 0, max = 10000),
-        numericInput("gamma_strength", label = "gamma variance", value = 1, min = 0, max = 10000),
-        numericInput("alpha_1_strength", label = "alpha 1 variance", value = 1, min = 0, max = 10000),
-        numericInput("alpha_2_strength", label = "alpha 2 variance", value = 1, min = 0, max = 10000),
-        numericInput("alpha_3_strength", label = "alpha 3 variance", value = 0, min = 0, max = 10000)
+        sliderInput("var_Y", label = "Variance of Response", value = 0.1, min = 0, max = 10, step = 0.01),
+        sliderInput("beta_strength", label = "beta", value = 1, min = 0, max = 10, step = 0.001),
+        sliderInput("delta_strength", label = "delta variance", value = 1, min = 0, max = 10, step = 0.01),
+        sliderInput("gamma_strength", label = "gamma variance", value = 1, min = 0, max = 10, step = 0.01),
+        sliderInput("alpha_1_strength", label = "alpha 1 variance", value = 1, min = 0, max = 10, step = 0.01),
+        sliderInput("alpha_2_strength", label = "alpha 2 variance", value = 1, min = 0, max = 10, step = 0.01),
+        sliderInput("alpha_3_strength", label = "alpha 3 variance", value = 0, min = 0, max = 10, step = 0.01)
       ),
       
       actionButton("shift", label = "Distribution Shift"),
       conditionalPanel(
         condition = "output.shift",
-        numericInput("A_shift", label = "Shift of Anchor", value = 1, min = 0, max = 10000), 
-        numericInput("A_gamma", label = "gamma Parameter", value = 1, min = 0, max = 10000)
+        sliderInput("A_shift", label = "Shift of Anchor", value = 5, min = 0, max = 100, step = 0.01), 
+        sliderInput("A_gamma", label = "gamma Parameter", value = 10, min = 0, max = 100, step = 0.01)
       ),
       textOutput('sim')
     ),
@@ -83,9 +84,10 @@ ui <- shinyUI(
       tabBox(#title = 'Binding ELISA',
         tabPanel(title = 'Linear Regression',
           fluidRow(box(actionButton("run", "Run simulation"), width = 12)),
-          fluidRow(box(plotOutput("sim_res"), width = 12)),
-          fluidRow(box(plotOutput("perf"), width = 12)),
-          fluidRow(box(plotOutput("graph"), width = 12))
+          fluidRow(box(plotOutput("graph"), width = 6), 
+          box(plotlyOutput("perf"), width = 6)),
+          fluidRow(box(plotlyOutput("sim_res"), width = 12))
+          #fluidRow(box(plotOutput("perf"), width = 12))
         ),
         
         width = 12
@@ -151,7 +153,8 @@ server <- shinyServer(function(input, output, session) {
     A_shift <- input$A_shift
 
     beta <- matrix(0, nrow = p)
-    beta[1:n_caus, ] <- rnorm(n_caus, 0, sqrt(beta_strength))
+    #beta[1:n_caus, ] <- rnorm(n_caus, 0, sqrt(beta_strength))
+    beta[1:n_caus] <- beta_strength
 
     delta <- matrix(rnorm(q, 0, sqrt(delta_strength)), nrow = q)
     gamma <- matrix(rnorm(q * p, 0, sqrt(gamma_strength)), nrow = q)
@@ -231,11 +234,17 @@ server <- shinyServer(function(input, output, session) {
     
     df_res <- gather(df_res, key = 'Method', value = 'Y', -X_1)
 
+    col_method <- c(Y = 'black', Anchor = 'red', lasso = 'blue', True = 'green', trim = 'purple')
+    df_res$size <- 1
+    df_res$size[df_res$Method == 'Anchor'] <- 1.5
+
     rv$sim_res <- ggplot(df_res, aes(x = X_1, y = Y, color = Method, pch = Method)) + 
-      geom_point(size = 1) + 
+      geom_point(size = df_res$size) + 
       theme_bw() + 
-      xlab(expression(X[1])) +
-      theme(legend.position = 'bottom', legend.title = element_blank())
+      xlab('X1') +
+      ylab('Test Y') +
+      theme(legend.position = 'bottom', legend.title = element_blank()) +
+      scale_color_manual(values = col_method)
 
 
     perf <- data.frame(lasso = (Y_test - pred_lin)**2, Anchor = (Y_test - pred_linA)**2, 
@@ -245,19 +254,20 @@ server <- shinyServer(function(input, output, session) {
     rv$perf <- ggplot(perf, aes(x = Method, y = MSE, fill = Method)) + 
       geom_boxplot() + 
       theme_bw() + 
-      ylab('MSE') + 
+      ylab('Test MSE') + 
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-      theme(legend.position = 'none')
+      #theme(legend.position = 'none') + 
+      scale_fill_manual(values = col_method)
       
   })
 
   
-  output$sim_res <- renderPlot({
-    rv$sim_res
+  output$sim_res <- renderPlotly({
+    ggplotly(rv$sim_res)
   })
 
-  output$perf <- renderPlot({
-    rv$perf
+  output$perf <- renderPlotly({
+    ggplotly(rv$perf)
   })
 
   output$graph <- renderPlot({
