@@ -31,10 +31,16 @@ ui <- shinyUI(
     dashboardHeader(title = ''),
     
     dashboardSidebar(
+      box(title = 'Preset Simulations', width = 12,
+        actionButton("IV", "IV"),
+        actionButton("TRIM", "TRIM"),
+      ),
+
+      box(title = 'Custom Simulation', width = 12,
       actionButton("show_dim", label = "Dimensions"),
       conditionalPanel(
         condition = "output.show_dim",
-        sliderInput("n_train", label = "Number of Training Samples", value = 500, min = 1, max = 10000),
+        sliderInput("n_train", label = "Number of Training Samples", value = 500, min = 1, max = 1000),
         sliderInput("n_test", label = "Number of Test Samples", value = 500, min = 1, max = 1000),            
         sliderInput("p", label = "Number of Features", value = 500, min = 2, max = 1000),
         sliderInput("q", label = "Dimension of hidden Confounding", value = 2, min = 1, max = 1000),
@@ -69,8 +75,19 @@ ui <- shinyUI(
         sliderInput("A_shift", label = "Shift of Anchor", value = 5, min = 0, max = 100, step = 0.01), 
         sliderInput("A_gamma", label = "gamma Parameter", value = 10, min = 0, max = 100, step = 0.01)
       ),
+
+      actionButton("nonGaussian", label = "Non-Gaussian Noise"),
+      conditionalPanel(
+        condition = "output.nonGaussian",
+        "Non-gaussian noise",
+        numericInput("power_X", label = "Power of X", value = 1, min = 1, max = 10),
+        numericInput("power_H", label = "Power of H", value = 1, min = 1, max = 10),
+        numericInput("power_A", label = "Power of A", value = 1, min = 1, max = 10),
+        numericInput("power_Y", label = "Power of Y", value = 1, min = 1, max = 10)
+      ),
+
       textOutput('sim')
-    ),
+    )),
     
     
     dashboardBody(
@@ -81,11 +98,28 @@ ui <- shinyUI(
       tags$head(tags$style(HTML('.content-wrapper { overflow: auto !important;}'))),
       
       
-      tabBox(#title = 'Binding ELISA',
+      tabBox(title = 'Distributional Robustness',
+        tabPanel(title = 'Info', 
+          fluidRow(
+            box(title = 'Description', width = 12,
+              "This app simulates a linear regression model with hidden confounding and observed anchor. The goal is to show the distributional robustness of different methods. The data is generated as follows:",
+              tags$ul(
+                tags$li("The anchor A is generated from a normal distribution with mean 0 and variance 1."),
+                tags$li("The hidden confounding H is generated as H = A * alpha_1 + N(0, 1)."),
+                tags$li("The features X are generated as X = A * alpha_2 + H * gamma + N(0, 1)."),
+                tags$li("The response Y is generated as Y = X * beta + H * delta + A * alpha_3 + epsilon, where epsilon is a normal noise with mean 0 and variance var_Y."),
+                tags$li("The test data is generated in the same way as the training data, but with a shift in the anchor A, A_test = N(0, 1) + A_shift.")
+              ),
+              "Beta can be chosen on the left and all the other effects are sampled from a normal distribution with mean 0 and variance equal to the effect strength. The effect strength can be adjusted with the sliders on the left.",
+              "The app then fits a linear regression model on the training data and evaluates the performance on the test data. The performance is evaluated in terms of mean squared error (MSE) and visualized in a boxplot. The predictions of the different methods are also visualized in a scatter plot.",
+              "The graph on the left shows the causal graph of the data. The width of the edges represents the strength of the effect, and the size of the nodes represents the dimension of the corresponding variable.",
+              "Non-Gaussian noise can be added to the data by adjusting the power of the noise. The power of the noise is used to calculate the noise as sign(X) * abs(X)^power, X ~ N(0, 1)."
+            )
+          )
+        ),
         tabPanel(title = 'Linear Regression',
           fluidRow(box(actionButton("run", "Run simulation"), width = 12)),
-          fluidRow(box(plotOutput("graph"), width = 6), 
-          box(plotlyOutput("perf"), width = 6)),
+          fluidRow(box(plotOutput("graph"), width = 6), box(plotlyOutput("perf"), width = 6)),
           fluidRow(box(plotlyOutput("sim_res"), width = 12))
           #fluidRow(box(plotOutput("perf"), width = 12))
         ),
@@ -102,10 +136,44 @@ server <- shinyServer(function(input, output, session) {
   rv <- reactiveValues(perf = ggplot(), sim_res = ggplot(), beta = NULL, delta = NULL, gamma = NULL, alpha_1 = NULL, 
   alpha_2 = NULL, alpha_3 = NULL, A = NULL, H = NULL, X = NULL, Y = NULL, A_test = NULL, 
   H_test = NULL, X_test = NULL, Y_test = NULL)
-  
-  
+
   observe(updateSliderInput(session, "n_caus", max = input$p))
-  
+
+  observeEvent(input$IV, {
+    updateSliderInput(session, "n_train", value = 1000)
+    updateSliderInput(session, "n_test", value = 500)
+    updateSliderInput(session, "p", value = 10)
+    updateSliderInput(session, "q", value = 2)
+    updateSliderInput(session, "r", value = 20)
+    updateSliderInput(session, "n_caus", value = 1)
+    updateSliderInput(session, "var_Y", value = 0.1)
+    updateSliderInput(session, "beta_strength", value = 0.5)
+    updateSliderInput(session, "delta_strength", value = 1)
+    updateSliderInput(session, "gamma_strength", value = 1)
+    updateSliderInput(session, "alpha_1_strength", value = 0)
+    updateSliderInput(session, "alpha_2_strength", value = 5)
+    updateSliderInput(session, "alpha_3_strength", value = 0)
+    updateSliderInput(session, "A_shift", value = 10)
+    updateSliderInput(session, "A_gamma", value = 10)
+  })
+
+  observeEvent(input$TRIM, {
+    updateSliderInput(session, "n_train", value = 1000)
+    updateSliderInput(session, "n_test", value = 500)
+    updateSliderInput(session, "p", value = 501)
+    updateSliderInput(session, "q", value = 2)
+    updateSliderInput(session, "r", value = 4)
+    updateSliderInput(session, "n_caus", value = 1)
+    updateSliderInput(session, "var_Y", value = 0.1)
+    updateSliderInput(session, "beta_strength", value = 1)
+    updateSliderInput(session, "delta_strength", value = 1)
+    updateSliderInput(session, "gamma_strength", value = 1)
+    updateSliderInput(session, "alpha_1_strength", value = 1)
+    updateSliderInput(session, "alpha_2_strength", value = 1)
+    updateSliderInput(session, "alpha_3_strength", value = 1)
+    updateSliderInput(session, "A_shift", value = 10)
+    updateSliderInput(session, "A_gamma", value = 10)
+  })
 
   output$show_dim <- reactive({
     return(input$show_dim %% 2)
@@ -126,6 +194,11 @@ server <- shinyServer(function(input, output, session) {
     return(input$shift %% 2)
   })
   outputOptions(output, 'shift', suspendWhenHidden = FALSE)
+
+  output$nonGaussian <- reactive({
+    return(input$nonGaussian %% 2)
+  })
+  outputOptions(output, 'nonGaussian', suspendWhenHidden = FALSE)
 
   output$sim <- renderText({
     print(input$run)
@@ -162,16 +235,29 @@ server <- shinyServer(function(input, output, session) {
     alpha_3 <- matrix(rnorm(r, 0, sqrt(alpha_3_strength)), nrow = r)
     alpha_1 <- matrix(rnorm(r * q, 0, sqrt(alpha_1_strength)), nrow = r)
 
-    A <- matrix(rnorm(n_train * r, 0, sqrt(var_A)), nrow = n_train)
-    H <- A %*% alpha_1 + matrix(rnorm(n_train * q, 0, sqrt(var_H)), nrow = n_train)
-    X <- A %*% alpha_2 + H %*% gamma + matrix(rnorm(n_train * p, 0, sqrt(var_X)), nrow = n_train)
-    Y <- X %*% beta + H %*% delta + A %*% alpha_3 + rnorm(n_train, 0, sqrt(var_Y))
+    A_eps <- matrix(rnorm(n_train * r, 0, sqrt(var_A)), nrow = n_train)
+    A <- sign(A_eps) * abs(A_eps)**input$power_A
 
-    A_test <- matrix(rnorm(n_test * r, 0, sqrt(var_A)), nrow = n_test) + A_shift
-    H_test <- A_test %*% alpha_1 + matrix(rnorm(n_test * q, 0, sqrt(var_H)), nrow = n_test)
-    X_test <- A_test %*% alpha_2 + H_test %*% gamma + matrix(rnorm(n_test * p, 0, sqrt(var_X)), nrow = n_test)
-    Y_test <- X_test %*% beta + H_test %*% delta + A_test %*% alpha_3 + rnorm(n_test, 0, sqrt(var_Y))
+    H_eps <- matrix(rnorm(n_train * q, 0, sqrt(var_H)), nrow = n_train)
+    H <- A %*% alpha_1 + sign(H_eps) * abs(H_eps)**input$power_H
 
+    X_eps <- matrix(rnorm(n_train * p, 0, sqrt(var_X)), nrow = n_train)
+    X <- A %*% alpha_2 + H %*% gamma + sign(X_eps) * abs(X_eps)**input$power_X
+
+    Y_eps <- matrix(rnorm(n_train, 0, sqrt(var_Y)), nrow = n_train)
+    Y <- X %*% beta + H %*% delta + A %*% alpha_3 + sign(Y_eps) * abs(Y_eps)**input$power_Y
+
+    A_test_eps <- matrix(rnorm(n_test * r, 0, sqrt(var_A)), nrow = n_test)
+    A_test <- A_shift + sign(A_test_eps) * abs(A_test_eps)**input$power_A
+
+    H_test_eps <- matrix(rnorm(n_test * q, 0, sqrt(var_H)), nrow = n_test)
+    H_test <- A_test %*% alpha_1 + sign(H_test_eps) * abs(H_test_eps)**input$power_H
+
+    X_test_eps <- matrix(rnorm(n_test * p, 0, sqrt(var_X)), nrow = n_test)
+    X_test <- A_test %*% alpha_2 + H_test %*% gamma + sign(X_test_eps) * abs(X_test_eps)**input$power_X
+
+    Y_test_eps <- matrix(rnorm(n_test, 0, sqrt(var_Y)), nrow = n_test)
+    Y_test <- X_test %*% beta + H_test %*% delta + A_test %*% alpha_3 + sign(Y_test_eps) * abs(Y_test_eps)**input$power_Y
 
     rv$beta <- beta
     rv$delta <- delta
@@ -228,13 +314,14 @@ server <- shinyServer(function(input, output, session) {
     ceof_df <- data.frame(beta = abs(rv$beta), fit_linA = abs(coefA), 
       fit_lin = abs(coef), fit_linQ = abs(coefQ))
 
-    df_res <- data.frame(X_1 = X_test[, 1], Y = Y_test, 
+    df_res <- data.frame(X_1 = X_test[, 1], Y = Y_test, #Y_mean = mean(Y_test),
       Anchor = pred_linA, lasso = pred_lin, trim = pred_linQ, 
       True = X_test %*% rv$beta)
     
     df_res <- gather(df_res, key = 'Method', value = 'Y', -X_1)
 
-    col_method <- c(Y = 'black', Anchor = 'red', lasso = 'blue', True = 'green', trim = 'purple')
+    col_method <- c(Y = 'black', Anchor = 'red', lasso = 'blue', 
+                    True = 'green', trim = 'purple', Y_mean = 'brown')
     df_res$size <- 1
     df_res$size[df_res$Method == 'Anchor'] <- 1.5
 
@@ -248,7 +335,8 @@ server <- shinyServer(function(input, output, session) {
 
 
     perf <- data.frame(lasso = (Y_test - pred_lin)**2, Anchor = (Y_test - pred_linA)**2, 
-      True = (Y_test - X_test %*% rv$beta)**2, trim = (Y_test - pred_linQ)**2)
+      True = (Y_test - X_test %*% rv$beta)**2, trim = (Y_test - pred_linQ)**2
+      )#,Y_mean = (Y_test - mean(Y_test))**2)
     
     perf <- gather(perf, key = 'Method', value = 'MSE')
     rv$perf <- ggplot(perf, aes(x = Method, y = MSE, fill = Method)) + 
