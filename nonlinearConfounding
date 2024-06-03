@@ -1,4 +1,0 @@
-Ja, ich glaube das war die Idee. Ich habe auch mal noch etwas nachgedacht und rumgespielt. Im Anhang ein rudimentäres R-Skript. Die Dimension von H ist 1, und jedes X_j bekommt eine "zufällige" Funktion von H. Zufällig wird hier so gemacht, dass wir eine B-spline basis wählen und zufällige Koeffizienten sampeln. Die Anzahl der Spikes steigt dann mit der Grösse der Basis (df im Code).
-
-
-Intuitiv gibt es ein "effektives H", welches dann die Design-matrix der B-spline Basis ist, und die Dimension df hat. Wenn man für die Theorie statt B-spline eine Orthonormalbasis nimmt (z.B. Hermite-Polynome), hat man dann aus dem eindimensionalen H einen effektiven Confounder der Dimension df konstruiert, welcher Kovarianzmatrix Identität hat.
