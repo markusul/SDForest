@@ -1,116 +1,6 @@
-# dependencies:
-#library(parallel)
-#library(doParallel)
-#library(foreach)
-#library(data.tree)
-#library(RcppEigen)
-#library(data.table)## visualize trees
-#library(igraph)
-#library(data.tree)
-library(GPUmatrix)
-
-if(installTorch()){
-  gpu_type <- 'torch'
-}else {
-  gpu_type <- 'tensorflow'
-}
-
-
 #' @importFrom Rdpack reprompt
 
-n_cores <- parallel::detectCores()
- # if there are less than 24 cores, it will be a local machine leave two cores for other tasks
-if(n_cores > 1 && n_cores <= 24){
-    n_cores <- n_cores - 1
-}
-
-
-#' Estimation of spectral transformation
-#' 
-#' Estimates the spectral transformation Q for spectral deconfounding by shrinking the leading singular values of the covariates.
-#' @references
-#'   \insertAllCited{}
-#' @author Markus Ulmer
-#' @param X Numerical covariates of class \code{matrix}.
-#' @param type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity.
-#' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim.
-#' @param confounding_dim Assumed confounding dimension, only needed for pca.
-#' @return Q of class \code{matrix}, the spectral transformation matrix.
-#' @examples
-#' X <- matrix(rnorm(100 * 20), nrow = 100)
-#' get_Q(X, 'trim')
-#' get_Q(X, 'DDL_trim')
-#' get_Q(X, 'pca', q_hat = 5)
-#' get_Q(X, 'no_deconfounding')
-#' @export
-get_Q <- function(X, type, trim_quantile = 0.5, confounding_dim = 0, gpu = FALSE){
-  if(type == 'no_deconfounding') {
-    Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
-    return(Q)
-  }
-
-
-  svd_error <- function(X, f = 1, count = 1){
-    tryCatch({
-      svd(X * f)
-    }, error = function(e) {
-        warning(paste(e, ':X multipied by number close to 1'))
-        if(count > 5) stop('svd did not converge')
-        return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
-  }
-
-  if(ncol(X) == 1){
-    warning('only one covariate, no deconfounding possible')
-    Q <- diag(nrow(X))
-    if(gpu) Q <- gpu.matrix(Q, type = gpu_type)
-    return(Q)
-  }
-
-
-  # X: covariates
-  # type: type of deconfounding
-  modes <- c('trim' = 1, 'pca' = 2, 'no_deconfounding' = 3)
-  if(!(type %in% names(modes))) stop(paste("type must be one of:", paste(names(modes), collapse = ', ')))
-
-  # number of observations
-  n <- dim(X)[1]
-
-  # calculate deconfounding matrix
-  sv <- svd_error(X)
-
-  tau <- quantile(sv$d, trim_quantile)
-  D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
-  D_tilde[is.na(D_tilde)] <- 1
-  # TODO: diag(1 - D_tilde) works only for p > 1
-
-  U <- sv$u
-  if(gpu) U <- gpu.matrix(U, type = gpu_type)
-
-  Q <- switch(modes[type], diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
-                          { # pca
-                              d_pca <- rep(1, length(sv$d))
-                              if(confounding_dim <= 0) stop("the assumed confounding dimension must be larger than zero")
-                              d_pca[1:confounding_dim] <- 0
-                              diag(n) - U %*% diag(1 - d_pca) %*% t(U)
-                          },
-                         diag(n)
-                         ) # no_deconfounding
-  rm(U, sv)
-  return(Q)
-}
-
-get_W <- function(A, gamma, gpu = FALSE){
-  if(gpu) A <- gpu.matrix(A, type = gpu_type)
-
-  Q_prime <- qr.Q(qr(A))
-  Pi_A <- tcrossprod(Q_prime)
-  W <- diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
-  return(W)
-}
-
-
-condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
+condDependence <- function(object, j, X = NULL, mc.cores = 1){
 
   j_name <- j
   if(is.character(j)){
@@ -129,19 +19,15 @@ condDependence <- function(object, j, X = NULL, multicore = F, mc.cores = NULL){
   if(j < 1) stop('j must be larger than 0')
   if(any(is.na(X))) stop('X must not contain missing values')
 
-  #x_seq <- seq(quantile(X[, j], 0.05), quantile(X[, j], 0.95), length.out = 100)
   x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
 
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
+  if(mc.cores > 1){
     preds <- parallel::mclapply(x_seq, function(x){
       X_new <- X
       X_new[, j] <- x
       pred <- predict(object, newdata = X_new)
       return(pred)
-    }, mc.cores = n_cores)
+    }, mc.cores = mc.cores)
   }else{
     preds <- pbapply::pblapply(x_seq, function(x){
       X_new <- X
@@ -200,8 +86,6 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @param min_sample Minimum number of observations per leaf. A split is only performed if both resulting leaves have at least \code{min_sample} observations.
 #' @param mtry Number of randomly selected covariates to consider for a split, if \code{NULL} all covariates are available for each split.
 #' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
-#' @param multicore If \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems).
-#' @param mc.cores Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.
 #' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
 #' @param confounding_dim Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
@@ -217,7 +101,8 @@ plot.condDependence <- function(object, n_examples = 19){
 
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7){
+                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100){
+  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -240,6 +125,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
   if(n < 2 * min_sample) stop('n must be at least 2 * min_sample')
+  if(max_candidates < 1) stop('max_candidates must be at least 1')
 
   # estimate spectral transformation
   if(!is.null(A)){
@@ -319,9 +205,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       index <- which(E_branch == 1)
       X_branch <- as.matrix(X[index, ])
     
-      s <- find_s(X_branch)
+      s <- find_s(X_branch, max_candidates = max_candidates)
       if(min_sample > 1) {
-        s <- s[-c(1:(min_sample-1), (n - min_sample + 2):n), ]
+        s <- s[-c(0:(min_sample - 1), (n - min_sample + 2):(n+1)), ]
       }
 
       all_n_splits <- apply(s, 2, function(x) length(unique(x)))
@@ -509,7 +395,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 #' @param min_sample Minimum number of observations per leaf. A split is only performed if both resulting leaves have at least \code{min_sample} observations.
 #' @param mtry Number of randomly selected covariates to consider for a split, if \code{NULL} all covariates are available for each split.
 #' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
-#' @param multicore If \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems).
 #' @param mc.cores Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.
 #' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
@@ -524,8 +409,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 #' @seealso \code{\link{SDTree}}
 #' @export
 cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, 
-                      min_sample = 5, fast = TRUE, multicore = F, Q_type = 'trim', trim_quantile = 0.5, 
-                      confounding_dim = 0, mc.cores = NULL, n_cv = 3, cp_seq = NULL){
+                      min_sample = 5, fast = TRUE, Q_type = 'trim', trim_quantile = 0.5, 
+                      confounding_dim = 0, mc.cores = 1, n_cv = 3, cp_seq = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -572,7 +457,6 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
     # calculate Trim transform
     Q_cv <- get_Q(X[cv_ind, ], Q_type, trim_quantile, confounding_dim)
 
-    # deconfound X and Y
     X_train <- X[-cv_ind, ]
     Y_train <- Y[-cv_ind]
 
@@ -586,11 +470,9 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
     })
 
     # validation performance if we prune with the different ts
-    if(multicore){
-      if(!is.null(mc.cores)){
-        n_cores <- mc.cores
-      }
-      perf <- mclapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), mc.cores = n_cores, mc.preschedule = FALSE)
+    if(mc.cores > 1){
+      perf <- mclapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), 
+                       mc.cores = mc.cores, mc.preschedule = FALSE)
     }else{
       perf <- lapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
     }
@@ -670,11 +552,13 @@ plot.SDTree <- function(object){
 
 #### SDForest functions ####
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
-                     cp = 0, min_sample = 1, mtry = NULL, multicore = F, mc.cores = NULL, 
+                     cp = 0, min_sample = 5, mtry = NULL, mc.cores = NULL, 
                      Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
                      A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, 
-                     mem_size = 1e+7, leave_out_ind = NULL, leave_out_envs = NULL, each_trees = NULL){
-
+                     mem_size = 1e+7, leave_out_ind = NULL, leave_out_envs = NULL, each_trees = NULL, 
+                     max_candidates = 100){
+                      
+  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -730,32 +614,30 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
   ind <- lapply(1:nTree, function(x)sample(all_ind, min(length(all_ind), max_size), replace = T))
 
-  if(multicore){
-    if(!is.null(mc.cores)){
-      n_cores <- mc.cores
-    }
+  if(mc.cores > 1){
     if(locatexec::is_unix()){
       res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
                                             trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
                                             A = A[i, ], gamma = gamma, mem_size = mem_size), 
-                                            mc.cores = n_cores)
+                                            max_candidates = max_candidates, 
+                                mc.cores = mc.cores)
     }else{
-      cl <- parallel::makeCluster(n_cores)
+      cl <- parallel::makeCluster(mc.cores)
       doParallel::registerDoParallel(cl)
       parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
                                     "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                   Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                  A = A[i, ], gamma = gamma, mem_size = mem_size))
+                  A = A[i, ], gamma = gamma, mem_size = mem_size, max_candidates = max_candidates))
       parallel::stopCluster(cl = cl)
     }
   }else{
     res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
                                               trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
-                                              A = A[i, ], gamma = gamma, gpu = gpu, mem_size = mem_size))
+                                              A = A[i, ], gamma = gamma, gpu = gpu, mem_size = mem_size, max_candidates = max_candidates))
   }
 
   # ensemble predictions for each observation
@@ -875,8 +757,8 @@ leave_names <- function(node){
 }
 
 
-find_s <- function(X){
-  # finds all the reasnable splitting points in a data matrix
+find_s <- function(X, max_candidates = 100){
+  # finds all the reasonable splitting points in a data matrix
   p <- ncol(X)
   if(p == 1){
     X <- matrix(X, ncol = 1)
@@ -886,29 +768,18 @@ find_s <- function(X){
   X_sort <- apply(X, 2, sort, method = 'quick')
   
   if(is.null(dim(X_sort))){
-    #print('hallo')
     X_sort <- matrix(X_sort, ncol = p)
-  }
-
-  if(nrow(X_sort) == 1){
-    print('hallo1')
-    return(X_sort)
   }
 
   # find middlepoints between observed x values
   s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
-
+  
   # for runtime reasons
-  if(dim(s)[1] > 1000){
-    s <- s[seq(1, dim(s)[1], 20), ]
-  }else if (dim(s)[1] > 200) {
-    s <- s[seq(1, dim(s)[1], 5), ]
-  }else if (dim(s)[1] > 100) {
-    s <- s[seq(1, dim(s)[1], 2), ]
+  if(nrow(s) > max_candidates){
+    s <- s[unique(floor(seq(1, dim(s)[1], length.out = max_candidates))), ]
   }
   
   if(is.null(dim(s))){
-    #print('hallo2')
     s <- matrix(s, ncol = p)
   }
 
