@@ -71,6 +71,8 @@ Y <- 3 * X[, 1]**2 + rnorm(50)
 x <- rnorm(100)
 y <- sign(x) * 3 + rnorm(100)
 model <- SDTree(x = x, y = y, Q_type = 'no_deconfounding')
+model <- prune(model, 1)
+model
 pd <- partDependence(model, 1, X = x)
 plot(pd)
 
@@ -89,6 +91,9 @@ n <- 50
 X <- matrix(rnorm(n * 20), nrow = n)
 y <- sign(X[, 1]) * 3 + rnorm(n)
 model <- SDTree(x = X, y = y, Q_type = 'no_deconfounding')
+model <- prune(model, 1)
+model
+
 paths <- regPath(model)
 plot(paths)
 
