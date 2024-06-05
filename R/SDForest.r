@@ -1,73 +1,6 @@
-#' @importFrom Rdpack reprompt
 
-condDependence <- function(object, j, X = NULL, mc.cores = 1){
 
-  j_name <- j
-  if(is.character(j)){
-    j <- which(names(X) == j)
-  }
 
-  if(is.null(X)){
-    X <- object$X
-    if(is.null(X)) stop('X must be provided if it is not part of the object')
-    
-  }
-  X <- data.frame(X)
-
-  if(!is.numeric(j)) stop('j must be a numeric or character')
-  if(j > ncol(X)) stop('j must be smaller than p')
-  if(j < 1) stop('j must be larger than 0')
-  if(any(is.na(X))) stop('X must not contain missing values')
-
-  x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
-
-  if(mc.cores > 1){
-    preds <- parallel::mclapply(x_seq, function(x){
-      X_new <- X
-      X_new[, j] <- x
-      pred <- predict(object, newdata = X_new)
-      return(pred)
-    }, mc.cores = mc.cores)
-  }else{
-    preds <- pbapply::pblapply(x_seq, function(x){
-      X_new <- X
-      X_new[, j] <- x
-      pred <- predict(object, newdata = X_new)
-      return(pred)
-    })
-  }
-  preds <- do.call(rbind, preds)
-  preds_mean <- rowMeans(preds)
-
-  res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j_name, xj = X[, j])
-  class(res) <- 'condDependence'
-  return(res)
-}
-
-plot.condDependence <- function(object, n_examples = 19){
-  ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
-  preds <- object$preds
-  x_seq <- object$x_seq
-  
-  sample_examples <- sample(1:dim(preds)[2], n_examples)
-  for(i in sample_examples){
-      pred_data <- data.frame(x = x_seq, y = preds[, i])
-      ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
-  }
-
-  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
-                    ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
-  ggdep <- ggdep + ggplot2::geom_point(data = data.frame(x = object$xj, y = min(preds[, sample_examples])), 
-                    ggplot2::aes(x = x, y = y), col = 'black', size = 1,shape = 108)
-  ggdep <- ggdep + ggplot2::ylab('f(x)') + ggplot2::ggtitle('Conditional dependence')
-  ggdep <- ggdep + ggplot2::xlim(quantile(object$xj, 0.05), quantile(object$xj, 0.95))
-  if(is.character(object$j)){
-    ggdep <- ggdep + ggplot2::xlab(object$j)
-  }else{
-    ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
-  }
-  ggdep
-}
 
 ##### SDTree functions #####
 
@@ -88,7 +21,7 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
 #' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
-#' @param confounding_dim Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
+#' @param q_hat Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
 #' @param Q Spectral transformation, if \code{NULL} it is internally estimated using \code{\link{get_Q}}.
 #' @return Object of class \code{SDTree} containing
 #' \item{predictions}{Predictions for the training set.}
@@ -97,10 +30,8 @@ plot.condDependence <- function(object, n_examples = 19){
 #' @examples
 #' # TODO: add example
 #' @export
-
-
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
+                   Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
                    A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100){
   ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
@@ -141,7 +72,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   }
 
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -209,6 +140,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       if(min_sample > 1) {
         s <- s[-c(0:(min_sample - 1), (n - min_sample + 2):(n+1)), ]
       }
+      s <- as.matrix(s)
 
       all_n_splits <- apply(s, 2, function(x) length(unique(x)))
       all_idx <- cumsum(all_n_splits)
@@ -398,7 +330,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 #' @param mc.cores Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.
 #' @param Q_type Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.
-#' @param confounding_dim Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
+#' @param q_hat Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.
 #' @param n_cv Number of folds for cross-validation. It is recommended to not use more than 5 folds if the number of covariates is larger than the number of observations. In this case the spectral transformation could differ to much if the validation data is substantially smaller than the training data.
 #' @param cp_seq Sequence of complexity parameters cp to compare using cross-validation, if \code{NULL} a sequence from 0 to 0.6 with stepsize 0.002 is used.
 #' @return A list containing
@@ -410,7 +342,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 #' @export
 cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = 50, 
                       min_sample = 5, fast = TRUE, Q_type = 'trim', trim_quantile = 0.5, 
-                      confounding_dim = 0, mc.cores = 1, n_cv = 3, cp_seq = NULL){
+                      q_hat = 0, mc.cores = 1, n_cv = 3, cp_seq = NULL){
 
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -429,7 +361,7 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   if(n_cv > 5 & n < p) warning('if n < p and to many folds are used, Q_validation might differ to much from Q_trainig, consider using less folds')
 
   # estimate spectral transformation
-  Q <- get_Q(X, Q_type, trim_quantile, confounding_dim)
+  Q <- get_Q(X, Q_type, trim_quantile, q_hat)
   
   # estimating initial loss with only a stump
   # to map optimal minimal loss decrease to a cp value
@@ -455,7 +387,7 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
   # estimate performance for every validation set
   perf <- lapply(test_ind, function(cv_ind){
     # calculate Trim transform
-    Q_cv <- get_Q(X[cv_ind, ], Q_type, trim_quantile, confounding_dim)
+    Q_cv <- get_Q(X[cv_ind, ], Q_type, trim_quantile, q_hat)
 
     X_train <- X[-cv_ind, ]
     Y_train <- Y[-cv_ind]
@@ -466,7 +398,7 @@ cv.SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leave
     # estimate tree with the training set
     suppressWarnings({
     res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0, min_sample = min_sample,
-                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim)
+                  Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat)
     })
 
     # validation performance if we prune with the different ts
@@ -551,9 +483,11 @@ plot.SDTree <- function(object){
 }
 
 #### SDForest functions ####
+
+#' @export 
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
-                     cp = 0, min_sample = 5, mtry = NULL, mc.cores = NULL, 
-                     Q_type = 'trim', trim_quantile = 0.5, confounding_dim = 0, Q = NULL, 
+                     cp = 0, min_sample = 5, mtry = NULL, mc.cores = 1, 
+                     Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
                      A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, return_data = TRUE, 
                      mem_size = 1e+7, leave_out_ind = NULL, leave_out_envs = NULL, each_trees = NULL, 
                      max_candidates = 100){
@@ -573,7 +507,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
   if(!is.null(mtry) && mtry > p) stop('mtry must be at most p')
-  if(gpu && multicore) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
+  if(gpu && (mc.cores > 1)) warning('gpu and multicore cannot be used together, no gpu is not used for tree estimations')
   if(!is.null(leave_out_ind) && !is.null(leave_out_envs)) stop('leave_out_ind and leave_out_envs cannot be used together')
   if(!is.null(leave_out_ind) && any(leave_out_ind > n, leave_out_ind < 1)) stop('leave_out_ind must be smaller than n')
   if(!is.null(leave_out_envs) && length(leave_out_envs) != n) stop('leave_out_envs must have length n')
@@ -592,7 +526,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, confounding_dim, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -618,7 +552,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     if(locatexec::is_unix()){
       res <- parallel::mclapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                             min_sample = min_sample, Q_type = Q_type, 
-                                            trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                                            trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
                                             A = A[i, ], gamma = gamma, mem_size = mem_size), 
                                             max_candidates = max_candidates, 
                                 mc.cores = mc.cores)
@@ -629,14 +563,14 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                                     "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", "leave_names"))
       res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
-                  Q_type = Q_type, trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                  Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
                   A = A[i, ], gamma = gamma, mem_size = mem_size, max_candidates = max_candidates))
       parallel::stopCluster(cl = cl)
     }
   }else{
     res <- pbapply::pblapply(ind, function(i)SDTree(x = X[i, ], y = Y[i], cp = cp, 
                                               min_sample = min_sample, Q_type = Q_type, 
-                                              trim_quantile = trim_quantile, confounding_dim = confounding_dim, mtry = mtry, 
+                                              trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
                                               A = A[i, ], gamma = gamma, gpu = gpu, mem_size = mem_size, max_candidates = max_candidates))
   }
 
@@ -732,103 +666,6 @@ predict.SDForest <- function(object, newdata){
   return(rowMeans(pred))
 }
 
-#TODO: tree analysis how many trees are needed
-
-#TODO: permutation importance
-#TODO: print function
-
-#### Utility functions ####
-
-#helper functions to lable nodes
-splitt_names <- function(node, var_names = NULL){
-  if(is.null(var_names)){
-    node$label <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
-  }else{
-    node$label <- paste(var_names[node$j], ' <= ', round(node$s, 2), sep = '')
-  }
-}
-
-leave_names <- function(node){
-    new_name <- as.character(round(node$value, 1))
-    if(new_name %in% node$Get('name', filterFun = data.tree::isLeaf)){
-        new_name <- paste(new_name, '')
-    }
-    node$label <- new_name
-}
-
-
-find_s <- function(X, max_candidates = 100){
-  # finds all the reasonable splitting points in a data matrix
-  p <- ncol(X)
-  if(p == 1){
-    X <- matrix(X, ncol = 1)
-  }
-  n <- nrow(X)
-
-  X_sort <- apply(X, 2, sort, method = 'quick')
-  
-  if(is.null(dim(X_sort))){
-    X_sort <- matrix(X_sort, ncol = p)
-  }
-
-  # find middlepoints between observed x values
-  s <- X_sort[-nrow(X_sort), ] + diff(X_sort)/2
-  
-  # for runtime reasons
-  if(nrow(s) > max_candidates){
-    s <- s[unique(floor(seq(1, dim(s)[1], length.out = max_candidates))), ]
-  }
-  
-  if(is.null(dim(s))){
-    s <- matrix(s, ncol = p)
-  }
-
-  return(s)
-}
-
-traverse_tree <- function(tree, x){
-  # traverse the tree using the splitting rules and 
-  # returns point estimate for f(x)
-  if(tree$isLeaf){
-    return(tree$value)
-  }
-  if(x[tree$j] <= tree$s){
-    return(traverse_tree(tree$children[[1]], x))
-  }else {
-    return(traverse_tree(tree$children[[2]], x))
-  }
-}
-
-predict_outsample <- function(tree, X){
-  # predict for every observation in X f(x)
-  # using the splitting rules from the tree
-  if(is.null(dim(X))){
-    return(traverse_tree(tree, X))
-  }
-  return(apply(X, 1, function(x)traverse_tree(tree, x)))
-}
-
-loss <- function(Y, f_X){
-  # MSE
-  return(as.numeric(sum((Y - f_X)^2) / length(Y)))
-}
-
-pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
-  # funtion to prune tree using the minimum loss decrease t
-  # and return spectral loss on the validation set
-  
-  tree_t <- data.tree::Clone(tree)
-  
-  # prune tree
-  data.tree::Prune(tree_t, function(x) x$dloss > t)
-  
-  # predict on test set
-  f_X_hat_val <- predict_outsample(tree_t, X_val)
-  
-  # return spectral loss
-  return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
-}
-
 varImp <- function(object) {UseMethod("varImp")}
 
 varImp.SDTree <- function(object){
@@ -847,230 +684,6 @@ varImp.SDTree <- function(object){
 
 varImp.SDForest <- function(object){
   rowMeans(sapply(object$forest, varImp))
-}
-
-prune <- function(object, ...) UseMethod('prune')
-
-prune.SDTree <- function(object, cp){
-  #data.tree::Prune(object$tree, function(x) max(x$Get('cp')) > cp)
-  #data.tree::Prune(object$tree, function(x) x$cp > cp)
-  data.tree::Prune(object$tree, function(x) x$cp_max > cp)
-  object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
-  object$predictions <- NULL
-  object$var_importance <- varImp(object)
-  return(object)
-}
-
-prune.SDForest <- function(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = T){
-  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
-  forest$forest <- pruned_forest
-
-  if(is.null(X)) X <- forest$X
-  if(is.null(Y)) Y <- forest$Y
-  if(is.null(Q)) Q <- forest$Q
-  if(is.null(X) | is.null(Y)){
-    stop('X and Y must either be provided or in the object')
-  }
-
-  n <- length(Y)
-
-  if(is.null(Q)) {
-    Q <- diag(n)
-    warning('Q was not provided, using Identity matrix')
-  }
-
-  oob_predictions <- predictOOB(forest, X)
-  forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
-  forest$oob_loss <- loss(Y, oob_predictions)
-
-  if(pred){
-    # predict with all trees
-    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, X))}))
-      
-    # use mean over trees as final prediction
-    f_X_hat <- rowMeans(pred)
-    forest$predictions <- f_X_hat
-  }else {
-    forest$predictions <- NULL
-  }
-  # variable importance
-  forest$var_importance <- rowMeans(as.matrix(sapply(forest$forest, function(x){matrix(x$var_importance)})))  
-
-  return(forest)
-}
-
-regPath <- function(object, ...) UseMethod('regPath')
-
-regPath.SDTree <- function(object, cp_seq = NULL){
-  object$tree <- data.tree::Clone(object$tree)
-  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
-  cp_seq <- sort(cp_seq)
-
-  res <- lapply(cp_seq, function(cp){
-    pruned_object <- prune(object, cp)
-    return(list(var_importance = pruned_object$var_importance))})
-
-  varImp_path <- t(sapply(res, function(x)x$var_importance))
-  colnames(varImp_path) <- object$var_names
-
-  paths <- list(cp = cp_seq, varImp_path = varImp_path)
-  class(paths) <- 'paths'
-  return(paths)
-}
-
-regPath.SDForest <- function(object, X = NULL, Y = NULL, Q = NULL, cp_seq = NULL){
-  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
-  cp_seq <- sort(cp_seq)
-  object$forest <- lapply(object$forest, function(tree){
-    tree$tree <- data.tree::Clone(tree$tree)
-    return(tree)
-    })
-
-  res <- pbapply::pblapply(cp_seq, function(cp){
-    pruned_object <- prune(object, cp, X, Y, Q, pred = F)
-    return(list(var_importance = pruned_object$var_importance, 
-                oob_SDloss = pruned_object$oob_SDloss, 
-                oob_loss = pruned_object$oob_loss))})
-
-  varImp_path <- t(sapply(res, function(x)x$var_importance))
-  colnames(varImp_path) <- object$var_names
-
-  loss_path <- t(sapply(res, function(x)c(x$oob_SDloss, x$oob_loss)))
-  colnames(loss_path) <- c('oob SDE', 'oob MSE')
-  paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path, 
-                cp_min = cp_seq[which.min(loss_path[, 1])])
-  class(paths) <- 'paths'
-  return(paths)
-}
-
-stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
-
-stabilitySelection.SDForest <- function(object, cp_seq = NULL){
-  if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
-  cp_seq <- sort(cp_seq)
-
-  imp <- pbapply::pblapply(object$forest, function(x)regPath(x, cp_seq)$varImp_path > 0)
-
-  imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
-  imp <- Reduce('+', imp) / length(object$forest)
-  colnames(imp) <- object$var_names
-  paths <- list(cp = cp_seq, varImp_path = imp)
-  class(paths) <- 'paths'
-  return(paths)
-}
-
-get_cp_seq <- function(object, ...) UseMethod('get_cp_seq')
-
-get_cp_seq.SDTree <- function(object){
-  cp_seq <- unique(object$tree$Get('cp_max'))
-  cp_seq[cp_seq > 1] <- 1
-  cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
-  cp_seq <- c(0, cp_seq)
-  return(cp_seq)
-}
-
-get_cp_seq.SDForest <- function(object){
-  cp_seq <- unique((unlist(lapply(object$forest, function(x) x$tree$Get('cp_max')))))
-  cp_seq[cp_seq > 1] <- 1
-  cp_seq <- unique(ceiling(cp_seq * 1000)/1000)
-  cp_seq <- c(0, cp_seq)
-  return(cp_seq)
-}
-
-plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
-  varImp_path <- object$varImp_path
-  if(!is.null(selection)){
-    varImp_path <- varImp_path[, selection]
-  }
-
-  imp_data <- data.frame(varImp_path, cp = object$cp)
-  imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
-
-  if(log_scale){
-    imp_data$importance <- log(imp_data$importance + 1)
-  }
-  
-  gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
-      ggplot2::geom_line() + 
-      ggplot2::theme_bw() + 
-      ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), sides = 'b', col = '#949494')
-
-  if(!is.null(object$cp_min)){
-    gg_path <- gg_path + ggplot2::geom_vline(xintercept = object$cp_min, linetype = 'dashed')
-  }
-
-  if(plotly) return(plotly::ggplotly(gg_path))
-
-  if(length(unique(imp_data$covariate)) > 20){
-    gg_path <- gg_path + ggplot2::theme(legend.position = 'none')
-  }
-
-  return(gg_path)
-}
-
-plotOOB <- function(object){
-    loss_data <- data.frame(object$loss_path, cp = object$cp)
-    gg_sde <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.SDE)) +
-        ggplot2::geom_line() + 
-        ggplot2::theme_bw()
-
-    gg_mse <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.MSE)) +
-        ggplot2::geom_line() + 
-        ggplot2::theme_bw()
-    gridExtra::grid.arrange(gg_sde, gg_mse, ncol = 2)
-}
-
-data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
-  if(is.null(formula)){
-    if(is.null(x) | is.null(y)){
-      stop("Error: Either data or x and y is required.")
-    }else {
-      if(is.vector(x)){
-        x <- matrix(x, ncol = 1)
-      }
-      x <- apply(x, 2, function(x){if (is.character(x)) as.numeric(factor(x))
-                                    else if(!is.numeric(x))  as.numeric(x)
-                                    else x})
-      if (!is.numeric(y)) stop("Error: y must be numeric. Only regression is supported at the moment.")
-      if(any(is.na(x)) | any(is.na(y))){
-        stop("Error: Missing values are not allowed.")
-      }
-      if(any(is.infinite(x)) | any(is.infinite(y))){
-        stop("Error: Infinite values are not allowed.")
-      }
-      if(!is.numeric(y)){
-        stop("Error: Only regression is suported at the moment. Y must be numeric.")
-      }
-      return(list(X = as.matrix(x), Y = as.numeric(y)))
-    }
-  }else {
-    if(is.null(data)){
-      stop("Error: data is required.")
-    }else {
-      Call <- match.call()
-      indx <- match(c("formula", "data"), names(Call), nomatch = 0L)
-  
-      if (indx[1] == 0L) stop("a 'formula' argument is required")
-      
-      temp <- Call[c(1L, indx)]      # only keep the arguments we wanted
-      temp[[1L]] <- quote(stats::model.frame) # change the function called
-      m <- eval.parent(temp)
-
-      Terms <- attr(m, "terms")
-      if(any(attr(Terms, "order") > 1L)) stop("Trees cannot handle interaction terms")
-
-      Y <- model.response(m)
-      X <- model.matrix(attr(m, "terms"), m)[, -1L, drop = FALSE]
-
-      if(any(is.infinite(X)) | any(is.infinite(Y))){
-        stop("Error: Infinite values are not allowed.")
-      }
-      if(!is.numeric(Y)){
-        stop("Error: Only regression is suported at the moment. Y must be numeric.")
-      }
-      return(list(X = X, Y = as.numeric(Y)))
-    }
-  }
 }
 
 simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
@@ -1146,18 +759,7 @@ f_four <- function(x, beta, js){
 }
 
 
-update_forest <- function(object){
-  object$forest <- lapply(object$forest, function(tree) {
-    tree$tree$Do(function(node) node$cp_max <- max(node$Get('cp')))
-    tree$tree$Do(function(node) {
-      cp_max <- data.tree::Aggregate(node, 'cp_max', max)
-      node$children[[1]]$cp_max <- cp_max
-      node$children[[2]]$cp_max <- cp_max
-      }, filterFun = data.tree::isNotLeaf
-    )
-    return(tree)
-  })
-}
+
 
 mergeForest <- function(fit1, fit2){
   if(any(fit1$var_names != fit2$var_names)) stop('forest must be trained using the same covariates')

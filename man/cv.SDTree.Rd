@@ -12,11 +12,10 @@ cv.SDTree(
   max_leaves = 50,
   min_sample = 5,
   fast = TRUE,
-  multicore = F,
   Q_type = "trim",
   trim_quantile = 0.5,
-  confounding_dim = 0,
-  mc.cores = NULL,
+  q_hat = 0,
+  mc.cores = 1,
   n_cv = 3,
   cp_seq = NULL
 )
@@ -36,13 +35,11 @@ cv.SDTree(
 
 \item{fast}{If \code{TRUE}, only the optimal splitts in the new leaves are evaluated and the previously optimal splitts and their potential loss-decrease are reused. If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.}
 
-\item{multicore}{If \code{TRUE} the optional splitts are evaluated in parallel (only available on unix systems).}
-
 \item{Q_type}{Type of deconfounding, one of 'trim', 'DDL_trim', 'pca', 'no_deconfounding'. 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest}, 'DDL_trim' to the implementation of the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest} and 'no_deconfounding' to the Identity. See \code{\link{get_Q}}.}
 
 \item{trim_quantile}{Quantile for Trim transform and DDL Trim transform, only needed for trim and DDL_trim, see \code{\link{get_Q}}.}
 
-\item{confounding_dim}{Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.}
+\item{q_hat}{Assumed confounding dimension, only needed for pca, see \code{\link{get_Q}}.}
 
 \item{mc.cores}{Number of cores to use for parallel computing, if \code{NULL} all available cores - 1 are used.}
 
@@ -55,7 +52,7 @@ cv.SDTree(
 \value{
 A list containing
 \item{cp_min}{The optimal complexity parameter.}
-\item{cp_table}{A table containing the complexity parameter, the mean and the standard deviation of the loss on the validation sets for each complexity parameter.}
+\item{cp_table}{A table containing the complexity parameter, the mean and the standard deviation of the loss on the validation sets for the complexity parameters. If multiple complexity parameters result in the same loss, only the one with the largest complexity parameter is shown.}
 }
 \description{
 Estimates the optimal complexity parameter for the spectral deconfounded tree using cross-validation. Q is estimated for each training set and validation set separately to ensure independence of the validation set.
@@ -68,4 +65,7 @@ Estimates the optimal complexity parameter for the spectral deconfounded tree us
 }
 \seealso{
 \code{\link{SDTree}}
+}
+\author{
+Markus Ulmer
 }

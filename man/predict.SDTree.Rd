@@ -26,3 +26,6 @@ Predicts the response for new data using a fitted spectral deconfounded tree.
 \seealso{
 \code{\link{SDTree}}
 }
+\author{
+Markus Ulmer
+}

@@ -4,7 +4,7 @@
 \alias{print.SDTree}
 \title{Print Spectral Deconfounded Tree}
 \usage{
-\method{print}{SDTree}(object)
+print.SDTree(object)
 }
 \arguments{
 \item{object}{Fitted object of class \code{SDTree}.}
@@ -17,4 +17,7 @@ Print contents of the spectral deconfounded tree.
 }
 \seealso{
 \code{\link{SDTree}}
+}
+\author{
+Markus Ulmer
 }

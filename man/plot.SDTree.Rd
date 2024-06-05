@@ -18,3 +18,6 @@ Plot the spectral deconfounded tree.
 \seealso{
 \code{\link{SDTree}}
 }
+\author{
+Markus Ulmer
+}
