@@ -58,14 +58,19 @@
 #' complexity parameters. If multiple complexity parameters result in the same loss, 
 #' only the one with the largest complexity parameter is shown.}
 #' @examples
-#' # TODO: add example
+#' set.seed(1)
+#' n <- 50
+#' X <- matrix(rnorm(n * 5), nrow = n)
+#' y <- sign(X[, 1]) * 3 + rnorm(n, 0, 5)
+#' cp <- cvSDTree(x = X, y = y, Q_type = 'no_deconfounding')
+#' cp
 #' @seealso \code{\link{SDTree}} \code{\link{prune.SDTree}} \code{\link{regPath.SDTree}}
 #' @export
-cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, 
-                   cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100, 
-                   n_cv = 3, cp_seq = NULL, mc.cores = 1){
+cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, 
+                     max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, 
+                     fast = TRUE, Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, 
+                     Q = NULL, A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, 
+                     max_candidates = 100, n_cv = 3, cp_seq = NULL, mc.cores = 1){
   ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -80,9 +85,12 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves
   if(n != length(Y)) stop('X and Y must have the same number of observations')
   if(m < 1) stop('max_leaves must be larger than 1')
   if(min_sample < 1) stop('min_sample must be larger than 0')
-  if(!is.null(cp_seq) && (any(cp_seq < 0) | any(cp_seq > 1))) stop('cp.seq must be between 0 and 1')
+  if(!is.null(cp_seq) && (any(cp_seq < 0) | any(cp_seq > 1))) 
+    stop('cp.seq must be between 0 and 1')
   if(n_cv < 2 | n_cv > n) stop('n_cv must be at least 2 and smaller than n')
-  if(n_cv > 5 & n < p) warning('if n < p and to many folds are used, Q_validation might differ to much from Q_trainig, consider using less folds')
+  if(n_cv > 5 & n < p) 
+    warning('if n < p and to many folds are used, Q_validation might differ 
+            to much from Q_trainig, consider using less folds')
 
   # estimate spectral transformation
   if(!is.null(A)){
@@ -147,7 +155,8 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves
       W_cv <- diag(length(cv_ind))
       if(gpu) W_cv <- gpu.matrix(W_cv, type = gpu_type)
     }
-    Q_cv <- get_Q(as.matrix(W_cv %*% X[cv_ind, ]), Q_type, trim_quantile, q_hat, gpu)
+    Q_cv <- get_Q(as.matrix(W_cv %*% X[cv_ind, ]), 
+                  Q_type, trim_quantile, q_hat, gpu)
     Q_cv <- Q_cv %*% W_cv
 
     X_train <- X[-cv_ind, ]
@@ -158,17 +167,20 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves
     Y_cv <- Y[cv_ind]
 
     # estimate tree with the training set
-    res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0,
-                                              min_sample = min_sample, Q_type = Q_type, 
-                                              trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
-                                              A = A_train, gamma = gamma, gpu = gpu, mem_size = mem_size, max_candidates = max_candidates)
+    res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0, 
+                  min_sample = min_sample, Q_type = Q_type, 
+                  trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
+                  A = A_train, gamma = gamma, gpu = gpu, mem_size = mem_size, 
+                  max_candidates = max_candidates)
 
     # validation performance if we prune with the different ts
     if(mc.cores > 1){
-      perf <- parallel::mclapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), 
-                       mc.cores = mc.cores, mc.preschedule = FALSE)
+      perf <- parallel::mclapply(t_seq, function(t) 
+        pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), 
+        mc.cores = mc.cores, mc.preschedule = FALSE)
     }else{
-      perf <- lapply(t_seq, function(t) pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
+      perf <- lapply(t_seq, function(t) 
+        pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
     }
     
     return(perf)
@@ -177,13 +189,14 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves
   # collect performance for different min loss decreases
   perf <- matrix(unlist(perf), ncol = n_cv, byrow = FALSE)
   
-  cp_table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
+  cp_table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), 
+                       apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
   colnames(cp_table) <- c('cp', 'SDLoss mean', 'SDLoss sd')
 
   loss_unique <- unique(cp_table[, 2])
   cp_table <- lapply(loss_unique, function(loss){
-      idx <- which(cp_table[, 2] == loss)
-      cp_table[idx[length(idx)], ]
+    idx <- which(cp_table[, 2] == loss)
+    cp_table[idx[length(idx)], ]
   })
   cp_table <- do.call(rbind, cp_table)
 

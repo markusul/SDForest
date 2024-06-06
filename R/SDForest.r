@@ -261,26 +261,4 @@ mergeForest <- function(fit1, fit2){
   return(fit1)
 }
 
-toList <- function(object, ...) UseMethod('toList')
-fromList <- function(object, ...) UseMethod('fromList')
 
-toList.SDTree <- function(tree){
-  tree$tree <- as.list(tree$tree)
-  return(tree)
-}
-
-fromList.SDTree <- function(tree){
-  tree$tree <- data.tree::as.Node(tree$tree)
-  return(tree)
-}
-
-toList.SDForest <- function(forest){
-  forest$forest <- lapply(forest$forest, toList)
-  return(forest)
-}
-
-fromList.SDForest <- function(forest){
-  forest$forest <- lapply(forest$forest, fromList)
-  return(forest)
-}
-#TODO: autoForest adding trees until prediction does not change anymore

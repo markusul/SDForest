@@ -114,7 +114,7 @@ separately to ensure independence of the validation set.
 # TODO: add example
 }
 \seealso{
-\code{\link{SDTree}}
+\code{\link{SDTree}} \code{\link{prune.SDTree}} \code{\link{regPath.SDTree}}
 }
 \author{
 Markus Ulmer

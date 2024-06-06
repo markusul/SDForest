@@ -72,7 +72,7 @@ x <- rnorm(100)
 y <- sign(x) * 3 + rnorm(100)
 model <- SDTree(x = x, y = y, Q_type = 'no_deconfounding')
 model <- prune(model, 1)
-model
+plot(model)
 pd <- partDependence(model, 1, X = x)
 plot(pd)
 
@@ -81,19 +81,24 @@ X <- matrix(rnorm(50 * 20), nrow = 50)
 Y <- rnorm(50)
 tree <- SDTree(x = X, y = Y)
 pruned_tree <- prune(copy(tree), 0.2)
-tree
+print(tree)
 pruned_tree
 
+class(tree)
+print.SDTree(tree)
+predict(tree, data.frame(X))
 
 
 set.seed(1)
 n <- 50
-X <- matrix(rnorm(n * 20), nrow = n)
-y <- sign(X[, 1]) * 3 + rnorm(n)
-model <- SDTree(x = X, y = y, Q_type = 'no_deconfounding')
-predict(model, newdata = data.frame(X))
-
+X <- matrix(rnorm(n * 5), nrow = n)
+y <- sign(X[, 1]) * 3 + rnorm(n, 0, 5)
 cp <- cvSDTree(x = X, y = y, Q_type = 'no_deconfounding')
+cp
+
+library(rpart)
+fit <- rpart(y ~ ., data.frame(X, y))
+fit$cptable
 
 model <- prune(model, 1)
 model
@@ -104,6 +109,7 @@ paths <- regPath(model)
 data(iris)
 tree <- SDForest(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, 
                  iris, nTree = 10)
+tree
 varImp(tree)
 
 set.seed(1)
@@ -111,7 +117,7 @@ n <- 10
 X <- matrix(rnorm(n * 5), nrow = n)
 y <- sign(X[, 1]) * 3 + sign(X[, 2]) + rnorm(n)
 model <- SDForest(x = X, y = y, Q_type = 'no_deconfounding')
-
+model
 paths <- regPath(model)
 plotOOB(paths)
 plot(paths)

@@ -20,9 +20,9 @@ of all trees in the forest.
 }
 \examples{
 data(iris)
-tree <- SDForest(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, 
+fit <- SDForest(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, 
                  iris, nTree = 10)
-varImp(tree)
+varImp(fit)
 }
 \seealso{
 \code{\link{varImp.SDTree}} \code{\link{SDForest}}
