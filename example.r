@@ -91,12 +91,20 @@ n <- 50
 X <- matrix(rnorm(n * 20), nrow = n)
 y <- sign(X[, 1]) * 3 + rnorm(n)
 model <- SDTree(x = X, y = y, Q_type = 'no_deconfounding')
+predict(model, newdata = data.frame(X))
+
+cp <- cvSDTree(x = X, y = y, Q_type = 'no_deconfounding')
+
 model <- prune(model, 1)
 model
 
-paths <- regPath(model)
-plot(paths)
 
+
+paths <- regPath(model)
+data(iris)
+tree <- SDForest(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, 
+                 iris, nTree = 10)
+varImp(tree)
 
 set.seed(1)
 n <- 10

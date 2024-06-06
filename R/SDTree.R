@@ -62,9 +62,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Y <- input_data$Y
 
   # number of observations
-  n <- dim(X)[1]
+  n <- nrow(X)
   # number of covariates
-  p <- dim(X)[2]
+  p <- ncol(X)
 
   if(is.null(max_leaves)) max_leaves <- n
 
