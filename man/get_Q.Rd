@@ -18,6 +18,9 @@ and 'no_deconfounding' to the Identity.}
 \item{trim_quantile}{Quantile for Trim transform, only needed for trim.}
 
 \item{q_hat}{Assumed confounding dimension, only needed for pca.}
+
+\item{gpu}{If \code{TRUE}, the calculations are performed on the GPU. 
+If it is properly set up.}
 }
 \value{
 Q of class \code{matrix}, the spectral transformation matrix.

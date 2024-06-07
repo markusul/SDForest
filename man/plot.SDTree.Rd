@@ -4,10 +4,12 @@
 \alias{plot.SDTree}
 \title{Plot SDTree}
 \usage{
-\method{plot}{SDTree}(object)
+\method{plot}{SDTree}(x, ...)
 }
 \arguments{
-\item{object}{Fitted object of class \code{SDTree}.}
+\item{x}{Fitted object of class \code{SDTree}.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \description{
 Plot the SDTree.

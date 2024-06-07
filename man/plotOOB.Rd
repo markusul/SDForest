@@ -7,8 +7,8 @@
 plotOOB(object)
 }
 \arguments{
-\item{object}{A paths object with \item{loss_path}{A \code{matrix} with the out-of-bag performance
-for each complexity parameter.}}
+\item{object}{A paths object with loss_path \code{matrix} 
+with the out-of-bag performance for each complexity parameter.}
 }
 \value{
 A ggplot object

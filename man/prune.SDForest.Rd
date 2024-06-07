@@ -5,10 +5,10 @@
 \alias{prune}
 \title{Prune a SDForest}
 \usage{
-\method{prune}{SDForest}(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE)
+\method{prune}{SDForest}(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE, ...)
 }
 \arguments{
-\item{forest}{A SDForest object}
+\item{object}{A SDForest object}
 
 \item{cp}{Complexity parameter, the higher the value the more nodes are pruned.}
 
@@ -20,6 +20,8 @@
 
 \item{pred}{If TRUE the predictions are calculated, if FALSE only the out-of-bag statistics are calculated.
 This can set to FALSE to save computation time if only the out-of-bag statistics are needed.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A pruned SDForest object

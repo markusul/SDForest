@@ -1,5 +1,15 @@
 #' @importFrom Rdpack reprompt
 #' @import GPUmatrix
+#' @import DiagrammeR
+#' @import data.tree
+#' @importFrom stats lm.fit
+#' @importFrom stats model.matrix
+#' @importFrom stats model.response
+#' @importFrom stats predict
+#' @importFrom stats quantile
+#' @importFrom stats rnorm
+#' @importFrom stats runif
+#' @importFrom stats sd
 
 library(GPUmatrix)
 

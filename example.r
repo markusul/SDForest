@@ -65,14 +65,30 @@ dep <- partDependence(tree_causal, most_imp, X = data$X)
 plot(dep)
 
 
-X <- matrix(rnorm(50 * 5), nrow = 50)
-Y <- 3 * X[, 1]**2 + rnorm(50)
+
+
+
 
 x <- rnorm(100)
 y <- sign(x) * 3 + rnorm(100)
 model <- SDTree(x = x, y = y, Q_type = 'no_deconfounding')
-model <- prune(model, 1)
 plot(model)
+model
+print(model)
+predict(model, newdata = data.frame(X = x))
+
+
+class(model$tree)
+
+
+
+
+
+
+
+
+predict(model, data.frame(X = x))
+
 pd <- partDependence(model, 1, X = x)
 plot(pd)
 

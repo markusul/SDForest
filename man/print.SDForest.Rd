@@ -4,10 +4,12 @@
 \alias{print.SDForest}
 \title{Print SDForest}
 \usage{
-print.SDForest(object)
+\method{print}{SDForest}(x, ...)
 }
 \arguments{
-\item{object}{Fitted object of class \code{SDForest}.}
+\item{x}{Fitted object of class \code{SDForest}.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \description{
 Print contents of the SDForest.

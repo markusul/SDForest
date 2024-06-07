@@ -2,16 +2,17 @@
 % Please edit documentation in R/paths.R
 \name{regPath.SDTree}
 \alias{regPath.SDTree}
-\alias{regPath}
 \title{Calculate the regularization path of a SDTree}
 \usage{
-\method{regPath}{SDTree}(object, cp_seq = NULL)
+\method{regPath}{SDTree}(object, cp_seq = NULL, ...)
 }
 \arguments{
 \item{object}{A SDTree object}
 
 \item{cp_seq}{A sequence of complexity parameters.
 If NULL, the sequence is calculated automatically using only relevant values.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 An object of class \code{paths} containing

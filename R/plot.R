@@ -2,12 +2,12 @@
 #' 
 #' Plot the SDTree.
 #' @author Markus Ulmer
-#' @param object Fitted object of class \code{SDTree}.
+#' @param x Fitted object of class \code{SDTree}.
+#' @param ... Further arguments passed to or from other methods.
 #' @seealso \code{\link{SDTree}}
-#' @import DiagrammeR
 #' @export
-plot.SDTree <- function(object){
-  data.tree::SetEdgeStyle(object$tree, label = function(x) {x$decision})
-  data.tree::SetNodeStyle(object$tree, label = function(x) {x$label})
-  plot(object$tree)
+plot.SDTree <- function(x, ...){
+  data.tree::SetEdgeStyle(x$tree, label = function(e) {e$decision})
+  data.tree::SetNodeStyle(x$tree, label = function(n) {n$label})
+  plot(x$tree)
 }

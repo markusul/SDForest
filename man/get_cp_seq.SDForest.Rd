@@ -5,10 +5,12 @@
 \alias{get_cp_seq}
 \title{Get the sequence of complexity parameters of a SDForest}
 \usage{
-\method{get_cp_seq}{SDForest}(object)
+\method{get_cp_seq}{SDForest}(object, ...)
 }
 \arguments{
 \item{object}{A SDForest object}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A sequence of complexity parameters
@@ -19,7 +21,7 @@ result in changes of the SDForest if pruned. Only cp values that differ
 in the first three digits after the decimal point are returned.
 }
 \seealso{
-\code{\link{regPath}} \code{\link{stabiltySelection}} 
+\code{\link{regPath}} \code{\link{stabilitySelection}} 
 \code{\link{get_cp_seq.SDTree}}
 }
 \author{

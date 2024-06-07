@@ -14,6 +14,8 @@
 #' and 'no_deconfounding' to the Identity.
 #' @param trim_quantile Quantile for Trim transform, only needed for trim.
 #' @param q_hat Assumed confounding dimension, only needed for pca.
+#' @param gpu If \code{TRUE}, the calculations are performed on the GPU. 
+#' If it is properly set up.
 #' @return Q of class \code{matrix}, the spectral transformation matrix.
 #' @examples
 #' set.seed(1)
@@ -95,6 +97,8 @@ get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
 #' @param A Numerical Anchor of class \code{matrix}.
 #' @param gamma Strength of distributional robustness, \eqn{\gamma \in [0, \infty]}.
 #' @param intercept Logical, whether to include an intercept in the anchor.
+#' @param gpu If \code{TRUE}, the calculations are performed on the GPU. 
+#' If it is properly set up.
 #' @return W of class \code{matrix}, the anchor transformation matrix.
 #' @examples
 #' set.seed(1)

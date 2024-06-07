@@ -4,10 +4,12 @@
 \alias{print.SDTree}
 \title{Print a SDTree}
 \usage{
-print.SDTree(object)
+\method{print}{SDTree}(x, ...)
 }
 \arguments{
-\item{object}{Fitted object of class \code{SDTree}.}
+\item{x}{Fitted object of class \code{SDTree}.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \description{
 Print contents of the SDTree.

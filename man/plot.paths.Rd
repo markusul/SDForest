@@ -4,10 +4,10 @@
 \alias{plot.paths}
 \title{Visualize the paths of a SDTree or SDForest}
 \usage{
-\method{plot}{paths}(object, plotly = F, selection = NULL, log_scale = F)
+\method{plot}{paths}(x, plotly = F, selection = NULL, log_scale = F, ...)
 }
 \arguments{
-\item{object}{A paths object}
+\item{x}{A paths object}
 
 \item{plotly}{If TRUE the plot is interactive using plotly. Might be slow for large data.}
 
@@ -15,6 +15,8 @@
 Can be used to plot only a subset of the covariates in case of many covariates.}
 
 \item{log_scale}{If TRUE the y-axis is on a log scale.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A ggplot object

@@ -9,9 +9,9 @@ prune <- function(object, ...) UseMethod('prune')
 #' @author Markus Ulmer
 #' @param object A SDTree object
 #' @param cp Complexity parameter, the higher the value the more nodes are pruned.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A pruned SDTree object
 #' @seealso \code{\link{copy}}
-#' @aliases prune
 #' @export
 #' @examples
 #' set.seed(1)
@@ -21,7 +21,7 @@ prune <- function(object, ...) UseMethod('prune')
 #' pruned_tree <- prune(copy(tree), 0.2)
 #' tree
 #' pruned_tree
-prune.SDTree <- function(object, cp){
+prune.SDTree <- function(object, cp, ...){
   data.tree::Prune(object$tree, function(x) x$cp_max > cp)
   # new labels for leaves
   object$tree$Do(leave_names, filterFun = data.tree::isLeaf)
@@ -38,24 +38,25 @@ prune.SDTree <- function(object, cp){
 #' The training data is needed to calculate the out-of-bag statistics. Note that the forest is pruned in place.
 #' If you intend to keep the original forest, make a copy of it before pruning.
 #' @author Markus Ulmer
-#' @param forest A SDForest object
+#' @param object A SDForest object
 #' @param cp Complexity parameter, the higher the value the more nodes are pruned.
 #' @param X The training data, if NULL the data from the forest object is used.
 #' @param Y The training response variable, if NULL the data from the forest object is used.
 #' @param Q The transformation matrix, if NULL the data from the forest object is used.
 #' @param pred If TRUE the predictions are calculated, if FALSE only the out-of-bag statistics are calculated.
 #' This can set to FALSE to save computation time if only the out-of-bag statistics are needed.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A pruned SDForest object
 #' @seealso \code{\link{copy}} \code{\link{prune.SDTree}} \code{\link{regPath}}
 #' @aliases prune
 #' @export
-prune.SDForest <- function(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE){
-  pruned_forest <- lapply(forest$forest, function(tree){prune(tree, cp)})
-  forest$forest <- pruned_forest
+prune.SDForest <- function(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE, ...){
+  pruned_forest <- lapply(object$forest, function(tree){prune(tree, cp)})
+  object$forest <- pruned_forest
 
-  if(is.null(X)) X <- forest$X
-  if(is.null(Y)) Y <- forest$Y
-  if(is.null(Q)) Q <- forest$Q
+  if(is.null(X)) X <- object$X
+  if(is.null(Y)) Y <- object$Y
+  if(is.null(Q)) Q <- object$Q
   if(is.null(X) | is.null(Y)){
     stop('X and Y must either be provided or in the object')
   }
@@ -67,30 +68,30 @@ prune.SDForest <- function(forest, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE
     warning('Q was not provided, using Identity matrix')
   }
 
-  if(any(c(nrow(X), n, nrow(Q)) != length(forest$predictions))){
+  if(any(c(nrow(X), n, nrow(Q)) != length(object$predictions))){
     stop("The data has to correspond to the data used for training the forest.")
   }
-  if(ncol(X) != length(forest$var_names)){
+  if(ncol(X) != length(object$var_names)){
     stop("The number of covariates has to correspond to the data used for training the forest.")
   }
 
-  oob_predictions <- predictOOB(forest, X)
-  forest$oob_predictions <- oob_predictions
-  forest$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
-  forest$oob_loss <- loss(Y, oob_predictions)
+  oob_predictions <- predictOOB(object, X)
+  object$oob_predictions <- oob_predictions
+  object$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+  object$oob_loss <- loss(Y, oob_predictions)
 
   if(pred){
     # predict with all trees
-    pred <- do.call(cbind, lapply(forest$forest, function(x){matrix(predict_outsample(x$tree, X))}))
+    pred <- do.call(cbind, lapply(object$forest, function(x){matrix(predict_outsample(x$tree, X))}))
       
     # use mean over trees as final prediction
     f_X_hat <- rowMeans(pred)
-    forest$predictions <- f_X_hat
+    object$predictions <- f_X_hat
   }else {
-    forest$predictions <- NULL
+    object$predictions <- NULL
   }
   # variable importance
-  forest$var_importance <- rowMeans(as.matrix(sapply(forest$forest, function(x){matrix(x$var_importance)})))  
+  object$var_importance <- rowMeans(as.matrix(sapply(object$forest, function(x){matrix(x$var_importance)})))  
 
-  return(forest)
+  return(object)
 }

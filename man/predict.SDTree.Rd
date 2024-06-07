@@ -4,13 +4,15 @@
 \alias{predict.SDTree}
 \title{Predictions for the SDTree}
 \usage{
-\method{predict}{SDTree}(object, newdata)
+\method{predict}{SDTree}(object, newdata, ...)
 }
 \arguments{
 \item{object}{Fitted object of class \code{SDTree}.}
 
 \item{newdata}{New test data of class \code{data.frame} containing 
 the covariates for which to predict the response.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A vector of predictions for the new data.

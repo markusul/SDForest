@@ -10,7 +10,6 @@ varImp <- function(object) {UseMethod("varImp")}
 #' @param object A SDTree object
 #' @return A named vector of variable importance
 #' @seealso \code{\link{varImp.SDForest}} \code{\link{SDTree}}
-#' @aliases varImp
 #' @examples
 #' data(iris)
 #' tree <- SDTree(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, iris)

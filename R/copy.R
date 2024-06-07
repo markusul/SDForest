@@ -7,11 +7,11 @@ copy <- function(object, ...) UseMethod('copy')
 #' Might be useful if you want to keep the original tree in comparison to the pruned tree.
 #' @author Markus Ulmer
 #' @param object A SDTree object
+#' @param ... Further arguments passed to or from other methods.
 #' @return A copy of the SDTree object
 #' @seealso \code{\link{prune}}
-#' @aliases copy
 #' @export
-copy.SDTree <- function(object){
+copy.SDTree <- function(object, ...){
   new_tree <- data.tree::Clone(object$tree)
   new_object <- object
   new_object$tree <- new_tree
@@ -24,11 +24,12 @@ copy.SDTree <- function(object){
 #' Might be useful if you want to keep the original forest in comparison to the pruned forest.
 #' @author Markus Ulmer
 #' @param object A SDForest object
+#' @param ... Further arguments passed to or from other methods.
 #' @return A copy of the SDForest object
 #' @seealso \code{\link{prune}}
 #' @aliases copy
 #' @export
-copy.SDForest <- function(object){
+copy.SDForest <- function(object, ...){
   new_forest <- lapply(object$forest, function(tree){copy(tree)})
   new_object <- object
   new_object$forest <- new_forest

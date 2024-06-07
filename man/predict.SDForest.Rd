@@ -4,13 +4,15 @@
 \alias{predict.SDForest}
 \title{Predictions for the SDForest}
 \usage{
-\method{predict}{SDForest}(object, newdata)
+\method{predict}{SDForest}(object, newdata, ...)
 }
 \arguments{
 \item{object}{Fitted object of class \code{SDForest}.}
 
 \item{newdata}{New test data of class \code{data.frame} containing
 the covariates for which to predict the response.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A vector of predictions for the new data.

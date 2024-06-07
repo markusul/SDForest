@@ -2,15 +2,16 @@
 % Please edit documentation in R/prune.R
 \name{prune.SDTree}
 \alias{prune.SDTree}
-\alias{prune}
 \title{Prune a SDTree}
 \usage{
-\method{prune}{SDTree}(object, cp)
+\method{prune}{SDTree}(object, cp, ...)
 }
 \arguments{
 \item{object}{A SDTree object}
 
 \item{cp}{Complexity parameter, the higher the value the more nodes are pruned.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A pruned SDTree object

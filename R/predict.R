@@ -5,6 +5,7 @@
 #' @param object Fitted object of class \code{SDTree}.
 #' @param newdata New test data of class \code{data.frame} containing 
 #' the covariates for which to predict the response.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A vector of predictions for the new data.
 #' @examples
 #' set.seed(1)
@@ -15,11 +16,11 @@
 #' predict(model, newdata = data.frame(X))
 #' @seealso \code{\link{SDTree}}
 #' @export
-predict.SDTree <- function(object, newdata){
+predict.SDTree <- function(object, newdata, ...){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
   if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
 
-  X <- newdata[, object$var_names]
+  X <- as.matrix(newdata[, object$var_names])
   if(any(is.na(X))) stop('X must not contain missing values')
   return(predict_outsample(object$tree, X))
 }
@@ -31,6 +32,7 @@ predict.SDTree <- function(object, newdata){
 #' @param object Fitted object of class \code{SDForest}.
 #' @param newdata New test data of class \code{data.frame} containing
 #' the covariates for which to predict the response.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A vector of predictions for the new data.
 #' @examples
 #' set.seed(1)
@@ -41,7 +43,7 @@ predict.SDTree <- function(object, newdata){
 #' predict(model, newdata = data.frame(X))
 #' @seealso \code{\link{SDForest}}
 #' @export
-predict.SDForest <- function(object, newdata){
+predict.SDForest <- function(object, newdata, ...){
   # predict function for the spectral deconfounded random forest
   # using the mean over all trees as the prediction
   # check data type

@@ -2,13 +2,14 @@
 % Please edit documentation in R/copy.R
 \name{copy.SDTree}
 \alias{copy.SDTree}
-\alias{copy}
 \title{Copy a tree}
 \usage{
-\method{copy}{SDTree}(object)
+\method{copy}{SDTree}(object, ...)
 }
 \arguments{
 \item{object}{A SDTree object}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A copy of the SDTree object

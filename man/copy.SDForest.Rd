@@ -5,10 +5,12 @@
 \alias{copy}
 \title{Copy a forest}
 \usage{
-\method{copy}{SDForest}(object)
+\method{copy}{SDForest}(object, ...)
 }
 \arguments{
 \item{object}{A SDForest object}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 A copy of the SDForest object

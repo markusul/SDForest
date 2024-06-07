@@ -1,16 +1,31 @@
 Package: SDForest
 Title: Spectrally Deconfounded Random Forest
-Description: Estimation and analyzation of sparse non-linear causal functions in presence of unobserved confounding.
-Author: Markus Ulmer <markus.ulmer@stat.math.ethz.ch>
-Maintainer: Markus Ulmer <markus.ulmer@stat.math.ethz.ch>
-License: GPL-3 + file LICENSE
 Version: 0.1
 Date: 2024-05-31
-RoxygenNote: 7.3.1
+Author: person("Markus", "Ulmer", , "markus.ulmer@stat.math.ethz.ch", role
+    = c("aut", "cre"), comment = c(ORCID = "0000-0001-7783-8475"))
+Maintainer: Markus Ulmer <markus.ulmer@stat.math.ethz.ch>
+Description: Estimation and analyzation of sparse non-linear causal
+    functions in presence of unobserved confounding.
+License: GPL-3 + file LICENSE
 Imports: 
-  Rdpack,
-  GPUmatrix
-RdMacros: Rdpack
+    data.tree,
+    DiagrammeR,
+    doParallel,
+    ggplot2,
+    GPUmatrix,
+    gridExtra,
+    locatexec,
+    parallel,
+    pbapply,
+    Rdpack,
+    tidyr
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    plotly, 
+    datasets
+RdMacros: 
+    Rdpack
 Config/testthat/edition: 3
+Encoding: UTF-8
+RoxygenNote: 7.3.1

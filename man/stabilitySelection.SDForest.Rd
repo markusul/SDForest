@@ -5,13 +5,15 @@
 \alias{stabilitySelection}
 \title{Calculate the stability selection of a SDForest}
 \usage{
-\method{stabilitySelection}{SDForest}(object, cp_seq = NULL)
+\method{stabilitySelection}{SDForest}(object, cp_seq = NULL, ...)
 }
 \arguments{
 \item{object}{A SDForest object}
 
 \item{cp_seq}{A sequence of complexity parameters.
 If NULL, the sequence is calculated automatically using only relevant values.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 An object of class \code{paths} containing

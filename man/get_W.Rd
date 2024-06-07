@@ -12,6 +12,9 @@ get_W(A, gamma, intercept = FALSE, gpu = FALSE)
 \item{gamma}{Strength of distributional robustness, \eqn{\gamma \in [0, \infty]}.}
 
 \item{intercept}{Logical, whether to include an intercept in the anchor.}
+
+\item{gpu}{If \code{TRUE}, the calculations are performed on the GPU. 
+If it is properly set up.}
 }
 \value{
 W of class \code{matrix}, the anchor transformation matrix.

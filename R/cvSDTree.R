@@ -4,6 +4,8 @@
 #' The transformations are estimated for each training set and validation set 
 #' separately to ensure independence of the validation set.
 #' @author Markus Ulmer
+#' @references
+#'  \insertAllCited{}
 #' @param formula Object of class \code{formula} or describing the model to fit 
 #' of the form \code{y ~ x1 + x2 + ...} where \code{y} is a numeric response and 
 #' \code{x1, x2, ...} are vectors of covariates. Interactions are not supported.

@@ -6,34 +6,72 @@ fromList <- function(object, ...) UseMethod('fromList')
 
 #' SDTree toList method
 #' 
-#' Converts a the tree in a SDTree object from a 
+#' Converts the tree in a SDTree object from 
+#' class \code{Node} \insertCite{Glur2023Data.tree:Structure}{SDForest} to class \code{list}.
 #' This makes it substantially easier to save the tree to disk.
 #' @author Markus Ulmer
-#' @param tree A SDTree object
-#' @return A list representation of the tree
+#' @references
+#'  \insertAllCited{}
+#' @param object A SDTree object with the tree in Node format
+#' @param ... Further arguments passed to or from other methods.
+#' @return A SDTree object with the tree in list format
 #' @seealso \code{\link{fromList}}
-#' @aliases toList
 #' @export
-toList.SDTree <- function(tree){
-  tree$tree <- as.list(tree$tree)
-  return(tree)
+toList.SDTree <- function(object, ...){
+  object$tree <- as.list(object$tree)
+  return(object)
 }
 
 #' SDTree fromList method
 #' 
-#' Converts a list to a SDTree object.
+#' Converts the tree in a SDTree object from
+#' class \code{list} to class \code{Node} \insertCite{Glur2023Data.tree:Structure}{SDForest}.
+#' @author Markus Ulmer
+#' @references
+#'  \insertAllCited{}
+#' @param object A SDTree object with the tree in list format
+#' @param ... Further arguments passed to or from other methods.
+#' @return A SDTree object with the tree in Node format
+#' @seealso \code{\link{toList}}
+#' @export
+fromList.SDTree <- function(object, ...){
+  object$tree <- data.tree::as.Node(object$tree)
+  return(object)
+}
+
+#' SDForest toList method
 #' 
-fromList.SDTree <- function(tree){
-  tree$tree <- data.tree::as.Node(tree$tree)
-  return(tree)
+#' Converts the trees in a SDForest object from
+#' class \code{Node} \insertCite{Glur2023Data.tree:Structure}{SDForest} to class \code{list}.
+#' This makes it substantially easier to save the forest to disk.
+#' @author Markus Ulmer
+#' @references
+#'  \insertAllCited{}
+#' @param object A SDForest object with the trees in Node format
+#' @param ... Further arguments passed to or from other methods.
+#' @return A SDForest object with the trees in list format
+#' @seealso \code{\link{fromList}} \code{\link{toList.SDTree}}
+#' @aliases toList
+#' @export
+toList.SDForest <- function(object, ...){
+  object$forest <- lapply(object$forest, toList)
+  return(object)
 }
 
-toList.SDForest <- function(forest){
-  forest$forest <- lapply(forest$forest, toList)
-  return(forest)
-}
-
-fromList.SDForest <- function(forest){
-  forest$forest <- lapply(forest$forest, fromList)
-  return(forest)
+#' SDForest fromList method
+#' 
+#' Converts the trees in a SDForest object from
+#' class \code{list} to class \code{Node} \insertCite{Glur2023Data.tree:Structure}{SDForest}.
+#' @author Markus Ulmer
+#' @references
+#'  \insertAllCited{}
+#' @param object A SDForest object with the trees in list format
+#' @param ... Further arguments passed to or from other methods.
+#' @return A SDForest object with the trees in Node format
+#' @seealso \code{\link{fromList}} \code{\link{fromList.SDTree}}
+#' @aliases fromList
+#' @export
+fromList.SDForest <- function(object, ...){
+  object$forest <- lapply(object$forest, fromList)
+  return(object)
 }

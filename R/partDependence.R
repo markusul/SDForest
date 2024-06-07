@@ -78,33 +78,38 @@ partDependence <- function(object, j, X = NULL, mc.cores = 1){
 #' 
 #' This function plots the partial dependence of a model on a single variable.
 #' @author Markus Ulmer
-#' @param object An object of class \code{partDependence} returned by \code{\link{partDependence}}.
+#' @param x An object of class \code{partDependence} returned by \code{\link{partDependence}}.
 #' @param n_examples Number of examples to plot in addition to the average prediction.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A ggplot object.
 #' @seealso \code{\link{partDependence}}
 #' @export
-plot.partDependence <- function(object, n_examples = 19){
+plot.partDependence <- function(x, n_examples = 19, ...){
   ggdep <- ggplot2::ggplot() + ggplot2::theme_bw()
-  preds <- object$preds
-  x_seq <- object$x_seq
+  preds <- x$preds
+  x_seq <- x$x_seq
   
   
   sample_examples <- sample(1:ncol(preds), min(n_examples, ncol(preds)))
 
   for(i in sample_examples){
     pred_data <- data.frame(x = x_seq, y = preds[, i])
-    ggdep <- ggdep + ggplot2::geom_line(data = pred_data, ggplot2::aes(x = x, y = y), col = 'grey')
+    ggdep <- ggdep + ggplot2::geom_line(data = pred_data, 
+                                        ggplot2::aes(x = x, y = y), col = 'grey')
   }
   
-  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = object$preds_mean), 
-                                      ggplot2::aes(x = x, y = y), col = '#08cbba', linewidth = 1.5)
-  ggdep <- ggdep + ggplot2::geom_rug(data = data.frame(x = object$xj, y = min(preds[, sample_examples])), 
-                                     ggplot2::aes(x = x, y = y), sides = 'b', col = '#949494')
+  ggdep <- ggdep + ggplot2::geom_line(data = data.frame(x = x_seq, y = x$preds_mean), 
+                                      ggplot2::aes(x = x, y = y), col = '#08cbba', 
+                                      linewidth = 1.5)
+  ggdep <- ggdep + ggplot2::geom_rug(data = data.frame(x = x$xj, 
+                                                       y = min(preds[, sample_examples])), 
+                                     ggplot2::aes(x = x, y = y), 
+                                     sides = 'b', col = '#949494')
   ggdep <- ggdep + ggplot2::ylab('f(x)') + ggplot2::ggtitle('Partial dependence')
-  if(is.character(object$j)){
-    ggdep <- ggdep + ggplot2::xlab(object$j)
+  if(is.character(x$j)){
+    ggdep <- ggdep + ggplot2::xlab(x$j)
   }else{
-    ggdep <- ggdep + ggplot2::xlab(paste('x', object$j, sep = ''))
+    ggdep <- ggdep + ggplot2::xlab(paste('x', x$j, sep = ''))
   }
   
   ggdep

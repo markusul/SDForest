@@ -5,7 +5,7 @@
 \alias{regPath}
 \title{Calculate the regularization path of a SDForest}
 \usage{
-\method{regPath}{SDForest}(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL)
+\method{regPath}{SDForest}(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, ...)
 }
 \arguments{
 \item{object}{A SDForest object}
@@ -18,6 +18,8 @@ If NULL, the sequence is calculated automatically using only relevant values.}
 \item{Y}{The training response variable, if NULL the data from the forest object is used.}
 
 \item{Q}{The transformation matrix, if NULL the data from the forest object is used.}
+
+\item{...}{Further arguments passed to or from other methods.}
 }
 \value{
 An object of class \code{paths} containing

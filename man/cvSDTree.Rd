@@ -111,7 +111,15 @@ The transformations are estimated for each training set and validation set
 separately to ensure independence of the validation set.
 }
 \examples{
-# TODO: add example
+set.seed(1)
+n <- 50
+X <- matrix(rnorm(n * 5), nrow = n)
+y <- sign(X[, 1]) * 3 + rnorm(n, 0, 5)
+cp <- cvSDTree(x = X, y = y, Q_type = 'no_deconfounding')
+cp
+}
+\references{
+\insertAllCited{}
 }
 \seealso{
 \code{\link{SDTree}} \code{\link{prune.SDTree}} \code{\link{regPath.SDTree}}

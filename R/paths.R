@@ -9,12 +9,12 @@ regPath <- function(object, ...) UseMethod('regPath')
 #' @param object A SDTree object
 #' @param cp_seq A sequence of complexity parameters.
 #' If NULL, the sequence is calculated automatically using only relevant values.
+#' @param ... Further arguments passed to or from other methods.
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the variable importance
 #' for each complexity parameter.}
 #' @seealso \code{\link{plot.paths}} \code{\link{prune}} \code{\link{get_cp_seq}} \code{\link{SDTree}}
-#' @aliases regPath
 #' @examples
 #' set.seed(1)
 #' n <- 10
@@ -27,7 +27,7 @@ regPath <- function(object, ...) UseMethod('regPath')
 #' plot(paths, plotly = T)
 #' }
 #' @export
-regPath.SDTree <- function(object, cp_seq = NULL){
+regPath.SDTree <- function(object, cp_seq = NULL, ...){
   object$tree <- data.tree::Clone(object$tree)
   
   if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
@@ -56,6 +56,7 @@ regPath.SDTree <- function(object, cp_seq = NULL){
 #' @param X The training data, if NULL the data from the forest object is used.
 #' @param Y The training response variable, if NULL the data from the forest object is used.
 #' @param Q The transformation matrix, if NULL the data from the forest object is used.
+#' @param ... Further arguments passed to or from other methods.
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the variable importance
@@ -78,7 +79,7 @@ regPath.SDTree <- function(object, cp_seq = NULL){
 #' plot(paths, plotly = T)
 #' }
 #' @export
-regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL){
+regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, ...){
   if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
   object$forest <- lapply(object$forest, function(tree){
@@ -119,6 +120,7 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' @param object A SDForest object
 #' @param cp_seq A sequence of complexity parameters.
 #' If NULL, the sequence is calculated automatically using only relevant values.
+#' @param ... Further arguments passed to or from other methods.
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the stability selection
@@ -137,7 +139,7 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' plot(paths, plotly = T)
 #' }
 #' @export
-stabilitySelection.SDForest <- function(object, cp_seq = NULL){
+stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
   if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
 
@@ -157,21 +159,22 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL){
 #' for different complexity parameters. Both the regularization path and
 #' the stability selection path can be visualized.
 #' @author Markus Ulmer
-#' @param object A paths object
+#' @param x A paths object
 #' @param plotly If TRUE the plot is interactive using plotly. Might be slow for large data.
 #' @param selection A vector of indices of the covariates to be plotted. 
 #' Can be used to plot only a subset of the covariates in case of many covariates.
 #' @param log_scale If TRUE the y-axis is on a log scale.
+#' @param ... Further arguments passed to or from other methods.
 #' @return A ggplot object
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}}
 #' @export
-plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
-  varImp_path <- object$varImp_path
+plot.paths <- function(x, plotly = F, selection = NULL, log_scale = F, ...){
+  varImp_path <- x$varImp_path
   if(!is.null(selection)){
     varImp_path <- varImp_path[, selection]
   }
 
-  imp_data <- data.frame(varImp_path, cp = object$cp)
+  imp_data <- data.frame(varImp_path, cp = x$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
 
   if(log_scale){
@@ -183,8 +186,8 @@ plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
       ggplot2::theme_bw() + 
       ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), sides = 'b', col = '#949494')
 
-  if(!is.null(object$cp_min)){
-    gg_path <- gg_path + ggplot2::geom_vline(xintercept = object$cp_min, linetype = 'dashed')
+  if(!is.null(x$cp_min)){
+    gg_path <- gg_path + ggplot2::geom_vline(xintercept = x$cp_min, linetype = 'dashed')
   }
 
   if(plotly) return(plotly::ggplotly(gg_path))
@@ -202,8 +205,8 @@ plot.paths <- function(object, plotly = F, selection = NULL, log_scale = F){
 #' for different complexity parameters. Can be used to choose the optimal
 #' complexity parameter.
 #' @author Markus Ulmer
-#' @param object A paths object with \item{loss_path}{A \code{matrix} with the out-of-bag performance
-#' for each complexity parameter.}
+#' @param object A paths object with loss_path \code{matrix} 
+#' with the out-of-bag performance for each complexity parameter.
 #' @return A ggplot object
 #' @seealso \code{\link{regPath.SDForest}}
 #' @export

@@ -2,7 +2,6 @@
 % Please edit documentation in R/varImp.R
 \name{varImp.SDTree}
 \alias{varImp.SDTree}
-\alias{varImp}
 \title{Extract variable importance of a SDTree}
 \usage{
 \method{varImp}{SDTree}(object)

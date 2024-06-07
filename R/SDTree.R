@@ -1,6 +1,7 @@
 #' Spectral Deconfounded Tree
 #' 
-#' Estimates a regressio tree using spectral deconfounding. # TODO: add more details
+#' Estimates a regression tree using spectral deconfounding. 
+#' # TODO: add more details
 #' @references
 #'  \insertAllCited{}
 #' @author Markus Ulmer
@@ -45,7 +46,7 @@
 #' proposed at each node for each covariate.
 #' @return Object of class \code{SDTree} containing
 #' \item{predictions}{Predictions for the training set.}
-#' \item{tree}{The estimated tree of type \code{data.tree} \insertCite{data.tree}{SDForest}. 
+#' \item{tree}{The estimated tree of class \code{Node} from \insertCite{Glur2023Data.tree:Structure}{SDForest}. 
 #' The tree contains the information about all the splits and the resulting estimates.}
 #' \item{var_names}{Names of the covariates in the training data.}
 #' \item{var_importance}{Variable importance of the covariates. see \code{\link{varImp.SDTree}}}
