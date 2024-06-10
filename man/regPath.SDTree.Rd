@@ -33,7 +33,7 @@ model <- SDTree(x = X, y = y, Q_type = 'no_deconfounding')
 paths <- regPath(model)
 plot(paths)
 \dontrun{
-plot(paths, plotly = T)
+plot(paths, plotly = TRUE)
 }
 }
 \seealso{

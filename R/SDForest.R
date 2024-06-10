@@ -140,7 +140,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     all_ind <- all_ind[-leave_out_ind]
   }
   ind <- lapply(1:nTree, function(x)
-    sample(all_ind, min(length(all_ind), max_size), replace = T))
+    sample(all_ind, min(length(all_ind), max_size), replace = TRUE))
 
   if(mc.cores > 1){
     if(locatexec::is_unix()){
@@ -221,5 +221,6 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     output$Q <- as.matrix(Q)
   }
   class(output) <- 'SDForest'
-  return(output)
+  
+  output
 }

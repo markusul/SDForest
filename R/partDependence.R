@@ -71,7 +71,8 @@ partDependence <- function(object, j, X = NULL, mc.cores = 1){
   
   res <- list(preds_mean = preds_mean, x_seq = x_seq, preds = preds, j = j_name, xj = X[, j])
   class(res) <- 'partDependence'
-  return(res)
+  
+  res
 }
 
 #' Plot partial dependence

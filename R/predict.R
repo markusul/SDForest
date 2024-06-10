@@ -22,7 +22,8 @@ predict.SDTree <- function(object, newdata, ...){
 
   X <- as.matrix(newdata[, object$var_names])
   if(any(is.na(X))) stop('X must not contain missing values')
-  return(predict_outsample(object$tree, X))
+  
+  predict_outsample(object$tree, X)
 }
 
 #' Predictions for the SDForest
@@ -54,7 +55,7 @@ predict.SDForest <- function(object, newdata, ...){
   if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object$forest, function(x){predict_outsample(x$tree, X)}))
-  return(rowMeans(pred))
+  rowMeans(pred)
 }
 
 #' Out-of-bag predictions for the SDForest
@@ -83,7 +84,7 @@ predictOOB <- function(object, X = NULL){
 
   oob_ind <- object$oob_ind
 
-  oob_predictions <- sapply(1:n, function(i){
+  sapply(1:n, function(i){
     if(length(oob_ind[[i]]) == 0){
       return(NA)
     }
@@ -91,7 +92,6 @@ predictOOB <- function(object, X = NULL){
     predictions <- sapply(oob_ind[[i]], function(model){
       predict_outsample(object$forest[[model]]$tree, xi)
     })
-    return(mean(predictions))
+    mean(predictions)
   })
-  return(oob_predictions)
 }

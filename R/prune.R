@@ -29,7 +29,8 @@ prune.SDTree <- function(object, cp, ...){
   object$predictions <- NULL
   # new variable importance
   object$var_importance <- varImp(object)
-  return(object)
+  
+  object
 }
 
 #' Prune a SDForest
@@ -93,5 +94,5 @@ prune.SDForest <- function(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE
   # variable importance
   object$var_importance <- rowMeans(as.matrix(sapply(object$forest, function(x){matrix(x$var_importance)})))  
 
-  return(object)
+  object
 }

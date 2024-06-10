@@ -27,7 +27,8 @@ varImp.SDTree <- function(object){
     var_importance[j_dec[1, i]] <- var_importance[j_dec[1, i]] + j_dec[2, i]
   }
   names(var_importance) <- object$var_names
-  return(var_importance)
+  
+  var_importance
 }
 
 #' Extract variable importance of a SDForest

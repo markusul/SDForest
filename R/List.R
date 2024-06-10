@@ -19,7 +19,7 @@ fromList <- function(object, ...) UseMethod('fromList')
 #' @export
 toList.SDTree <- function(object, ...){
   object$tree <- as.list(object$tree)
-  return(object)
+  object
 }
 
 #' SDTree fromList method
@@ -36,7 +36,7 @@ toList.SDTree <- function(object, ...){
 #' @export
 fromList.SDTree <- function(object, ...){
   object$tree <- data.tree::as.Node(object$tree)
-  return(object)
+  object
 }
 
 #' SDForest toList method
@@ -55,7 +55,7 @@ fromList.SDTree <- function(object, ...){
 #' @export
 toList.SDForest <- function(object, ...){
   object$forest <- lapply(object$forest, toList)
-  return(object)
+  object
 }
 
 #' SDForest fromList method
@@ -73,5 +73,5 @@ toList.SDForest <- function(object, ...){
 #' @export
 fromList.SDForest <- function(object, ...){
   object$forest <- lapply(object$forest, fromList)
-  return(object)
+  object
 }

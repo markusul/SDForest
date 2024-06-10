@@ -61,7 +61,7 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       if(!is.numeric(Y)){
         stop("Error: Only regression is suported at the moment. Y must be numeric.")
       }
-      return(list(X = X, Y = as.numeric(Y)))
+      list(X = X, Y = as.numeric(Y))
     }
   }
 }
@@ -72,7 +72,7 @@ predict_outsample <- function(tree, X){
   if(is.null(dim(X))){
     return(traverse_tree(tree, X))
   }
-  return(apply(X, 1, function(x)traverse_tree(tree, x)))
+  apply(X, 1, function(x)traverse_tree(tree, x))
 }
 
 #helper functions to label nodes for plotting
@@ -114,10 +114,10 @@ find_s <- function(X, max_candidates = 100){
   }
   
   if(is.null(dim(s))){
-    s <- matrix(s, ncol = p)
+    matrix(s, ncol = p)
+  }else{
+    s
   }
-  
-  return(s)
 }
 
 traverse_tree <- function(tree, x){
@@ -127,15 +127,14 @@ traverse_tree <- function(tree, x){
     return(tree$value)
   }
   if(x[tree$j] <= tree$s){
-    return(traverse_tree(tree$children[[1]], x))
+    traverse_tree(tree$children[[1]], x)
   }else {
-    return(traverse_tree(tree$children[[2]], x))
+    traverse_tree(tree$children[[2]], x)
   }
 }
 
 loss <- function(Y, f_X){
-  # MSE
-  return(as.numeric(sum((Y - f_X)^2) / length(Y)))
+  as.numeric(sum((Y - f_X)^2) / length(Y))
 }
 
 pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
@@ -151,5 +150,5 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   f_X_hat_val <- predict_outsample(tree_t, X_val)
   
   # return spectral loss
-  return(sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val))
+  sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val)
 }

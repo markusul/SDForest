@@ -76,7 +76,7 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
   Y <- f_X + H %*% delta + rnorm(n, 0, 0.1)
   
   #return data
-  return(list(X = X, Y = Y, f_X = f_X, j = js, beta = beta, H = H))
+  list(X = X, Y = Y, f_X = f_X, j = js, beta = beta, H = H)
 }
 
 #' Function of x on a fourier basis

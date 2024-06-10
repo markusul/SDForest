@@ -36,7 +36,7 @@ model <- SDForest(x = X, y = y, Q_type = 'no_deconfounding')
 paths <- stabilitySelection(model)
 plot(paths)
 \dontrun{
-plot(paths, plotly = T)
+plot(paths, plotly = TRUE)
 }
 }
 \references{

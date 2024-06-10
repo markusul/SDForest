@@ -24,7 +24,7 @@ regPath <- function(object, ...) UseMethod('regPath')
 #' paths <- regPath(model)
 #' plot(paths)
 #' \dontrun{
-#' plot(paths, plotly = T)
+#' plot(paths, plotly = TRUE)
 #' }
 #' @export
 regPath.SDTree <- function(object, cp_seq = NULL, ...){
@@ -42,7 +42,8 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
 
   paths <- list(cp = cp_seq, varImp_path = varImp_path)
   class(paths) <- 'paths'
-  return(paths)
+  
+  paths
 }
 
 #' Calculate the regularization path of a SDForest
@@ -76,7 +77,7 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
 #' plotOOB(paths)
 #' plot(paths)
 #' \dontrun{
-#' plot(paths, plotly = T)
+#' plot(paths, plotly = TRUE)
 #' }
 #' @export
 regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, ...){
@@ -88,7 +89,7 @@ regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL
     })
 
   res <- pbapply::pblapply(cp_seq, function(cp){
-    pruned_object <- prune(object, cp, X, Y, Q, pred = F)
+    pruned_object <- prune(object, cp, X, Y, Q, pred = FALSE)
     return(list(var_importance = pruned_object$var_importance, 
                 oob_SDloss = pruned_object$oob_SDloss, 
                 oob_loss = pruned_object$oob_loss))})
@@ -101,7 +102,8 @@ regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL
   paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path,
                 cp_min = cp_seq[which.min(loss_path[, 1])])
   class(paths) <- 'paths'
-  return(paths)
+  
+  paths
 }
 
 #' @export
@@ -136,7 +138,7 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' paths <- stabilitySelection(model)
 #' plot(paths)
 #' \dontrun{
-#' plot(paths, plotly = T)
+#' plot(paths, plotly = TRUE)
 #' }
 #' @export
 stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
@@ -150,7 +152,8 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
   colnames(imp) <- object$var_names
   paths <- list(cp = cp_seq, varImp_path = imp)
   class(paths) <- 'paths'
-  return(paths)
+  
+  paths
 }
 
 #' Visualize the paths of a SDTree or SDForest
@@ -168,7 +171,7 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
 #' @return A ggplot object
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}}
 #' @export
-plot.paths <- function(x, plotly = F, selection = NULL, log_scale = F, ...){
+plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...){
   varImp_path <- x$varImp_path
   if(!is.null(selection)){
     varImp_path <- varImp_path[, selection]
@@ -181,22 +184,24 @@ plot.paths <- function(x, plotly = F, selection = NULL, log_scale = F, ...){
     imp_data$importance <- log(imp_data$importance + 1)
   }
   
-  gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, col = covariate)) +
+  gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, 
+                                                    col = covariate)) +
       ggplot2::geom_line() + 
       ggplot2::theme_bw() + 
-      ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), sides = 'b', col = '#949494')
+      ggplot2::geom_rug(data = imp_data, ggplot2::aes(x = cp, y = importance), 
+                        sides = 'b', col = '#949494')
 
   if(!is.null(x$cp_min)){
     gg_path <- gg_path + ggplot2::geom_vline(xintercept = x$cp_min, linetype = 'dashed')
   }
 
-  if(plotly) return(plotly::ggplotly(gg_path))
-
-  if(length(unique(imp_data$covariate)) > 20){
-    gg_path <- gg_path + ggplot2::theme(legend.position = 'none')
+  if(plotly){
+    return(plotly::ggplotly(gg_path))
+  }else if(length(unique(imp_data$covariate)) > 20){
+    gg_path + ggplot2::theme(legend.position = 'none')
+  }else{
+    gg_path
   }
-
-  return(gg_path)
 }
 
 #' Visualize the out-of-bag performance of a SDForest

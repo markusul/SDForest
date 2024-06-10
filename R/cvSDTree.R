@@ -204,6 +204,5 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
 
   cp_min <- cp_table[which.min(cp_table[, 2]), 1]
 
-  res <- list(cp_min = cp_min, cp_table = cp_table)
-  return(res)
+  list(cp_min = cp_min, cp_table = cp_table)
 }

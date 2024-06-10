@@ -44,7 +44,7 @@ paths <- regPath(model)
 plotOOB(paths)
 plot(paths)
 \dontrun{
-plot(paths, plotly = T)
+plot(paths, plotly = TRUE)
 }
 }
 \seealso{

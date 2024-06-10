@@ -67,19 +67,17 @@ get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
   U <- sv$u
   if(gpu) U <- gpu.matrix(U, type = gpu_type)
   
-  Q <- switch(modes[type], 
-              diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
-              { # pca
-                d_pca <- rep(1, length(sv$d))
-                if(q_hat <= 0) 
-                  stop("the assumed confounding dimension must be larger than zero")
-                d_pca[1:q_hat] <- 0
-                diag(n) - U %*% diag(1 - d_pca) %*% t(U)
-              },
-              diag(n) # no_deconfounding
-  )
-  rm(U, sv)
-  return(Q)
+  switch(modes[type], 
+         diag(n) - U %*% diag(1 - D_tilde) %*% t(U), # DDL_trim
+         { # pca
+           d_pca <- rep(1, length(sv$d))
+           if(q_hat <= 0) 
+             stop("the assumed confounding dimension must be larger than zero")
+           d_pca[1:q_hat] <- 0
+           diag(n) - U %*% diag(1 - d_pca) %*% t(U)
+            },
+         diag(n) # no_deconfounding
+         )
 }
 
 #' Estimation of anchor transformation
@@ -118,6 +116,5 @@ get_W <- function(A, gamma, intercept = FALSE, gpu = FALSE){
   
   Q_prime <- qr.Q(qr(A))
   Pi_A <- tcrossprod(Q_prime)
-  W <- diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
-  return(W)
+  diag(nrow(A)) - (1-sqrt(gamma)) * Pi_A
 }

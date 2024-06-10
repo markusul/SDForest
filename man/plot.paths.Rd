@@ -4,7 +4,7 @@
 \alias{plot.paths}
 \title{Visualize the paths of a SDTree or SDForest}
 \usage{
-\method{plot}{paths}(x, plotly = F, selection = NULL, log_scale = F, ...)
+\method{plot}{paths}(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...)
 }
 \arguments{
 \item{x}{A paths object}

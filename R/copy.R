@@ -15,7 +15,8 @@ copy.SDTree <- function(object, ...){
   new_tree <- data.tree::Clone(object$tree)
   new_object <- object
   new_object$tree <- new_tree
-  return(new_object)
+  
+  new_object
 }
 
 #' Copy a forest
@@ -33,5 +34,6 @@ copy.SDForest <- function(object, ...){
   new_forest <- lapply(object$forest, function(tree){copy(tree)})
   new_object <- object
   new_object$forest <- new_forest
-  return(new_object)
+  
+  new_object
 }

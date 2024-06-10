@@ -156,12 +156,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       E_branch <- E[, branch]
       index <- which(E_branch == 1)
       X_branch <- as.matrix(X[index, ])
-    
+
       s <- find_s(X_branch, max_candidates = max_candidates)
+      n_splits <- nrow(s)
       if(min_sample > 1) {
-        s <- s[-c(0:(min_sample - 1), (n - min_sample + 2):(n+1)), ]
+        s <- s[-c(0:(min_sample - 1), (n_splits - min_sample + 2):(n_splits+1)), ]
       }
-      s <- as.matrix(s)
+      s <- matrix(s, ncol = p)
 
       all_n_splits <- apply(s, 2, function(x) length(unique(x)))
       all_idx <- cumsum(all_n_splits)
@@ -217,11 +218,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     if(Losses_dec[loc, 1] <= 0){
       break
     }
-
+    
     # divide observations in leave
     index <- which(E[, best_branch] == 1)
     index_n_branches <- index[X[index, j] > s]
-
+    
     # new indicator matrix
     E <- cbind(E, matrix(0, n, 1))
     E[index_n_branches, best_branch] <- 0
@@ -307,7 +308,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
   }
 
-  # print warning if maximum splitts was reached, one might want to increase m
+  # print warning if maximum splits was reached, one might want to increase m
   if(i == m){
     warning('maximum number of iterations was reached, consider increasing m!')
   }
@@ -334,5 +335,6 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   res <- list(predictions = f_X_hat, tree = tree, 
               var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'
-  return(res)
+  
+  res
 }

@@ -74,67 +74,33 @@ y <- sign(x) * 3 + rnorm(100)
 model <- SDTree(x = x, y = y, Q_type = 'no_deconfounding')
 plot(model)
 model
+
+model$predictions
 print(model)
 predict(model, newdata = data.frame(X = x))
 
 
-class(model$tree)
+library(SDForest)
 
-
-
-
-
-
-
-
-predict(model, data.frame(X = x))
-
-pd <- partDependence(model, 1, X = x)
-plot(pd)
-
+set.seed(1)
 
 X <- matrix(rnorm(50 * 20), nrow = 50)
 Y <- rnorm(50)
-tree <- SDTree(x = X, y = Y)
-pruned_tree <- prune(copy(tree), 0.2)
-print(tree)
-pruned_tree
 
-class(tree)
-print.SDTree(tree)
-predict(tree, data.frame(X))
+tree <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', 
+               cp = 0, min_sample = 5)
+min(table(tree$predictions)) >= 5
+rpart_tree <- rpart::rpart(y ~ ., data.frame(y = Y, X), 
+                    control = rpart::rpart.control(minbucket = 5, 
+                                            cp = 0, 
+                                            minsplit = 10, 
+                                            xval = 0))
+pruned_tree <- prune(copy(tree), 0.1)
+pruned_rpart_tree <- rpart::prune(rpart_tree, 0.1)
 
-
-set.seed(1)
-n <- 50
-X <- matrix(rnorm(n * 5), nrow = n)
-y <- sign(X[, 1]) * 3 + rnorm(n, 0, 5)
-cp <- cvSDTree(x = X, y = y, Q_type = 'no_deconfounding')
-cp
-
-library(rpart)
-fit <- rpart(y ~ ., data.frame(X, y))
-fit$cptable
-
-model <- prune(model, 1)
-model
+expect_equal(tree$predictions, predict(tree, data.frame(X)))
+expect_false(all(tree$predictions == predict(pruned_tree, data.frame(X))))
 
 
-
-paths <- regPath(model)
-data(iris)
-tree <- SDForest(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, 
-                 iris, nTree = 10)
-tree
-varImp(tree)
-
-set.seed(1)
-n <- 10
-X <- matrix(rnorm(n * 5), nrow = n)
-y <- sign(X[, 1]) * 3 + sign(X[, 2]) + rnorm(n)
-model <- SDForest(x = X, y = y, Q_type = 'no_deconfounding')
-model
-paths <- regPath(model)
-plotOOB(paths)
-plot(paths)
-plot(paths, plotly = T)
+expect_equal(tree$predictions, as.vector(predict(rpart_tree)))
+expect_equal(predict(pruned_tree, data.frame(X)), as.vector(predict(pruned_rpart_tree)))

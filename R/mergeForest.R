@@ -65,5 +65,6 @@ mergeForest <- function(fit1, fit2){
     fit1$oob_loss <- NULL
     fit1$oob_SDloss <- NULL
   }
-  return(fit1)
+  
+  fit1
 }
