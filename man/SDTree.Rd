@@ -118,6 +118,8 @@ plot(path)
 tree_plain <- prune(tree_plain, cp = tree_plain_cv$cp_min)
 tree_causal <- prune(tree_causal, cp = tree_causal_cv$cp_min)
 plot(tree_causal)
+
+
 plot(tree_plain)
 }
 \references{

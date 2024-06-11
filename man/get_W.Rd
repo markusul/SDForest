@@ -25,7 +25,8 @@ The anchor transformation is \eqn{W = I-(1-\sqrt{\gamma}))\Pi_A},
 where \eqn{\Pi_A = A(A^TA)^{-1}A^T}. For \eqn{\gamma = 1} this is just the identity. 
 For \eqn{\gamma = 0} this corresponds to residuals after orthogonal projecting onto A.
 For large \eqn{\gamma} this is close to the orthogonal projection onto A, scaled by \eqn{\gamma}.
-\eqn{argmin_f ||W(Y - f(X))||^2} corresponds to the Anchor-Regression Estimator \insertCite{Buhlmann2020InvarianceRobustness}{SDForest}.
+The estimator \eqn{argmin_f ||W(Y - f(X))||^2} corresponds to the Anchor-Regression Estimator 
+\insertCite{Rothenhausler2021AnchorCausality}{SDForest}, \insertCite{Buhlmann2020InvarianceRobustness}{SDForest}.
 }
 \examples{
 set.seed(1)
