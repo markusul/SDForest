@@ -6,9 +6,9 @@
 #' If the forests are trained on the same data, 
 #' the predictions and oob_predictions are combined as well.
 #' @author Markus Ulmer
-#' @param fit1 first /code{SDForest} object
-#' @param fit2 second /code{SDForest} object
-#' @return merged /code{SDForest} object
+#' @param fit1 first \code{SDForest} object
+#' @param fit2 second \code{SDForest} object
+#' @return merged \code{SDForest} object
 #' @export
 mergeForest <- function(fit1, fit2){
   if(any(fit1$var_names != fit2$var_names)) 

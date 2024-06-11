@@ -1,68 +1,59 @@
-source("R/SDForest.r")
-library(rpart)
-library(rattle)
+library(SDForest)
 
 set.seed(42)
-data <- simulate_data_nonlinear(q = 2, p = 150, n = 100, m = 2)
-X <- data$X
-Y <- data$Y
-data$j
+sim_data <- simulate_data_nonlinear(q = 2, p = 150, n = 100, m = 2)
+X <- sim_data$X
+Y <- sim_data$Y
+train_data <- data.frame(X, Y)
+sim_data$j
 
 
-tree_rpart <- rpart(Y ~ ., data.frame(X, Y), method = 'anova', cp = 0, minsplit = 1, minbucket = 5)
-cp_min <- tree_rpart$cptable[which.min(tree_rpart$cptable[, 'xerror']), 'CP']
+tree_plain_cv <- cvSDTree(Y ~ ., train_data, Q_type = "no_deconfounding")
+tree_plain <- SDTree(Y ~ ., train_data, Q_type = "no_deconfounding", cp = 0)
 
-tree_rpart <- rpart::prune(tree_rpart, cp = cp_min)
-fancyRpartPlot(tree_rpart)
+tree_causal_cv <- cvSDTree(Y ~ ., train_data)
+tree_causal <- SDTree(Y ~ ., train_data, cp = 0)
 
-tree_plain <- SDTree(Y ~ ., data.frame(X, Y), Q_type = "no_deconfounding", cp = cp_min)
-plot(tree_plain)
-
-tree_cv <- cv.SDTree(Y ~ ., data.frame(X, Y))
-tree_causal <- SDTree(Y ~ ., data.frame(X, Y), cp = 0)
+path_plain <- regPath(tree_plain)
+plot(path_plain, T)
 
 path <- regPath(tree_causal)
-plot(path)
+plot(path, T)
 
-tree_causal <- prune(tree_causal, cp = tree_cv$cp_min)
+tree_plain <- prune(tree_plain, cp = tree_plain_cv$cp_min)
+tree_causal <- prune(tree_causal, cp = tree_causal_cv$cp_min)
 plot(tree_causal)
+plot(tree_plain)
 
-library(ranger)
-fit_ranger <- ranger(Y ~ ., data.frame(X, Y), importance = 'impurity')
 
-# Fit the model
-fit <- SDForest(x = X, y = Y)
+
+fit_ranger <- ranger::ranger(Y ~ ., train_data, importance = 'impurity')
+
+fit <- SDForest(x = X, y = Y, nTree = 10, Q_type = 'pca', q_hat = 2)
+fit <- SDForest(Y ~ ., train_data)
 fit
 
 imp_ranger <- fit_ranger$variable.importance
 imp_sdf <- fit$var_importance
+imp_col <- rep('black', length(imp_ranger))
+imp_col[sim_data$j] <- 'red'
 
-plot(imp_ranger, imp_sdf)
-
+plot(imp_ranger, imp_sdf, col = imp_col, pch = 20,
+     xlab = 'ranger', ylab = 'SDForest', 
+     main = 'Variable Importance')
 
 path <- regPath(fit)
 plotOOB(path)
-
-path
-
 plot(path, plotly = T)
 
 stablePath <- stabilitySelection(fit)
 plot(stablePath, plotly = T)
 
-path$cp_min
-
 fit <- prune(fit, cp = path$cp_min)
 
-most_imp <- which.max(fit$var_importance)
+dep <- partDependence(fit, data$j[1])
+plot(dep, n_examples = 100)
 
-dep <- partDependence(fit, most_imp)
-plot(dep)
-
-
-
-dep <- partDependence(tree_causal, most_imp, X = data$X)
-plot(dep)
 
 
 
@@ -79,28 +70,12 @@ model$predictions
 print(model)
 predict(model, newdata = data.frame(X = x))
 
-
+library(tinytest)
 library(SDForest)
 
-set.seed(1)
-
-X <- matrix(rnorm(50 * 20), nrow = 50)
-Y <- rnorm(50)
-
-tree <- SDTree(x = X, y = Y, Q_type = 'no_deconfounding', 
-               cp = 0, min_sample = 5)
-min(table(tree$predictions)) >= 5
-rpart_tree <- rpart::rpart(y ~ ., data.frame(y = Y, X), 
-                    control = rpart::rpart.control(minbucket = 5, 
-                                            cp = 0, 
-                                            minsplit = 10, 
-                                            xval = 0))
-pruned_tree <- prune(copy(tree), 0.1)
-pruned_rpart_tree <- rpart::prune(rpart_tree, 0.1)
-
-expect_equal(tree$predictions, predict(tree, data.frame(X)))
-expect_false(all(tree$predictions == predict(pruned_tree, data.frame(X))))
 
 
-expect_equal(tree$predictions, as.vector(predict(rpart_tree)))
-expect_equal(predict(pruned_tree, data.frame(X)), as.vector(predict(pruned_rpart_tree)))
+
+
+
+

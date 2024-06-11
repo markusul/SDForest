@@ -7,12 +7,12 @@
 mergeForest(fit1, fit2)
 }
 \arguments{
-\item{fit1}{first /code{SDForest} object}
+\item{fit1}{first \code{SDForest} object}
 
-\item{fit2}{second /code{SDForest} object}
+\item{fit2}{second \code{SDForest} object}
 }
 \value{
-merged /code{SDForest} object
+merged \code{SDForest} object
 }
 \description{
 This function merges two forests. 

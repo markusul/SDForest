@@ -2,7 +2,7 @@ Package: SDForest
 Title: Spectrally Deconfounded Random Forest
 Version: 0.1
 Date: 2024-05-31
-Author: person("Markus", "Ulmer", , "markus.ulmer@stat.math.ethz.ch", role =
+Authors@R: person("Markus", "Ulmer", , "markus.ulmer@stat.math.ethz.ch", role =
          c("aut", "cre"), comment = c(ORCID = "0000-0001-7783-8475"))
 Maintainer: Markus Ulmer <markus.ulmer@stat.math.ethz.ch>
 Description: Estimation and analyzation of sparse non-linear causal
@@ -21,9 +21,16 @@ Imports:
     Rdpack,
     tidyr
 Suggests: 
-    plotly, 
-    datasets, 
-    tinytest
+    plotly,
+    datasets,
+    tinytest,
+    rpart,
+    ranger,
+    knitr,
+    rmarkdown, 
+    qpdf
 RdMacros: Rdpack
 Encoding: UTF-8
 RoxygenNote: 7.3.1
+VignetteBuilder: knitr
+URL: https://markusul.github.io/SDForest/

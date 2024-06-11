@@ -50,8 +50,34 @@
 #' The tree contains the information about all the splits and the resulting estimates.}
 #' \item{var_names}{Names of the covariates in the training data.}
 #' \item{var_importance}{Variable importance of the covariates. see \code{\link{varImp.SDTree}}}
+#' @seealso \code{\link{simulate_data_nonlinear}}, \code{\link{regPath.SDTree}}, 
+#' \code{\link{prune.SDTree}}, \code{\link{partDependence}}
 #' @examples
-#' # TODO: add example
+#' set.seed(42)
+#' # simulation of confounded data
+#' sim_data <- simulate_data_nonlinear(q = 2, p = 150, n = 100, m = 2)
+#' X <- sim_data$X
+#' Y <- sim_data$Y
+#' train_data <- data.frame(X, Y)
+#' # causal parents of y
+#' sim_data$j
+#' 
+#' tree_plain_cv <- cvSDTree(Y ~ ., train_data, Q_type = "no_deconfounding")
+#' tree_plain <- SDTree(Y ~ ., train_data, Q_type = "no_deconfounding", cp = 0)
+#' 
+#' tree_causal_cv <- cvSDTree(Y ~ ., train_data)
+#' tree_causal <- SDTree(y = Y, x = X, cp = 0)
+#' 
+#' # check regularization path of variable importance
+#' path <- regPath(tree_causal)
+#' plot(path)
+#' 
+#' tree_plain <- prune(tree_plain, cp = tree_plain_cv$cp_min)
+#' tree_causal <- prune(tree_causal, cp = tree_causal_cv$cp_min)
+#' plot(tree_causal)
+#' 
+#' 
+#' plot(tree_plain)
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, 
                    cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
