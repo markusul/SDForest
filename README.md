@@ -13,7 +13,8 @@ estimating non-linear sparse causal effects in the presence of
 unobserved confounding. SDForest has been shown to be a nice estimate
 for the true causal function in such settings, if we observe many
 covariates, e.g. high-dimensional setting, and we have fairly sparse
-confounding. <span style="color:red">Referenzen SDForest, DDL</span>
+confounding. (**Ulmer?**), (Guo, Ćevid, and Bühlmann 2022), (Ćevid,
+Bühlmann, and Meinshausen 2020)
 
 ![](man/figures/confModel.png)
 
@@ -45,6 +46,9 @@ train_data <- data.frame(X, Y)
 # causal parents
 sim_data$j
 #> [1]  1 47
+```
+
+``` r
 
 fit <- SDForest(Y ~ ., train_data)
 fit
@@ -76,7 +80,31 @@ causal_Tree
 #> 9       °--4     1.7789876 -0.46335890  1  X1 <= -0.46      yes        45
 #> 10          ¦--4 1.3813340          NA NA          1.4       no        17
 #> 11          °--5 2.0542768          NA NA          2.1      yes        28
+```
+
+``` r
 plot(causal_Tree)
 ```
 
 <img src="man/figures/README-SDTree-1.png" width="100%" />
+
+<div id="refs" class="references csl-bib-body hanging-indent">
+
+<div id="ref-Cevid2020SpectralModels" class="csl-entry">
+
+Ćevid, Domagoj, Peter Bühlmann, and Nicolai Meinshausen. 2020. “<span
+class="nocase">Spectral Deconfounding via Perturbed Sparse Linear
+Models</span>.” *J. Mach. Learn. Res.* 21 (1).
+
+</div>
+
+<div id="ref-Guo2022DoublyConfounding" class="csl-entry">
+
+Guo, Zijian, Domagoj Ćevid, and Peter Bühlmann. 2022. “<span
+class="nocase">Doubly debiased lasso: High-dimensional inference under
+hidden confounding</span>.” *The Annals of Statistics* 50 (3).
+<https://doi.org/10.1214/21-AOS2152>.
+
+</div>
+
+</div>
