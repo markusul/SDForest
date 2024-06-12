@@ -56,8 +56,8 @@ fit
 #> OOB spectral loss:  0.15
 ```
 
-You can also estimate just one Spectral Deconfounded Tree (SDTree) using
-the `SDTree` function.
+You can also estimate just one Spectral Deconfounded Regression Tree
+using the `SDTree` function.
 
 ``` r
 causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)

@@ -11,6 +11,7 @@ knitr::opts_chunk$set(
   fig.path = "man/figures/README-",
   out.width = "100%"
 )
+Sys.setenv(OPENSSL_CONF="/dev/null")
 ```
 
 # SDForest
@@ -52,7 +53,7 @@ fit <- SDForest(Y ~ ., train_data)
 fit
 ```
 
-You can also estimate just one Spectral Deconfounded Tree (SDTree) using the `SDTree` function.
+You can also estimate just one Spectral Deconfounded Regression Tree using the `SDTree` function.
 
 ```{r SDTree}
 causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
