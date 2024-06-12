@@ -162,13 +162,15 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
 #' for different complexity parameters. Both the regularization path and
 #' the stability selection path can be visualized.
 #' @author Markus Ulmer
-#' @param x A paths object
-#' @param plotly If TRUE the plot is interactive using plotly. Might be slow for large data.
+#' @param x A \code{paths} object
+#' @param plotly If TRUE the plot is returned interactive using plotly. Might be slow for large data.
 #' @param selection A vector of indices of the covariates to be plotted. 
 #' Can be used to plot only a subset of the covariates in case of many covariates.
 #' @param log_scale If TRUE the y-axis is on a log scale.
 #' @param ... Further arguments passed to or from other methods.
-#' @return A ggplot object
+#' @return A \code{ggplot} object with the variable importance for different regularization.
+#' If the \code{path} object includes a cp_min value, a black dashed line is
+#' added to indicate the out-of-bag optimal variable selection.
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}}
 #' @export
 plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...){
