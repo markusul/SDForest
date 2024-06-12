@@ -82,7 +82,71 @@
     
     
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="co"># simulation of confounded data</span></span>
+<span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear</a></span><span class="op">(</span>q <span class="op">=</span> <span class="fl">2</span>, p <span class="op">=</span> <span class="fl">15</span>, n <span class="op">=</span> <span class="fl">10</span>, m <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">X</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">Y</span></span>
+<span><span class="va">train_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co"># causal parents of y</span></span>
+<span><span class="va">sim_data</span><span class="op">$</span><span class="va">j</span></span>
+<span><span class="co">#&gt; [1] 13  7</span></span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># comparison to classical random forest</span></span>
+<span><span class="va">fit_ranger</span> <span class="op">&lt;-</span> <span class="fu">ranger</span><span class="fu">::</span><span class="fu"><a href="http://imbs-hl.github.io/ranger/reference/ranger.html" class="external-link">ranger</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span>, importance <span class="op">=</span> <span class="st">'impurity'</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDForest.html">SDForest</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span>, nTree <span class="op">=</span> <span class="fl">10</span>, Q_type <span class="op">=</span> <span class="st">'pca'</span>, q_hat <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDForest.html">SDForest</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span><span class="op">)</span></span>
+<span><span class="va">fit</span></span>
+<span><span class="co">#&gt; SDForest result</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Number of trees:  100 </span></span>
+<span><span class="co">#&gt; Number of covariates:  15 </span></span>
+<span><span class="co">#&gt; OOB loss:  0.22 </span></span>
+<span><span class="co">#&gt; OOB spectral loss:  0.14</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="co"># comparison of variable importance</span></span>
+<span><span class="va">imp_ranger</span> <span class="op">&lt;-</span> <span class="va">fit_ranger</span><span class="op">$</span><span class="va">variable.importance</span></span>
+<span><span class="va">imp_sdf</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">var_importance</span></span>
+<span><span class="va">imp_col</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="st">'black'</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">imp_ranger</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">imp_col</span><span class="op">[</span><span class="va">sim_data</span><span class="op">$</span><span class="va">j</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">'red'</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">imp_ranger</span>, <span class="va">imp_sdf</span>, col <span class="op">=</span> <span class="va">imp_col</span>, pch <span class="op">=</span> <span class="fl">20</span>,</span>
+<span>     xlab <span class="op">=</span> <span class="st">'ranger'</span>, ylab <span class="op">=</span> <span class="st">'SDForest'</span>, </span>
+<span>     main <span class="op">=</span> <span class="st">'Variable Importance'</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SDForest_files/figure-html/setup-1.png" width="700"></p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span></span>
+<span><span class="co"># check regularization path of variable importance</span></span>
+<span><span class="va">path</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/regPath.SDForest.html">regPath</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="co"># out of bag error for different regularization</span></span>
+<span><span class="fu"><a href="../reference/plotOOB.html">plotOOB</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SDForest_files/figure-html/setup-2.png" width="700"></p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">path</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SDForest_files/figure-html/setup-3.png" width="700"></p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span></span>
+<span><span class="co"># detection of causal parent using stability selection</span></span>
+<span><span class="va">stablePath</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/stabilitySelection.SDForest.html">stabilitySelection</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">stablePath</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SDForest_files/figure-html/setup-4.png" width="700"></p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
+<span></span>
+<span><span class="co"># pruning of forest according to optimal out-of-bag performance</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/prune.SDForest.html">prune</a></span><span class="op">(</span><span class="va">fit</span>, cp <span class="op">=</span> <span class="va">path</span><span class="op">$</span><span class="va">cp_min</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># partial functional dependence of y on the first causal parent</span></span>
+<span><span class="va">dep</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/partDependence.html">partDependence</a></span><span class="op">(</span><span class="va">fit</span>, <span class="va">sim_data</span><span class="op">$</span><span class="va">j</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">dep</span>, n_examples <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span></code></pre></div>
+<p><img src="SDForest_files/figure-html/setup-5.png" width="700"></p>
   </main>
 </div>
 
