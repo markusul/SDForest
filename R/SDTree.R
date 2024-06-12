@@ -95,11 +95,12 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   if(is.null(max_leaves)) max_leaves <- n
 
-  m <- max_leaves - 1
+  max_leaves <- max_leaves - 1
+
   mem_size <- mem_size / n
   # check validity of input
   if(n != length(Y)) stop('X and Y must have the same number of observations')
-  if(m < 1) stop('max_leaves must be larger than 1')
+  if(max_leaves < 0) stop('max_leaves must be larger than 1')
   if(min_sample < 1) stop('min_sample must be larger than 0')
   if(cp < 0) stop('cp must be at least 0')
   if(!is.null(mtry) && mtry < 1) stop('mtry must be larger than 0')
@@ -167,7 +168,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   after_mtry <- 0
 
-  for(i in 1:m){
+  for(i in 1:max_leaves){
     # iterate over all possible splits every time
     # for slow but slightly better solution
     if(!fast){
@@ -334,8 +335,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
   }
 
-  # print warning if maximum splits was reached, one might want to increase m
-  if(i == m){
+  if(i == max_leaves){
     warning('maximum number of iterations was reached, consider increasing m!')
   }
 
