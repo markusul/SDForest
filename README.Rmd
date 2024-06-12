@@ -1,5 +1,8 @@
 ---
 output: github_document
+header-includes: 
+  - \usepackage{tikz}
+  - \usepackage{pgfplots}
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -16,9 +19,28 @@ knitr::opts_chunk$set(
 # SDForest
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of SDForest is to ...
+Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding.
+
+\begin{figure}[hbt!]
+    \centering
+    \resizebox{0.35\textwidth}{!}{%
+    \begin{tikzpicture}
+    \node[state] (1) {$X$};
+    \node[state] (2) [right =of 1] {$Y$};
+  %  \node[state] (3) [above =of 1,xshift=0.9cm,yshift=-0.3cm] {$H$};
+    \node (3) at (0.9,1) [label=above:H,point];
+    
+    \path (1) edge node[above] {$f^0(x)$} (2);
+    \path (3) edge node[above left] {$\Gamma$} (1);
+    \path (3) edge node[above right] {$\delta$} (2);
+    \end{tikzpicture}
+    }%
+    \caption{Confounding model, with hidden confounder $H$ affecting $X$ and $Y$ linearly. $f^0(X)$ is the causal effect of $X$ on $Y$.}
+    \label{fig:causal_graph}
+\end{figure}
 
 ## Installation
 
@@ -44,12 +66,3 @@ What is special about using `README.Rmd` instead of just `README.md`? You can in
 summary(cars)
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/v1/examples>.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
