@@ -25,10 +25,9 @@ Suggests:
     datasets,
     tinytest,
     rpart,
-    ranger,
     knitr,
     rmarkdown, 
-    qpdf
+    ranger
 RdMacros: Rdpack
 Encoding: UTF-8
 RoxygenNote: 7.3.1
