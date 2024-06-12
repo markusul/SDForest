@@ -67,7 +67,8 @@
 </div>
 <!-- badges: start -->
 
-<p>Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding.</p>
+<p>Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. <span style="color:red">Referenzen SDForest, DDL</span></p>
+<p><img src="reference/figures/confModel.png"></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -77,22 +78,50 @@
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"markusul/SDForest"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
+<h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>This is a basic example which shows you how to solve a common problem:</p>
+<p>This is a basic example on how to estimate the causal effect of <span class="math inline"><em>X</em></span> on <span class="math inline"><em>Y</em></span> using SDForest. You can learn more about analyzing sparse causal effects estimated by SDForest in <code><a href="articles/SDForest.html">vignette("SDForest")</a></code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
-<span><span class="co">## basic example code</span></span></code></pre></div>
-<p>What is special about using <code>README.Rmd</code> instead of just <code>README.md</code>? You can include R chunks like so:</p>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="co"># simulation of confounded data</span></span>
+<span><span class="va">sim_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/simulate_data_nonlinear.html">simulate_data_nonlinear</a></span><span class="op">(</span>q <span class="op">=</span> <span class="fl">2</span>, p <span class="op">=</span> <span class="fl">50</span>, n <span class="op">=</span> <span class="fl">100</span>, m <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">X</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">Y</span></span>
+<span><span class="va">train_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span><span class="op">)</span></span>
+<span><span class="co"># causal parents</span></span>
+<span><span class="va">sim_data</span><span class="op">$</span><span class="va">j</span></span>
+<span><span class="co">#&gt; [1]  1 47</span></span>
+<span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDForest.html">SDForest</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span><span class="op">)</span></span>
+<span><span class="va">fit</span></span>
+<span><span class="co">#&gt; SDForest result</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Number of trees:  100 </span></span>
+<span><span class="co">#&gt; Number of covariates:  50 </span></span>
+<span><span class="co">#&gt; OOB loss:  0.25 </span></span>
+<span><span class="co">#&gt; OOB spectral loss:  0.15</span></span></code></pre></div>
+<p>You can also estimate just one Spectral Deconfounded Tree (SDTree) using the <code>SDTree</code> function.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">cars</span><span class="op">)</span></span>
-<span><span class="co">#&gt;      speed           dist       </span></span>
-<span><span class="co">#&gt;  Min.   : 4.0   Min.   :  2.00  </span></span>
-<span><span class="co">#&gt;  1st Qu.:12.0   1st Qu.: 26.00  </span></span>
-<span><span class="co">#&gt;  Median :15.0   Median : 36.00  </span></span>
-<span><span class="co">#&gt;  Mean   :15.4   Mean   : 42.98  </span></span>
-<span><span class="co">#&gt;  3rd Qu.:19.0   3rd Qu.: 56.00  </span></span>
-<span><span class="co">#&gt;  Max.   :25.0   Max.   :120.00</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">causal_Tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDTree.html">SDTree</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span>, cp <span class="op">=</span> <span class="fl">0.03</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># plot the causal tree</span></span>
+<span><span class="va">causal_Tree</span></span>
+<span><span class="co">#&gt;        levelName     value           s  j        label decision n_samples</span></span>
+<span><span class="co">#&gt; 1  1             1.3487531  0.04517764 47  X47 &lt;= 0.05                100</span></span>
+<span><span class="co">#&gt; 2   ¦--1         0.9499773 -1.69331644 47 X47 &lt;= -1.69       no        50</span></span>
+<span><span class="co">#&gt; 3   ¦   ¦--1     0.3489319          NA NA          0.3       no         7</span></span>
+<span><span class="co">#&gt; 4   ¦   °--3     0.9859657 -0.04564622 12 X12 &lt;= -0.05      yes        43</span></span>
+<span><span class="co">#&gt; 5   ¦       ¦--3 0.7622188          NA NA          0.8       no        23</span></span>
+<span><span class="co">#&gt; 6   ¦       °--6 1.2424454          NA NA          1.2      yes        20</span></span>
+<span><span class="co">#&gt; 7   °--2         1.7391441 -3.55015330 27 X27 &lt;= -3.55      yes        50</span></span>
+<span><span class="co">#&gt; 8       ¦--2     1.2038948          NA NA          1.2       no         5</span></span>
+<span><span class="co">#&gt; 9       °--4     1.7789876 -0.46335890  1  X1 &lt;= -0.46      yes        45</span></span>
+<span><span class="co">#&gt; 10          ¦--4 1.3813340          NA NA          1.4       no        17</span></span>
+<span><span class="co">#&gt; 11          °--5 2.0542768          NA NA          2.1      yes        28</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">causal_Tree</span><span class="op">)</span></span></code></pre></div>
+<p><img src="reference/figures/README-SDTree-1.png" width="100%"></p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
