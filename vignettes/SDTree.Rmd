@@ -1,6 +1,7 @@
 ---
 title: "SDTree"
 output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
 vignette: >
   %\VignetteIndexEntry{SDTree}
   %\VignetteEngine{knitr::rmarkdown}
