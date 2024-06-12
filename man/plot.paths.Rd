@@ -7,9 +7,9 @@
 \method{plot}{paths}(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...)
 }
 \arguments{
-\item{x}{A paths object}
+\item{x}{A \code{paths} object}
 
-\item{plotly}{If TRUE the plot is interactive using plotly. Might be slow for large data.}
+\item{plotly}{If TRUE the plot is returned interactive using plotly. Might be slow for large data.}
 
 \item{selection}{A vector of indices of the covariates to be plotted. 
 Can be used to plot only a subset of the covariates in case of many covariates.}
@@ -19,7 +19,9 @@ Can be used to plot only a subset of the covariates in case of many covariates.}
 \item{...}{Further arguments passed to or from other methods.}
 }
 \value{
-A ggplot object
+A \code{ggplot} object with the variable importance for different regularization.
+If the \code{path} object includes a cp_min value, a black dashed line is
+added to indicate the out-of-bag optimal variable selection.
 }
 \description{
 This function visualizes the variable importance of a SDTree or SDForest
