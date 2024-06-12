@@ -3,7 +3,7 @@ pkgdown: 2.0.9
 pkgdown_sha: ~
 articles:
   SDForest: SDForest.html
-last_built: 2024-06-11T19:17Z
+last_built: 2024-06-12T08:01Z
 urls:
   reference: https://markusul.github.io/SDForest/reference
   article: https://markusul.github.io/SDForest/articles
