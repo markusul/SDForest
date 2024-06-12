@@ -1,8 +1,5 @@
 ---
 output: github_document
-header-includes: 
-  - \usepackage{tikz}
-  - \usepackage{pgfplots}
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -22,25 +19,9 @@ knitr::opts_chunk$set(
 [![R-CMD-check](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding.
+Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. <span style="color:red">Referenzen SDForest, DDL</span>
 
-\begin{figure}[hbt!]
-    \centering
-    \resizebox{0.35\textwidth}{!}{%
-    \begin{tikzpicture}
-    \node[state] (1) {$X$};
-    \node[state] (2) [right =of 1] {$Y$};
-  %  \node[state] (3) [above =of 1,xshift=0.9cm,yshift=-0.3cm] {$H$};
-    \node (3) at (0.9,1) [label=above:H,point];
-    
-    \path (1) edge node[above] {$f^0(x)$} (2);
-    \path (3) edge node[above left] {$\Gamma$} (1);
-    \path (3) edge node[above right] {$\delta$} (2);
-    \end{tikzpicture}
-    }%
-    \caption{Confounding model, with hidden confounder $H$ affecting $X$ and $Y$ linearly. $f^0(X)$ is the causal effect of $X$ on $Y$.}
-    \label{fig:causal_graph}
-\end{figure}
+![](man/figures/confModel.png)
 
 ## Installation
 
@@ -51,18 +32,33 @@ You can install the development version of SDForest from [GitHub](https://github
 devtools::install_github("markusul/SDForest")
 ```
 
-## Example
+## Usage
 
-This is a basic example which shows you how to solve a common problem:
+This is a basic example on how to estimate the causal effect of $X$ on $Y$ using SDForest. You can learn more about analyzing sparse causal effects estimated by SDForest in `vignette("SDForest")`.
 
-```{r example}
+```{r SDForest}
 library(SDForest)
-## basic example code
+
+set.seed(42)
+# simulation of confounded data
+sim_data <- simulate_data_nonlinear(q = 2, p = 50, n = 100, m = 2)
+X <- sim_data$X
+Y <- sim_data$Y
+train_data <- data.frame(X, Y)
+# causal parents
+sim_data$j
+
+fit <- SDForest(Y ~ ., train_data)
+fit
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
+You can also estimate just one Spectral Deconfounded Tree (SDTree) using the `SDTree` function.
 
-```{r cars}
-summary(cars)
+```{r SDTree}
+causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
+
+# plot the causal tree
+causal_Tree
+plot(causal_Tree)
 ```
 

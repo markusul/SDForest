@@ -76,6 +76,23 @@ library(SDForest)
 
 
 
+library(SDForest)
+
+set.seed(42)
+# simulation of confounded data
+sim_data <- simulate_data_nonlinear(q = 2, p = 150, n = 100, m = 2)
+X <- sim_data$X
+Y <- sim_data$Y
+train_data <- data.frame(X, Y)
+# causal parents
+sim_data$j
+
+fit <- SDForest(Y ~ ., train_data)
+fit
 
 
+causal_Tree <- SDTree(Y ~ ., train_data, cp = 0)
+
+# plot the causal tree
+plot(causal_Tree)
 
