@@ -65,11 +65,11 @@ the stability selection path can be visualized.</p>
     <div class="section level2">
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
     <dl><dt>x</dt>
-<dd><p>A paths object</p></dd>
+<dd><p>A <code>paths</code> object</p></dd>
 
 
 <dt>plotly</dt>
-<dd><p>If TRUE the plot is interactive using plotly. Might be slow for large data.</p></dd>
+<dd><p>If TRUE the plot is returned interactive using plotly. Might be slow for large data.</p></dd>
 
 
 <dt>selection</dt>
@@ -89,7 +89,9 @@ Can be used to plot only a subset of the covariates in case of many covariates.<
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     
 
-<p>A ggplot object</p>
+<p>A <code>ggplot</code> object with the variable importance for different regularization.
+If the <code>path</code> object includes a cp_min value, a black dashed line is
+added to indicate the out-of-bag optimal variable selection.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

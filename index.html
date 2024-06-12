@@ -74,7 +74,7 @@
 </div>
 <!-- badges: start -->
 
-<p>Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. <span style="color:red">Referenzen SDForest, DDL</span></p>
+<p>Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. (<strong>Ulmer?</strong>), (Guo, Ćevid, and Bühlmann 2022), (Ćevid, Bühlmann, and Meinshausen 2020)</p>
 <p><img src="reference/figures/confModel.png"></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -99,8 +99,9 @@
 <span><span class="va">train_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span><span class="op">)</span></span>
 <span><span class="co"># causal parents</span></span>
 <span><span class="va">sim_data</span><span class="op">$</span><span class="va">j</span></span>
-<span><span class="co">#&gt; [1]  1 47</span></span>
-<span></span>
+<span><span class="co">#&gt; [1]  1 47</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDForest.html">SDForest</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt; SDForest result</span></span>
@@ -110,7 +111,7 @@
 <span><span class="co">#&gt; OOB loss:  0.25 </span></span>
 <span><span class="co">#&gt; OOB spectral loss:  0.15</span></span></code></pre></div>
 <p>You can also estimate just one Spectral Deconfounded Regression Tree using the <code>SDTree</code> function.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">causal_Tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDTree.html">SDTree</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span>, cp <span class="op">=</span> <span class="fl">0.03</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># plot the causal tree</span></span>
@@ -126,9 +127,18 @@
 <span><span class="co">#&gt; 8       ¦--2     1.2038948          NA NA          1.2       no         5</span></span>
 <span><span class="co">#&gt; 9       °--4     1.7789876 -0.46335890  1  X1 &lt;= -0.46      yes        45</span></span>
 <span><span class="co">#&gt; 10          ¦--4 1.3813340          NA NA          1.4       no        17</span></span>
-<span><span class="co">#&gt; 11          °--5 2.0542768          NA NA          2.1      yes        28</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">causal_Tree</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co">#&gt; 11          °--5 2.0542768          NA NA          2.1      yes        28</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">causal_Tree</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-SDTree-1.png" width="100%"></p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Cevid2020SpectralModels" class="csl-entry">
+Ćevid, Domagoj, Peter Bühlmann, and Nicolai Meinshausen. 2020. “<span class="nocase">Spectral Deconfounding via Perturbed Sparse Linear Models</span>.” <em>J. Mach. Learn. Res.</em> 21 (1).
+</div>
+<div id="ref-Guo2022DoublyConfounding" class="csl-entry">
+Guo, Zijian, Domagoj Ćevid, and Peter Bühlmann. 2022. “<span class="nocase">Doubly debiased lasso: High-dimensional inference under hidden confounding</span>.” <em>The Annals of Statistics</em> 50 (3). <a href="https://doi.org/10.1214/21-AOS2152" class="external-link uri">https://doi.org/10.1214/21-AOS2152</a>.
+</div>
+</div>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
