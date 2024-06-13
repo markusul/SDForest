@@ -37,7 +37,7 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
   # m: number of covariates with a causal effect on Y
 
   # complexity of f_X (number of fourier basis functions) K
-  complexity <- 5
+  complexity <- 2
   # random parameter for fourier basis
   beta <- runif(m * complexity * 2, -1, 1)
 
@@ -114,7 +114,7 @@ f_four <- function(x, beta, js){
     
     # calculate f_X_j
     do.call(sum, lapply(1:complexity, function(k) 
-      beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.1 * x[j]) + 
-        beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.1 * x[j])))
+      beta[beta_ind[1 + (k-1) *2]] * sin(k * 0.2 * x[j]) + 
+        beta[beta_ind[2 + (k-1) *2]] * cos(k * 0.2 * x[j])))
   }))
 }

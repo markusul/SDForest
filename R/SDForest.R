@@ -124,7 +124,9 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                      return_data = TRUE, mem_size = 1e+7, leave_out_ind = NULL, 
                      envs = NULL, leave_envs_out_trees = NULL, envs_trees = NULL, 
                      max_candidates = 100){
-  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
+  if(gpu) ifelse(GPUmatrix::installTorch(), 
+                 gpu_type <- 'torch', 
+                 gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -203,11 +205,11 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
                                     "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", 
-                                    "leave_names", 'X', 'Y'))
+                                    "leave_names", 'X', 'Y', 'A'))
       res <- parallel::clusterApplyLB(cl = cl, ind, fun = function(i)
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
-               mtry = mtry, A = A[x, ], gamma = gamma, mem_size = mem_size, 
+               mtry = mtry, A = A[i, ], gamma = gamma, mem_size = mem_size, 
                max_candidates = max_candidates))
       parallel::stopCluster(cl = cl)
     }

@@ -1,7 +1,6 @@
 #' @importFrom Rdpack reprompt
 #' @import GPUmatrix
 #' @import DiagrammeR
-#' @import parallel
 #' @import data.tree
 #' @importFrom stats lm.fit
 #' @importFrom stats model.matrix
@@ -11,8 +10,6 @@
 #' @importFrom stats rnorm
 #' @importFrom stats runif
 #' @importFrom stats sd
-
-library(GPUmatrix)
 
 #' @export
 data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){

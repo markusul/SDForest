@@ -83,7 +83,10 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
                    cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
                    A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100){
-  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
+  if(gpu) ifelse(GPUmatrix::installTorch(), 
+                 gpu_type <- 'torch', 
+                 gpu_type <- 'tensorflow')
+  
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
   Y <- input_data$Y
@@ -143,7 +146,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   Y_tilde <- Q %*% Y
   
   # solve linear model
-  if(gpu_type == 'tensorflow'){
+  if(gpu && gpu_type == 'tensorflow'){
     c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
   }else{
     c_hat <- qr.coef(qr(E_tilde), Y_tilde)
@@ -261,7 +264,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     })
     E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
-    if(gpu_type == 'tensorflow'){
+    if(gpu && gpu_type == 'tensorflow'){
       c_hat <- lm.fit(as.matrix(E_tilde), as.matrix(Y_tilde))$coefficients
     }else{
       c_hat <- qr.coef(qr(E_tilde), Y_tilde)

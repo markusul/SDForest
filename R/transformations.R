@@ -25,7 +25,9 @@
 #' Q_plain <- get_Q(X, 'no_deconfounding')
 #' @export
 get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
-  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
+  if(gpu) ifelse(GPUmatrix::installTorch(), 
+                 gpu_type <- 'torch', 
+                 gpu_type <- 'tensorflow')
   
   if(type == 'no_deconfounding') {
     Q <- diag(nrow(X))
@@ -112,7 +114,9 @@ get_W <- function(A, gamma, intercept = FALSE, gpu = FALSE){
   if(ncol(A) > nrow(A)) stop('A must have full rank!')
   if(gamma < 0) stop('gamma must be non-negative')
   
-  ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
+  if(gpu) ifelse(GPUmatrix::installTorch(), 
+                 gpu_type <- 'torch', 
+                 gpu_type <- 'tensorflow')  
   if(gpu) A <- gpu.matrix(A, type = gpu_type)
   
   Q_prime <- qr.Q(qr(A))
