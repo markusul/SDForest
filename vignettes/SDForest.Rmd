@@ -49,7 +49,7 @@ $$\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf
 where $Q$ is a spectral transformation. [@Cevid2020SpectralModels], [@Ulmer]
 
 ```{r SDF}
-fit <- SDForest(Y ~ ., train_data)
+fit <- SDForest(Y ~ ., train_data, mc.cores = 22)
 fit
 ```
 
@@ -74,12 +74,16 @@ plot(imp_ranger, imp_sdf, col = imp_col, pch = 20,
      main = 'Variable Importance')
 ```
 
-Before, we looked at the variable importance of the non-regularized SDForest. We have two more techniques to better understand which variables might be causally important. The first is the regularization path `regPath()`, where we plot the variable importance against varying regularization. The option \code{plotly} lets us visualize these paths interactively to better understand which covariates seem to have robust importance in the model.
+Before, we looked at the variable importance of the non-regularized SDForest. We have two more techniques to better understand which variables might be causally important. The first is the regularization path `regPath()`, where we plot the variable importance against varying regularization. The option \code{plotly = TRUE} lets us visualize these paths interactively to better understand which covariates seem to have robust importance in the model.
 
 ```{r reg}
 # check regularization path of variable importance
 path <- regPath(fit)
-plot(path, plotly = TRUE)
+plot(path)
+
+# select 20 most important covariates for further exploration
+most_imp <- fit$var_importance > sort(fit$var_importance, decreasing = TRUE)[20]
+plot(path, plotly = TRUE, most_imp)
 ```
 
 The second method follows the stability selection approach [@Meinshausen2010StabilitySelectionb]. Here, we visualize the proportion of trees in the forest that use each covariate for splits in the model. As we regularize more, only the truly causal important variables will still be used by most trees.
@@ -87,7 +91,8 @@ The second method follows the stability selection approach [@Meinshausen2010Stab
 ```{r stab}
 # detection of causal parent using stability selection
 stablePath <- stabilitySelection(fit)
-plot(stablePath, plotly = TRUE)
+#plot(stablePath, plotly = TRUE)
+plot(stablePath)
 ```
 
 ## Causal dependence
@@ -106,9 +111,9 @@ Now, to distil the partial functional dependence of the response on the causal p
 
 ```{r dep}
 # partial functional dependence of y on the first causal parent
-dep1 <- partDependence(fit, sim_data$j[1])
+dep1 <- partDependence(fit, sim_data$j[1], mc.cores = 22)
 plot(dep1)
 
-dep2 <- partDependence(fit, sim_data$j[2])
+dep2 <- partDependence(fit, sim_data$j[2], mc.cores = 22)
 plot(dep2)
 ```
