@@ -21,11 +21,11 @@ We show the functionalities with simulated data from a confounded model with two
 
 ```{r sim}
 library(SDForest)
-set.seed(42)
+set.seed(24)
 # simulation of confounded data
 q <- 2    # dimension of confounding
 p <- 350  # number of overved covariates
-n <- 300  # number of obervations
+n <- 500  # number of obervations
 m <- 2    # number of causal parents in covariates
 
 sim_data <- simulate_data_nonlinear(q = q, p = p, n = n, m = m)
@@ -41,6 +41,12 @@ f_2 <- apply(X, 1, function(x) f_four(x, sim_data$beta, sim_data$j[2]))
 par(mfrow = c(1, 2))
 plot(x = X[, sim_data$j[1]], f_1, xlab = paste0('X_', sim_data$j[1]))
 plot(x = X[, sim_data$j[2]], f_2, xlab = paste0('X_', sim_data$j[2]))
+```
+```{r obs}
+# observed dependence on causal parents
+par(mfrow = c(1, 2))
+plot(x = X[, sim_data$j[1]], Y, xlab = paste0('X_', sim_data$j[1]))
+plot(x = X[, sim_data$j[2]], Y, xlab = paste0('X_', sim_data$j[2]))
 ```
 
 We first estimate the random forest using the spectral objective:
@@ -111,9 +117,9 @@ Now, to distil the partial functional dependence of the response on the causal p
 
 ```{r dep}
 # partial functional dependence of y on the first causal parent
-dep1 <- partDependence(fit, sim_data$j[1], mc.cores = 22)
+dep1 <- partDependence(fit, sim_data$j[1], mc.cores = 11)
 plot(dep1)
 
-dep2 <- partDependence(fit, sim_data$j[2], mc.cores = 22)
+dep2 <- partDependence(fit, sim_data$j[2], mc.cores = 11)
 plot(dep2)
 ```
