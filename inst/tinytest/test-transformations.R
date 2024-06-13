@@ -6,7 +6,6 @@ X <- matrix(rnorm(50 * 20), nrow = 50)
 Q_plain <- get_Q(X, 'no_deconfounding')
 expect_equal(Q_plain %*% X, X)
 
-
 #dimensions
 n <- 50
 X <- matrix(rnorm(n * 20), nrow = n)
