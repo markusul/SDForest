@@ -19,7 +19,7 @@ SDForest(
   q_hat = 0,
   Q = NULL,
   A = NULL,
-  gamma = 0.5,
+  gamma = 7,
   max_size = NULL,
   gpu = FALSE,
   return_data = TRUE,
@@ -53,7 +53,8 @@ A split is only performed if both resulting leaves have at least
 \code{min_sample} observations.}
 
 \item{mtry}{Number of randomly selected covariates to consider for a split, 
-if \code{NULL} all covariates are available for each split.}
+if \code{NULL} half of the covariates are available for each split. 
+\eqn{\text{mtry} = \lfloor \frac{p}{2} \rfloor}}
 
 \item{mc.cores}{Number of cores to use for parallel processing,
 if \code{mc.cores > 1} the trees are estimated in parallel.}

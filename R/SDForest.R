@@ -19,7 +19,8 @@
 #' A split is only performed if both resulting leaves have at least 
 #' \code{min_sample} observations.
 #' @param mtry Number of randomly selected covariates to consider for a split, 
-#' if \code{NULL} all covariates are available for each split.
+#' if \code{NULL} half of the covariates are available for each split. 
+#' \eqn{\text{mtry} = \lfloor \frac{p}{2} \rfloor}
 #' @param mc.cores Number of cores to use for parallel processing,
 #' if \code{mc.cores > 1} the trees are estimated in parallel.
 #' @param Q_type Type of deconfounding, one of 'trim', 'pca', 'no_deconfounding'. 
@@ -119,7 +120,7 @@
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
                      cp = 0, min_sample = 5, mtry = NULL, mc.cores = 1, 
                      Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
-                     A = NULL, gamma = 0.5, max_size = NULL, gpu = FALSE, 
+                     A = NULL, gamma = 7, max_size = NULL, gpu = FALSE, 
                      return_data = TRUE, mem_size = 1e+7, leave_out_ind = NULL, 
                      envs = NULL, leave_envs_out_trees = NULL, envs_trees = NULL, 
                      max_candidates = 100){
@@ -184,26 +185,29 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   }
   ind <- lapply(1:nTree, function(x)
     sample(all_ind, min(length(all_ind), max_size), replace = TRUE))
-
+  
   if(mc.cores > 1){
     if(locatexec::is_unix()){
-      res <- parallel::mclapply(ind, function(i)
+      print('mclapply')
+      res <- parallel::mclapply(ind, function(i) {
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
                mtry = mtry, A = A[i, ], gamma = gamma, mem_size = mem_size, 
-               max_candidates = max_candidates), 
+               max_candidates = max_candidates)
+        }, 
         mc.cores = mc.cores)
     }else{
+      print('makeCluster')
       cl <- parallel::makeCluster(mc.cores)
       doParallel::registerDoParallel(cl)
       parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
                                     "find_s", "loss", "predict_outsample", 
                                     "traverse_tree", "splitt_names", 
-                                    "leave_names"))
-      res <- parallel::clusterApplyLB(cl = cl, i = ind, fun = function(i)
+                                    "leave_names", 'X', 'Y'))
+      res <- parallel::clusterApplyLB(cl = cl, ind, fun = function(i)
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
-               mtry = mtry, A = A[i, ], gamma = gamma, mem_size = mem_size, 
+               mtry = mtry, A = A[x, ], gamma = gamma, mem_size = mem_size, 
                max_candidates = max_candidates))
       parallel::stopCluster(cl = cl)
     }

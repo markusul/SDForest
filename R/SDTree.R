@@ -168,6 +168,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   after_mtry <- 0
 
+  print('a')
   for(i in 1:max_leaves){
     # iterate over all possible splits every time
     # for slow but slightly better solution
@@ -333,6 +334,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       }
       potential_splitts <- potential_splitts[!to_small]
     }
+    print(i)
   }
 
   if(i == max_leaves){

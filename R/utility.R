@@ -1,6 +1,7 @@
 #' @importFrom Rdpack reprompt
 #' @import GPUmatrix
 #' @import DiagrammeR
+#' @import parallel
 #' @import data.tree
 #' @importFrom stats lm.fit
 #' @importFrom stats model.matrix
@@ -13,6 +14,7 @@
 
 library(GPUmatrix)
 
+#' @export
 data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
   if(is.null(formula)){
     if(is.null(x) | is.null(y)){
@@ -66,6 +68,7 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
   }
 }
 
+#' @export
 predict_outsample <- function(tree, X){
   # predict for every observation in X f(x)
   # using the splitting rules from the tree
@@ -76,6 +79,7 @@ predict_outsample <- function(tree, X){
 }
 
 #helper functions to label nodes for plotting
+#' @export
 splitt_names <- function(node, var_names = NULL){
   if(is.null(var_names)){
     node$label <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
@@ -83,6 +87,7 @@ splitt_names <- function(node, var_names = NULL){
     node$label <- paste(var_names[node$j], ' <= ', round(node$s, 2), sep = '')
   }
 }
+#' @export
 leave_names <- function(node){
   new_name <- as.character(round(node$value, 1))
   if(new_name %in% node$Get('name', filterFun = data.tree::isLeaf)){
@@ -92,6 +97,7 @@ leave_names <- function(node){
 }
 
 # finds all the reasonable splitting points in a data matrix
+#' @export
 find_s <- function(X, max_candidates = 100){
   p <- ncol(X)
   if(p == 1){
@@ -120,6 +126,7 @@ find_s <- function(X, max_candidates = 100){
   }
 }
 
+#' @export
 traverse_tree <- function(tree, x){
   # traverse the tree using the splitting rules and 
   # returns point estimate for f(x)
@@ -133,10 +140,12 @@ traverse_tree <- function(tree, x){
   }
 }
 
+#' @export
 loss <- function(Y, f_X){
   as.numeric(sum((Y - f_X)^2) / length(Y))
 }
 
+#' @export
 pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   # function to prune tree using the minimum loss decrease t
   # and return spectral loss on the validation set
