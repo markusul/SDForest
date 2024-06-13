@@ -27,7 +27,8 @@ Suggests:
     rpart,
     knitr,
     rmarkdown, 
-    ranger
+    ranger,
+    qpdf
 RdMacros: Rdpack
 Encoding: UTF-8
 RoxygenNote: 7.3.1
