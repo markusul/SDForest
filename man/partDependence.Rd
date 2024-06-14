@@ -4,7 +4,7 @@
 \alias{partDependence}
 \title{Partial dependence}
 \usage{
-partDependence(object, j, X = NULL, mc.cores = 1)
+partDependence(object, j, X = NULL, subSample = NULL, mc.cores = 1)
 }
 \arguments{
 \item{object}{A model object that has a predict method that takes newdata as argument 
@@ -16,6 +16,9 @@ Either the column index of the variable in the dataset or the name of the variab
 \item{X}{The dataset on which the partial dependence should be calculated.
 Should contain the same variables as the dataset used to train the model.
 If NULL, tries to extract the dataset from the model object.}
+
+\item{subSample}{Number of samples to draw from the original data for the empirical 
+partial dependence. If NULL, all the observations are used.}
 
 \item{mc.cores}{Number of cores to use for parallel computation.}
 }

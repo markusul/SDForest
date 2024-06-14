@@ -15,6 +15,8 @@
 #' @param X The dataset on which the partial dependence should be calculated.
 #' Should contain the same variables as the dataset used to train the model.
 #' If NULL, tries to extract the dataset from the model object.
+#' @param subSample Number of samples to draw from the original data for the empirical 
+#' partial dependence. If NULL, all the observations are used.
 #' @param mc.cores Number of cores to use for parallel computation.
 #' @return An object of class \code{partDependence} containing
 #' \item{preds_mean}{The average prediction for each value of the variable of interest.}
@@ -31,7 +33,7 @@
 #' plot(pd)
 #' @seealso \code{\link{SDForest}}, \code{\link{SDTree}}
 #' @export
-partDependence <- function(object, j, X = NULL, mc.cores = 1){
+partDependence <- function(object, j, X = NULL, subSample = NULL, mc.cores = 1){
   j_name <- j
   if(is.character(j)){
     j <- which(names(X) == j)
@@ -43,6 +45,7 @@ partDependence <- function(object, j, X = NULL, mc.cores = 1){
     
   }
   X <- data.frame(X)
+  if(!is.null(subSample)) X <- X[sample(1:nrow(X), subSample), ]
   
   if(!is.numeric(j)) stop('j must be a numeric or character')
   if(j > ncol(X)) stop('j must be smaller than p')
@@ -51,7 +54,6 @@ partDependence <- function(object, j, X = NULL, mc.cores = 1){
   
   x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
   
-  # TODO: subsample of data to increase speed
   if(mc.cores > 1){
     preds <- parallel::mclapply(x_seq, function(x){
       X_new <- X

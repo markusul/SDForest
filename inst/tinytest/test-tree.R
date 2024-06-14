@@ -24,3 +24,6 @@ expect_false(all(tree$predictions == predict(pruned_tree, data.frame(X))))
 expect_equal(tree$predictions, as.vector(predict(rpart_tree)))
 # equality of pruned tree and pruned rpart tree (checked using predictions)
 expect_equal(predict(pruned_tree, data.frame(X)), as.vector(predict(pruned_rpart_tree)))
+
+partDependence(tree, 1, X, subSample = 10)
+
