@@ -61,7 +61,7 @@ of all predictions. (Friedman 2001)</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">partDependence</span><span class="op">(</span><span class="va">object</span>, <span class="va">j</span>, X <span class="op">=</span> <span class="cn">NULL</span>, mc.cores <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">partDependence</span><span class="op">(</span><span class="va">object</span>, <span class="va">j</span>, X <span class="op">=</span> <span class="cn">NULL</span>, subSample <span class="op">=</span> <span class="cn">NULL</span>, mc.cores <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -80,6 +80,11 @@ Either the column index of the variable in the dataset or the name of the variab
 <dd><p>The dataset on which the partial dependence should be calculated.
 Should contain the same variables as the dataset used to train the model.
 If NULL, tries to extract the dataset from the model object.</p></dd>
+
+
+<dt>subSample</dt>
+<dd><p>Number of samples to draw from the original data for the empirical 
+partial dependence. If NULL, all the observations are used.</p></dd>
 
 
 <dt>mc.cores</dt>
