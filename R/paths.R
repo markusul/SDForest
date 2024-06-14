@@ -214,12 +214,13 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
 #' @author Markus Ulmer
 #' @param object A paths object with loss_path \code{matrix} 
 #' with the out-of-bag performance for each complexity parameter.
+#' @param log_scale If TRUE the x-axis is on a log scale.
 #' @return A ggplot object
 #' @seealso \code{\link{regPath.SDForest}}
 #' @export
-plotOOB <- function(object){
-  # TODO: log(cp)
+plotOOB <- function(object, log_scale = FALSE){
     loss_data <- data.frame(object$loss_path, cp = object$cp)
+    if(log_scale) loss_data$cp <- log(loss_data$cp + 1)
     gg_sde <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.SDE)) +
         ggplot2::geom_line() + 
         ggplot2::theme_bw()
@@ -227,5 +228,10 @@ plotOOB <- function(object){
     gg_mse <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.MSE)) +
         ggplot2::geom_line() + 
         ggplot2::theme_bw()
+    
+    if(log_scale){
+      gg_sde <- gg_sde + ggplot2::xlab('log(cp + 1)')
+      gg_mse <- gg_mse + ggplot2::xlab('log(cp + 1)')
+    }
     gridExtra::grid.arrange(gg_sde, gg_mse, ncol = 2)
 }
