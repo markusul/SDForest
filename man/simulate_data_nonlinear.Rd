@@ -33,8 +33,8 @@ The data generating process is given by:
 \deqn{X = H \Gamma + E}
 where \eqn{f(X)} is a random function on the fourier basis
 with a subset of size m covariates \eqn{X_j} having a causal effect on \eqn{Y}.
-\deqn{f(x_i) = \sum_{j = 1}^p 1_{j \in js} \sum_{k = 1}^K \beta_{j, k, 1}^{(1)} \cos(0.2 k x_j) + 
-\beta_{j, k, 2}^{(2)} \sin(0.2 k x_j)}
+\deqn{f(x_i) = \sum_{j = 1}^p 1_{j \in js} \sum_{k = 1}^K (\beta_{j, k}^{(1)} \cos(0.2 k x_j) + 
+\beta_{j, k}^{(2)} \sin(0.2 k x_j))}
 \eqn{E}, \eqn{\nu} are random error terms and 
 \eqn{H \in \mathbb{R}^{n \times q}} is a matrix of random confounding covariates.
 \eqn{\Gamma \in \mathbb{R}^{q \times p}} and \eqn{\delta \in \mathbb{R}^{q}} are random coefficient vectors.

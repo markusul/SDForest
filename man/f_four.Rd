@@ -20,8 +20,8 @@ the value of the function f(x)
 Function of x on a fourier basis with a subset of covariates 
 having a causal effect on Y using the parameters beta.
 The function is given by:
-\deqn{f(x_i) = \sum_{j = 1}^p 1_{j \in js} \sum_{k = 1}^K \beta_{j, k, 1}^{(1)} \cos(0.2 k x_j) +
-\beta_{j, k, 2}^{(2)} \sin(0.2 k x_j)}
+\deqn{f(x_i) = \sum_{j = 1}^p 1_{j \in js} \sum_{k = 1}^K (\beta_{j, k}^{(1)} \cos(0.2 k x_j) +
+\beta_{j, k}^{(2)} \sin(0.2 k x_j))}
 }
 \seealso{
 \code{\link{simulate_data_nonlinear}}

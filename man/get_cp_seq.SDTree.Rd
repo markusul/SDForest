@@ -2,12 +2,12 @@
 % Please edit documentation in R/get_cp_seq.R
 \name{get_cp_seq.SDTree}
 \alias{get_cp_seq.SDTree}
-\title{Get the sequence of complexity parameters of a SDTree}
+\title{Get the sequence of complexity parameters of an SDTree}
 \usage{
 \method{get_cp_seq}{SDTree}(object, ...)
 }
 \arguments{
-\item{object}{A SDTree object}
+\item{object}{an SDTree object}
 
 \item{...}{Further arguments passed to or from other methods.}
 }
@@ -15,7 +15,7 @@
 A sequence of complexity parameters
 }
 \description{
-This function extracts the sequence of complexity parameters of a SDTree that 
+This function extracts the sequence of complexity parameters of an SDTree that 
 result in changes of the tree structure if pruned. Only cp values that differ
 in the first three digits after the decimal point are returned.
 }

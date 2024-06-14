@@ -3,12 +3,12 @@
 \name{regPath.SDForest}
 \alias{regPath.SDForest}
 \alias{regPath}
-\title{Calculate the regularization path of a SDForest}
+\title{Calculate the regularization path of an SDForest}
 \usage{
 \method{regPath}{SDForest}(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, ...)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 
 \item{cp_seq}{A sequence of complexity parameters.
 If NULL, the sequence is calculated automatically using only relevant values.}
@@ -31,7 +31,7 @@ for each complexity parameter.}
 \item{cp_min}{The complexity parameter with the lowest out-of-bag performance.}
 }
 \description{
-This function calculates the variable importance of a SDForest
+This function calculates the variable importance of an SDForest
 and the out-of-bag performance for different complexity parameters.
 }
 \examples{

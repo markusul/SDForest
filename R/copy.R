@@ -6,7 +6,7 @@ copy <- function(object, ...) UseMethod('copy')
 #' Returns a copy of the tree object. 
 #' Might be useful if you want to keep the original tree in comparison to the pruned tree.
 #' @author Markus Ulmer
-#' @param object A SDTree object
+#' @param object an SDTree object
 #' @param ... Further arguments passed to or from other methods.
 #' @return A copy of the SDTree object
 #' @seealso \code{\link{prune}}
@@ -24,7 +24,7 @@ copy.SDTree <- function(object, ...){
 #' Returns a copy of the forest object.
 #' Might be useful if you want to keep the original forest in comparison to the pruned forest.
 #' @author Markus Ulmer
-#' @param object A SDForest object
+#' @param object an SDForest object
 #' @param ... Further arguments passed to or from other methods.
 #' @return A copy of the SDForest object
 #' @seealso \code{\link{prune}}

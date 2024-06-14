@@ -21,9 +21,9 @@
 #' \code{min_sample} observations.
 #' @param mtry Number of randomly selected covariates to consider for a split, 
 #' if \code{NULL} all covariates are available for each split.
-#' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are 
-#' evaluated and the previously optimal splitts and their potential loss-decrease are reused. 
-#' If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
+#' @param fast If \code{TRUE}, only the optimal splits in the new leaves are 
+#' evaluated and the previously optimal splits and their potential loss-decrease are reused. 
+#' If \code{FALSE} all possible splits in all the leaves are reevaluated after every split.
 #' @param Q_type Type of deconfounding, one of 'trim', 'pca', 'no_deconfounding'. 
 #' 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest} 
 #' as implemented in the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 

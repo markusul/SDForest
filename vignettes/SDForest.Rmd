@@ -75,7 +75,7 @@ plot(imp_ranger, imp_sdf, col = imp_col, pch = 20,
      main = 'Variable Importance')
 ```
 
-Before, we looked at the variable importance of the non-regularized SDForest. We have two more techniques to better understand which variables might be causally important. The first is the regularization path `regPath()`, where we plot the variable importance against varying regularization. The option \code{plotly = TRUE} lets us visualize these paths interactively to better understand which covariates seem to have robust importance in the model.
+Before, we looked at the variable importance of the non-regularized SDForest. We have two more techniques to better understand which variables might be causally important. The first is the regularization path `regPath()`, where we plot the variable importance against varying regularization, i.e. different \code{cp} values. The option \code{plotly = TRUE} lets us visualize these paths interactively to better understand which covariates seem to have robust importance in the model.
 
 ```{r reg}
 # check regularization path of variable importance
@@ -98,12 +98,11 @@ plot(stablePath)
 
 ## Causal dependence
 
-After finding the causal parent of the response, one might be interested in the partial functional dependence of $Y$ on the causal parents. If we want to intervene in a system, we need to not only know where to intervene but also how to intervene in order to get the desired response. For that, we first prune the forest to remove any residual spurious correlation and get optimal predictive power. For that, `regPath()` also contains the out-of-bag prediction errors for different regularizations. `plotOOB()` visualizes both the means squared error and the spectral loss that we minimize. The minimal out-of-bag error lets us choose the optimal \code{cp} value to prune the forest.
+After finding the causal parent of the response, one might be interested in the partial functional dependence of $Y$ on the causal parents. If we want to intervene in a system, we need to not only know where to intervene but also how to intervene in order to get the desired response. For that, we first prune the forest to remove any residual spurious correlation and get optimal predictive power. For that, `regPath()` also contains the out-of-bag prediction errors for different regularizations. `plotOOB()` visualizes both the mean squared error (oob.MSE) and the spectral loss (oob.SDE) that we minimize. The minimal out-of-bag error lets us choose the optimal \code{cp} value to prune the forest.
 
 ```{r prune}
 # out of bag error for different regularization
 plotOOB(path)
-
 # pruning of forest according to optimal out-of-bag performance
 fit <- prune(fit, cp = path$cp_min)
 ```

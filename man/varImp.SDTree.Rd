@@ -2,18 +2,18 @@
 % Please edit documentation in R/varImp.R
 \name{varImp.SDTree}
 \alias{varImp.SDTree}
-\title{Extract variable importance of a SDTree}
+\title{Extract variable importance of an SDTree}
 \usage{
 \method{varImp}{SDTree}(object)
 }
 \arguments{
-\item{object}{A SDTree object}
+\item{object}{an SDTree object}
 }
 \value{
 A named vector of variable importance
 }
 \description{
-This function extracts the variable importance of a SDTree. 
+This function extracts the variable importance of an SDTree. 
 The variable importance is calculated as the sum of the decrease 
 in the loss function resulting from all splits that use the variable.
 }

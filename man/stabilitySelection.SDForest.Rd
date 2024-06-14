@@ -3,12 +3,12 @@
 \name{stabilitySelection.SDForest}
 \alias{stabilitySelection.SDForest}
 \alias{stabilitySelection}
-\title{Calculate the stability selection of a SDForest}
+\title{Calculate the stability selection of an SDForest}
 \usage{
 \method{stabilitySelection}{SDForest}(object, cp_seq = NULL, ...)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 
 \item{cp_seq}{A sequence of complexity parameters.
 If NULL, the sequence is calculated automatically using only relevant values.}
@@ -22,7 +22,7 @@ An object of class \code{paths} containing
 for each complexity parameter.}
 }
 \description{
-This function calculates the stability selection of a SDForest
+This function calculates the stability selection of an SDForest
 \insertCite{Meinshausen2010StabilitySelectionb}{SDForest}.
 Stability selection is calculated as the fraction of trees in the forest
 that select a variable for a split at each complexity parameter.

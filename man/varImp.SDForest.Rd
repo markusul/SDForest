@@ -3,18 +3,18 @@
 \name{varImp.SDForest}
 \alias{varImp.SDForest}
 \alias{varImp}
-\title{Extract variable importance of a SDForest}
+\title{Extract variable importance of an SDForest}
 \usage{
 \method{varImp}{SDForest}(object)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 }
 \value{
 A named vector of variable importance
 }
 \description{
-This function extracts the variable importance of a SDForest.
+This function extracts the variable importance of an SDForest.
 The variable importance is calculated as the mean of the variable importance
 of all trees in the forest.
 }

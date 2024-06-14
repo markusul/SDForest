@@ -8,7 +8,7 @@
 \method{copy}{SDForest}(object, ...)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 
 \item{...}{Further arguments passed to or from other methods.}
 }

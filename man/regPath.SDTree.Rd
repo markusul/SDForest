@@ -2,12 +2,12 @@
 % Please edit documentation in R/paths.R
 \name{regPath.SDTree}
 \alias{regPath.SDTree}
-\title{Calculate the regularization path of a SDTree}
+\title{Calculate the regularization path of an SDTree}
 \usage{
 \method{regPath}{SDTree}(object, cp_seq = NULL, ...)
 }
 \arguments{
-\item{object}{A SDTree object}
+\item{object}{an SDTree object}
 
 \item{cp_seq}{A sequence of complexity parameters.
 If NULL, the sequence is calculated automatically using only relevant values.}
@@ -21,7 +21,7 @@ An object of class \code{paths} containing
 for each complexity parameter.}
 }
 \description{
-This function calculates the variable importance of a SDTree
+This function calculates the variable importance of an SDTree
 for different complexity parameters.
 }
 \examples{

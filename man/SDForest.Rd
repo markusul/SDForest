@@ -66,7 +66,7 @@ as implemented in the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding
 See \code{\link{get_Q}}.}
 
 \item{trim_quantile}{Quantile for Trim transform, 
-only needed for trim and DDL_trim, see \code{\link{get_Q}}.}
+only needed for trim, see \code{\link{get_Q}}.}
 
 \item{q_hat}{Assumed confounding dimension, only needed for pca, 
 see \code{\link{get_Q}}.}
@@ -95,7 +95,8 @@ the memory is not sufficient or the gpu is to small.}
 
 \item{leave_out_ind}{Indices of observations that should not be used for training.}
 
-\item{envs}{Vector of environments which can be used for stratified tree fitting.}
+\item{envs}{Vector of environments which can be used for stratified tree fitting.
+NOT SUPPORTED YET}
 
 \item{leave_envs_out_trees}{Number of trees that should be estimated while leaving
 one of the environments out. Results in number of environments times number of trees.

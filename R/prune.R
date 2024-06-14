@@ -1,13 +1,13 @@
 #' @export
 prune <- function(object, ...) UseMethod('prune')
 
-#' Prune a SDTree
+#' Prune an SDTree
 #' 
 #' Removes all nodes that did not improve the loss by more than cp times the initial loss. 
 #' Either by themselves or by one of their successors. Note that the tree is pruned in place.
 #' If you intend to keep the original tree, make a copy of it before pruning.
 #' @author Markus Ulmer
-#' @param object A SDTree object
+#' @param object an SDTree object
 #' @param cp Complexity parameter, the higher the value the more nodes are pruned.
 #' @param ... Further arguments passed to or from other methods.
 #' @return A pruned SDTree object
@@ -33,13 +33,13 @@ prune.SDTree <- function(object, cp, ...){
   object
 }
 
-#' Prune a SDForest
+#' Prune an SDForest
 #' 
 #' Prunes all trees in the forest and re-calculates the out-of-bag predictions and performance measures.
 #' The training data is needed to calculate the out-of-bag statistics. Note that the forest is pruned in place.
 #' If you intend to keep the original forest, make a copy of it before pruning.
 #' @author Markus Ulmer
-#' @param object A SDForest object
+#' @param object an SDForest object
 #' @param cp Complexity parameter, the higher the value the more nodes are pruned.
 #' @param X The training data, if NULL the data from the forest object is used.
 #' @param Y The training response variable, if NULL the data from the forest object is used.

@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths.R
 \name{plotOOB}
 \alias{plotOOB}
-\title{Visualize the out-of-bag performance of a SDForest}
+\title{Visualize the out-of-bag performance of an SDForest}
 \usage{
 plotOOB(object)
 }
@@ -14,7 +14,7 @@ with the out-of-bag performance for each complexity parameter.}
 A ggplot object
 }
 \description{
-This function visualizes the out-of-bag performance of a SDForest
+This function visualizes the out-of-bag performance of an SDForest
 for different complexity parameters. Can be used to choose the optimal
 complexity parameter.
 }

@@ -51,6 +51,7 @@ partDependence <- function(object, j, X = NULL, mc.cores = 1){
   
   x_seq <- seq(min(X[, j]), max(X[, j]), length.out = 100)
   
+  # TODO: subsample of data to increase speed
   if(mc.cores > 1){
     preds <- parallel::mclapply(x_seq, function(x){
       X_new <- X

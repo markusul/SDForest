@@ -3,12 +3,12 @@
 \name{prune.SDForest}
 \alias{prune.SDForest}
 \alias{prune}
-\title{Prune a SDForest}
+\title{Prune an SDForest}
 \usage{
 \method{prune}{SDForest}(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE, ...)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 
 \item{cp}{Complexity parameter, the higher the value the more nodes are pruned.}
 

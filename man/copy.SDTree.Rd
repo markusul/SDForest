@@ -7,7 +7,7 @@
 \method{copy}{SDTree}(object, ...)
 }
 \arguments{
-\item{object}{A SDTree object}
+\item{object}{an SDTree object}
 
 \item{...}{Further arguments passed to or from other methods.}
 }

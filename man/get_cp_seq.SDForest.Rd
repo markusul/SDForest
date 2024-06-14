@@ -3,12 +3,12 @@
 \name{get_cp_seq.SDForest}
 \alias{get_cp_seq.SDForest}
 \alias{get_cp_seq}
-\title{Get the sequence of complexity parameters of a SDForest}
+\title{Get the sequence of complexity parameters of an SDForest}
 \usage{
 \method{get_cp_seq}{SDForest}(object, ...)
 }
 \arguments{
-\item{object}{A SDForest object}
+\item{object}{an SDForest object}
 
 \item{...}{Further arguments passed to or from other methods.}
 }
@@ -16,7 +16,7 @@
 A sequence of complexity parameters
 }
 \description{
-This function extracts the sequence of complexity parameters of a SDForest that
+This function extracts the sequence of complexity parameters of an SDForest that
 result in changes of the SDForest if pruned. Only cp values that differ
 in the first three digits after the decimal point are returned.
 }

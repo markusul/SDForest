@@ -20,16 +20,16 @@
 #' \code{min_sample} observations.
 #' @param mtry Number of randomly selected covariates to consider for a split, 
 #' if \code{NULL} all covariates are available for each split.
-#' @param fast If \code{TRUE}, only the optimal splitts in the new leaves are 
-#' evaluated and the previously optimal splitts and their potential loss-decrease are reused. 
-#' If \code{FALSE} all possible splitts in all the leaves are reevaluated after every split.
+#' @param fast If \code{TRUE}, only the optimal splits in the new leaves are 
+#' evaluated and the previously optimal splits and their potential loss-decrease are reused. 
+#' If \code{FALSE} all possible splits in all the leaves are reevaluated after every split.
 #' @param Q_type Type of deconfounding, one of 'trim', 'pca', 'no_deconfounding'. 
 #' 'trim' corresponds to the Trim transform \insertCite{Cevid2020SpectralModels}{SDForest} 
 #' as implemented in the Doubly debiased lasso \insertCite{Guo2022DoublyConfounding}{SDForest}, 
 #' 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest}. 
 #' See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform, 
-#' only needed for trim and DDL_trim, see \code{\link{get_Q}}.
+#' only needed for trim, see \code{\link{get_Q}}.
 #' @param q_hat Assumed confounding dimension, only needed for pca, 
 #' see \code{\link{get_Q}}.
 #' @param Q Spectral transformation, if \code{NULL} 
@@ -163,7 +163,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
   # memory for optimal splits
   memory <- list()
-  potential_splitts <- 1
+  potential_splits <- 1
 
   # variable importance
   var_imp <- rep(0, p)
@@ -175,14 +175,14 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     # iterate over all possible splits every time
     # for slow but slightly better solution
     if(!fast){
-      potential_splitts <- 1:i
-      to_small <- sapply(potential_splitts, 
+      potential_splits <- 1:i
+      to_small <- sapply(potential_splits, 
                          function(x){sum(E[, x]) < min_sample*2})
-      potential_splitts <- potential_splitts[!to_small]
+      potential_splits <- potential_splits[!to_small]
     }
 
     #iterate over new to estimate splits
-    for(branch in potential_splitts){
+    for(branch in potential_splits){
       E_branch <- E[, branch]
       index <- which(E_branch == 1)
       X_branch <- as.matrix(X[index, ])
@@ -320,21 +320,21 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     }
 
     # the two new partitions need to be checked for optimal splits in next iteration
-    potential_splitts <- c(best_branch, i + 1)
+    potential_splits <- c(best_branch, i + 1)
 
     # a partition with less than min_sample observations or unique samples 
     # are not available for further splits
-    to_small <- sapply(potential_splitts, function(x){
+    to_small <- sapply(potential_splits, function(x){
       new_samples <- nrow(unique(X[as.logical(E[, x]),]))
       if(is.null(new_samples)) new_samples <- 0
       (new_samples < min_sample * 2)
       })
     if(sum(to_small) > 0){
-      for(el in potential_splitts[to_small]){
+      for(el in potential_splits[to_small]){
         # to small partitions cannot decrease the loss
         memory[[el]] <- matrix(0, p, 4)
       }
-      potential_splitts <- potential_splitts[!to_small]
+      potential_splits <- potential_splits[!to_small]
     }
   }
 
@@ -349,7 +349,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   names(var_imp) <- var_names
 
   # labels for the nodes
-  tree$Do(splitt_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
+  tree$Do(split_names, filterFun = data.tree::isNotLeaf, var_names = var_names)
   tree$Do(leave_names, filterFun = data.tree::isLeaf)
 
   # cp max of all splits after

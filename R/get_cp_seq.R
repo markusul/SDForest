@@ -1,13 +1,13 @@
 #' @export
 get_cp_seq <- function(object, ...) UseMethod('get_cp_seq')
 
-#' Get the sequence of complexity parameters of a SDTree
+#' Get the sequence of complexity parameters of an SDTree
 #' 
-#' This function extracts the sequence of complexity parameters of a SDTree that 
+#' This function extracts the sequence of complexity parameters of an SDTree that 
 #' result in changes of the tree structure if pruned. Only cp values that differ
 #' in the first three digits after the decimal point are returned.
 #' @author Markus Ulmer
-#' @param object A SDTree object
+#' @param object an SDTree object
 #' @param ... Further arguments passed to or from other methods.
 #' @return A sequence of complexity parameters
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}}
@@ -20,13 +20,13 @@ get_cp_seq.SDTree <- function(object, ...){
   return(cp_seq)
 }
 
-#' Get the sequence of complexity parameters of a SDForest
+#' Get the sequence of complexity parameters of an SDForest
 #' 
-#' This function extracts the sequence of complexity parameters of a SDForest that
+#' This function extracts the sequence of complexity parameters of an SDForest that
 #' result in changes of the SDForest if pruned. Only cp values that differ
 #' in the first three digits after the decimal point are returned.
 #' @author Markus Ulmer
-#' @param object A SDForest object
+#' @param object an SDForest object
 #' @param ... Further arguments passed to or from other methods.
 #' @return A sequence of complexity parameters
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}} 

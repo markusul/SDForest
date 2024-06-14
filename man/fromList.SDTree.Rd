@@ -7,15 +7,15 @@
 \method{fromList}{SDTree}(object, ...)
 }
 \arguments{
-\item{object}{A SDTree object with the tree in list format}
+\item{object}{an SDTree object with the tree in list format}
 
 \item{...}{Further arguments passed to or from other methods.}
 }
 \value{
-A SDTree object with the tree in Node format
+an SDTree object with the tree in Node format
 }
 \description{
-Converts the tree in a SDTree object from
+Converts the tree in an SDTree object from
 class \code{list} to class \code{Node} \insertCite{Glur2023Data.tree:Structure}{SDForest}.
 }
 \references{

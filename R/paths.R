@@ -1,12 +1,12 @@
 #' @export 
 regPath <- function(object, ...) UseMethod('regPath')
 
-#' Calculate the regularization path of a SDTree
+#' Calculate the regularization path of an SDTree
 #'
-#' This function calculates the variable importance of a SDTree
+#' This function calculates the variable importance of an SDTree
 #' for different complexity parameters.
 #' @author Markus Ulmer
-#' @param object A SDTree object
+#' @param object an SDTree object
 #' @param cp_seq A sequence of complexity parameters.
 #' If NULL, the sequence is calculated automatically using only relevant values.
 #' @param ... Further arguments passed to or from other methods.
@@ -46,12 +46,12 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
   paths
 }
 
-#' Calculate the regularization path of a SDForest
+#' Calculate the regularization path of an SDForest
 #' 
-#' This function calculates the variable importance of a SDForest
+#' This function calculates the variable importance of an SDForest
 #' and the out-of-bag performance for different complexity parameters.
 #' @author Markus Ulmer
-#' @param object A SDForest object
+#' @param object an SDForest object
 #' @param cp_seq A sequence of complexity parameters.
 #' If NULL, the sequence is calculated automatically using only relevant values.
 #' @param X The training data, if NULL the data from the forest object is used.
@@ -109,9 +109,9 @@ regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL
 #' @export
 stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 
-#' Calculate the stability selection of a SDForest
+#' Calculate the stability selection of an SDForest
 #' 
-#' This function calculates the stability selection of a SDForest
+#' This function calculates the stability selection of an SDForest
 #' \insertCite{Meinshausen2010StabilitySelectionb}{SDForest}.
 #' Stability selection is calculated as the fraction of trees in the forest
 #' that select a variable for a split at each complexity parameter.
@@ -119,7 +119,7 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' @references
 #'   \insertAllCited{}
 #' @author Markus Ulmer
-#' @param object A SDForest object
+#' @param object an SDForest object
 #' @param cp_seq A sequence of complexity parameters.
 #' If NULL, the sequence is calculated automatically using only relevant values.
 #' @param ... Further arguments passed to or from other methods.
@@ -156,9 +156,9 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
   paths
 }
 
-#' Visualize the paths of a SDTree or SDForest
+#' Visualize the paths of an SDTree or SDForest
 #' 
-#' This function visualizes the variable importance of a SDTree or SDForest
+#' This function visualizes the variable importance of an SDTree or SDForest
 #' for different complexity parameters. Both the regularization path and
 #' the stability selection path can be visualized.
 #' @author Markus Ulmer
@@ -206,9 +206,9 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
   }
 }
 
-#' Visualize the out-of-bag performance of a SDForest
+#' Visualize the out-of-bag performance of an SDForest
 #' 
-#' This function visualizes the out-of-bag performance of a SDForest
+#' This function visualizes the out-of-bag performance of an SDForest
 #' for different complexity parameters. Can be used to choose the optimal
 #' complexity parameter.
 #' @author Markus Ulmer
@@ -218,6 +218,7 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
 #' @seealso \code{\link{regPath.SDForest}}
 #' @export
 plotOOB <- function(object){
+  # TODO: log(cp)
     loss_data <- data.frame(object$loss_path, cp = object$cp)
     gg_sde <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.SDE)) +
         ggplot2::geom_line() + 

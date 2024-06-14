@@ -2,7 +2,7 @@
 % Please edit documentation in R/paths.R
 \name{plot.paths}
 \alias{plot.paths}
-\title{Visualize the paths of a SDTree or SDForest}
+\title{Visualize the paths of an SDTree or SDForest}
 \usage{
 \method{plot}{paths}(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...)
 }
@@ -24,7 +24,7 @@ If the \code{path} object includes a cp_min value, a black dashed line is
 added to indicate the out-of-bag optimal variable selection.
 }
 \description{
-This function visualizes the variable importance of a SDTree or SDForest
+This function visualizes the variable importance of an SDTree or SDForest
 for different complexity parameters. Both the regularization path and
 the stability selection path can be visualized.
 }
