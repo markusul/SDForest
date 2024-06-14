@@ -29,7 +29,7 @@
 #' 'pca' to the PCA transformation\insertCite{Paul2008PreconditioningProblems}{SDForest}. 
 #' See \code{\link{get_Q}}.
 #' @param trim_quantile Quantile for Trim transform, 
-#' only needed for trim and DDL_trim, see \code{\link{get_Q}}.
+#' only needed for trim, see \code{\link{get_Q}}.
 #' @param q_hat Assumed confounding dimension, only needed for pca, 
 #' see \code{\link{get_Q}}.
 #' @param Q Spectral transformation, if \code{NULL} 
@@ -49,6 +49,7 @@
 #' the memory is not sufficient or the gpu is to small.
 #' @param leave_out_ind Indices of observations that should not be used for training.
 #' @param envs Vector of environments which can be used for stratified tree fitting.
+#' NOT SUPPORTED YET
 #' @param leave_envs_out_trees Number of trees that should be estimated while leaving
 #' one of the environments out. Results in number of environments times number of trees.
 #' NOT SUPPORTED YET
@@ -202,10 +203,10 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       print('makeCluster')
       cl <- parallel::makeCluster(mc.cores)
       doParallel::registerDoParallel(cl)
-      parallel::clusterExport(cl, c("SDTree", "get_Q", "data.handler",
-                                    "find_s", "loss", "predict_outsample", 
-                                    "traverse_tree", "splitt_names", 
-                                    "leave_names", 'X', 'Y', 'A'))
+      parallel::clusterExport(cl = cl, 
+                              unclass(lsf.str(envir = asNamespace("SDForest"), 
+                                              all = TRUE)),
+                              envir = as.environment(asNamespace("SDForest")))
       res <- parallel::clusterApplyLB(cl = cl, ind, fun = function(i)
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
