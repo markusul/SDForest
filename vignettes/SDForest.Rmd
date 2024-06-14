@@ -17,16 +17,16 @@ knitr::opts_chunk$set(
 
 Here, we show the functionality of an SDForest and how you can use it to screen for causal parents of a continuous response in a large set of observed covariates, even in the presence of hidden confounding. We also provide methods to asses the functional partial dependence of the response on the causal parents.
 
-We show the functionalities with simulated data from a confounded model with two true causal parents of $Y$, see `simulate_data_nonlinear()`. `vignette("realWorld")` shows an example using real data.
+We show the functionalities with simulated data from a confounded model with one true causal parents of $Y$, see `simulate_data_nonlinear()`. `vignette("realWorld")` shows an example using real data.
 
 ```{r sim}
 library(SDForest)
-set.seed(24)
+set.seed(42)
 # simulation of confounded data
 q <- 2    # dimension of confounding
 p <- 350  # number of overved covariates
-n <- 500  # number of obervations
-m <- 2    # number of causal parents in covariates
+n <- 300  # number of obervations
+m <- 1    # number of causal parents in covariates
 
 sim_data <- simulate_data_nonlinear(q = q, p = p, n = n, m = m)
 X <- sim_data$X
@@ -34,19 +34,14 @@ Y <- sim_data$Y
 train_data <- data.frame(X, Y)
 
 # causal parents of y
-f_1 <- apply(X, 1, function(x) f_four(x, sim_data$beta, sim_data$j[1]))
-f_2 <- apply(X, 1, function(x) f_four(x, sim_data$beta, sim_data$j[2]))
+f <- apply(X, 1, function(x) f_four(x, sim_data$beta, sim_data$j))
 
 # functional dependence on causal parents
-par(mfrow = c(1, 2))
-plot(x = X[, sim_data$j[1]], f_1, xlab = paste0('X_', sim_data$j[1]))
-plot(x = X[, sim_data$j[2]], f_2, xlab = paste0('X_', sim_data$j[2]))
+plot(x = X[, sim_data$j], f, xlab = paste0('X_', sim_data$j))
 ```
 ```{r obs}
 # observed dependence on causal parents
-par(mfrow = c(1, 2))
-plot(x = X[, sim_data$j[1]], Y, xlab = paste0('X_', sim_data$j[1]))
-plot(x = X[, sim_data$j[2]], Y, xlab = paste0('X_', sim_data$j[2]))
+plot(x = X[, sim_data$j], Y, xlab = paste0('X_', sim_data$j))
 ```
 
 We first estimate the random forest using the spectral objective:
@@ -55,7 +50,7 @@ $$\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf
 where $Q$ is a spectral transformation. [@Cevid2020SpectralModels], [@Ulmer]
 
 ```{r SDF}
-fit <- SDForest(Y ~ ., train_data, mc.cores = 22)
+fit <- SDForest(Y ~ ., train_data)
 fit
 ```
 
@@ -63,7 +58,7 @@ fit
 
 Given the estimated causal function, the first question we might want to answer is which of the covariates are the causal parents of the response. If we intervene on the causal parents, we expect the response to change. For that, we can estimate the functional dependency of $Y$ on $X$, $\widehat{f(X)}$ and examine which covariates are important in this function. We can directly compare the importance pattern of the deconfounded estimator to the classical random forest estimated by [ranger](https://imbs-hl.github.io/ranger/). This comparison to the plain counterpart always gives a feeling of the strength of confounding. If no confounding exists, `SDForest()` and `ranger::ranger()` should result in similar models.
 
-In the graph below, we see the variable importance `varImp()` of the deconfounded random forest against the plain random forest. The scale has no meaning, but we see how the two true causal parents in red are getting a clear higher variable importance for the SDForest. The plain random forest cannot distinguish between spurious correlation and true causation.
+In the graph below, we see the variable importance `varImp()` of the deconfounded random forest against the plain random forest. The scale has no meaning, but we see how the true causal parents in red is getting a clear higher variable importance for the SDForest. The plain random forest cannot distinguish between spurious correlation and true causation.
 
 ```{r imp}
 # comparison to classical random forest
@@ -117,9 +112,6 @@ Now, to distil the partial functional dependence of the response on the causal p
 
 ```{r dep}
 # partial functional dependence of y on the first causal parent
-dep1 <- partDependence(fit, sim_data$j[1], mc.cores = 11)
-plot(dep1)
-
-dep2 <- partDependence(fit, sim_data$j[2], mc.cores = 11)
-plot(dep2)
+dep <- partDependence(fit, sim_data$j)
+plot(dep)
 ```
