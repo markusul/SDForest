@@ -173,14 +173,14 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
 #' @param plotly If TRUE the plot is returned interactive using plotly. Might be slow for large data.
 #' @param selection A vector of indices of the covariates to be plotted. 
 #' Can be used to plot only a subset of the covariates in case of many covariates.
-#' @param log_scale If TRUE the y-axis is on a log scale.
+#' @param sqrt_scale If TRUE the y-axis is on a square root scale.
 #' @param ... Further arguments passed to or from other methods.
 #' @return A \code{ggplot} object with the variable importance for different regularization.
 #' If the \code{path} object includes a cp_min value, a black dashed line is
 #' added to indicate the out-of-bag optimal variable selection.
 #' @seealso \code{\link{regPath}} \code{\link{stabilitySelection}}
 #' @export
-plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...){
+plot.paths <- function(x, plotly = FALSE, selection = NULL, sqrt_scale = FALSE, ...){
   varImp_path <- x$varImp_path
   if(!is.null(selection)){
     varImp_path <- varImp_path[, selection]
@@ -188,10 +188,6 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
 
   imp_data <- data.frame(varImp_path, cp = x$cp)
   imp_data <- tidyr::gather(imp_data, key = 'covariate', value = 'importance', -cp)
-
-  if(log_scale){
-    imp_data$importance <- log(imp_data$importance + 1)
-  }
   
   gg_path <- ggplot2::ggplot(imp_data, ggplot2::aes(x = cp, y = importance, 
                                                     col = covariate)) +
@@ -202,6 +198,10 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
 
   if(!is.null(x$cp_min)){
     gg_path <- gg_path + ggplot2::geom_vline(xintercept = x$cp_min, linetype = 'dashed')
+  }
+  
+  if(sqrt_scale){
+    gg_path <- gg_path + ggplot2::scale_y_sqrt()
   }
 
   if(plotly){
@@ -221,13 +221,13 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, log_scale = FALSE, .
 #' @author Markus Ulmer
 #' @param object A paths object with loss_path \code{matrix} 
 #' with the out-of-bag performance for each complexity parameter.
-#' @param log_scale If TRUE the x-axis is on a log scale.
+#' @param sqrt_scale If TRUE the x-axis is on a square root scale.
 #' @return A ggplot object
 #' @seealso \code{\link{regPath.SDForest}}
 #' @export
-plotOOB <- function(object, log_scale = FALSE){
+plotOOB <- function(object, sqrt_scale = FALSE){
     loss_data <- data.frame(object$loss_path, cp = object$cp)
-    if(log_scale) loss_data$cp <- log(loss_data$cp + 1)
+
     gg_sde <- ggplot2::ggplot(loss_data, ggplot2::aes(x = cp, y = oob.SDE)) +
         ggplot2::geom_line() + 
         ggplot2::theme_bw()
@@ -237,8 +237,8 @@ plotOOB <- function(object, log_scale = FALSE){
         ggplot2::theme_bw()
     
     if(log_scale){
-      gg_sde <- gg_sde + ggplot2::xlab('log(cp + 1)')
-      gg_mse <- gg_mse + ggplot2::xlab('log(cp + 1)')
+      gg_sde <- gg_sde + ggplot2::scale_x_sqrt()
+      gg_mse <- gg_mse + ggplot2::scale_x_sqrt()
     }
     gridExtra::grid.arrange(gg_sde, gg_mse, ncol = 2)
 }

@@ -4,13 +4,13 @@
 \alias{plotOOB}
 \title{Visualize the out-of-bag performance of an SDForest}
 \usage{
-plotOOB(object, log_scale = FALSE)
+plotOOB(object, sqrt_scale = FALSE)
 }
 \arguments{
 \item{object}{A paths object with loss_path \code{matrix} 
 with the out-of-bag performance for each complexity parameter.}
 
-\item{log_scale}{If TRUE the x-axis is on a log scale.}
+\item{sqrt_scale}{If TRUE the x-axis is on a square root scale.}
 }
 \value{
 A ggplot object

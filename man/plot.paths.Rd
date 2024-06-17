@@ -4,7 +4,7 @@
 \alias{plot.paths}
 \title{Visualize the paths of an SDTree or SDForest}
 \usage{
-\method{plot}{paths}(x, plotly = FALSE, selection = NULL, log_scale = FALSE, ...)
+\method{plot}{paths}(x, plotly = FALSE, selection = NULL, sqrt_scale = FALSE, ...)
 }
 \arguments{
 \item{x}{A \code{paths} object}
@@ -14,7 +14,7 @@
 \item{selection}{A vector of indices of the covariates to be plotted. 
 Can be used to plot only a subset of the covariates in case of many covariates.}
 
-\item{log_scale}{If TRUE the y-axis is on a log scale.}
+\item{sqrt_scale}{If TRUE the y-axis is on a square root scale.}
 
 \item{...}{Further arguments passed to or from other methods.}
 }
