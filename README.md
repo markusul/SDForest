@@ -45,7 +45,7 @@ Y <- sim_data$Y
 train_data <- data.frame(X, Y)
 # causal parents
 sim_data$j
-#> [1]  1 47
+#> [1] 16 40
 ```
 
 ``` r
@@ -56,30 +56,26 @@ fit
 #> 
 #> Number of trees:  100 
 #> Number of covariates:  50 
-#> OOB loss:  0.25 
-#> OOB spectral loss:  0.15
+#> OOB loss:  0.06 
+#> OOB spectral loss:  0.03
 ```
 
 You can also estimate just one Spectral Deconfounded Regression Tree
-using the `SDTree` function.
+using the `SDTree` function. See also `vignette("SDTree")`.
 
 ``` r
 causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
 
 # plot the causal tree
 causal_Tree
-#>        levelName     value           s  j        label decision n_samples
-#> 1  1             1.3487531  0.04517764 47  X47 <= 0.05                100
-#> 2   ¦--1         0.9499773 -1.69331644 47 X47 <= -1.69       no        50
-#> 3   ¦   ¦--1     0.3489319          NA NA          0.3       no         7
-#> 4   ¦   °--3     0.9859657 -0.04564622 12 X12 <= -0.05      yes        43
-#> 5   ¦       ¦--3 0.7622188          NA NA          0.8       no        23
-#> 6   ¦       °--6 1.2424454          NA NA          1.2      yes        20
-#> 7   °--2         1.7391441 -3.55015330 27 X27 <= -3.55      yes        50
-#> 8       ¦--2     1.2038948          NA NA          1.2       no         5
-#> 9       °--4     1.7789876 -0.46335890  1  X1 <= -0.46      yes        45
-#> 10          ¦--4 1.3813340          NA NA          1.4       no        17
-#> 11          °--5 2.0542768          NA NA          2.1      yes        28
+#>   levelName     value          s  j       label decision n_samples
+#> 1 1         0.8398920  0.5322484 40 X40 <= 0.53                100
+#> 2  ¦--1     0.6672222 -0.4974688 40 X40 <= -0.5       no        73
+#> 3  ¦   ¦--1 0.5876494         NA NA         0.6       no        44
+#> 4  ¦   °--4 0.7491725         NA NA         0.7      yes        29
+#> 5  °--2     1.1482966  2.4494222 40 X40 <= 2.45      yes        27
+#> 6      ¦--2 1.0937407         NA NA         1.1       no        21
+#> 7      °--3 1.6619968         NA NA         1.7      yes         6
 ```
 
 ``` r

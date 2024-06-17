@@ -15,6 +15,146 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r setup}
+In the following, we compare the spectral deconfounded regression tree $f^{SDTree}(X)$ to the classical regression tree $f^{Tree}(X)$ \cite{Breiman2017ClassificationTree} using simulated data from an confounded process. We simulate the data similar to `simulate_data_nonlinear()` but with a random regression tree, i.e. step-function for the causal relationship $f(X)$.
+
+```{r sim}
 library(SDForest)
+
+set.seed(99)
+
+# number of confounding covariates in H
+q <- 6
+
+# number of covariates in X
+p <- 500
+
+# number of observations
+n <- 500
+
+# number of non-zero coefficients in beta
+m <- 5
+dat <- simulate_data_step(q, p, n, m, make_tree = TRUE)
 ```
+
+Given the data, we can estimate both the deconfounded regression tree and the classical regression tree. Here we estimate both trees with the default parameters. One could choose, for example, the regularization parameter cp in a more principled way than just setting it to 0.01, e.g. `cvSDTree()` or `regPath.SDTree()`. But 0.01 seem like a good first try and is also the default value in `rpart()` \cite{Therneau2022Rpart:Trees}.
+
+```{r fit}
+causal_tree <- SDTree(x = dat$X, y = dat$Y)
+plain_tree <- SDTree(x = dat$X, y = dat$Y, Q_type = 'no_deconfounding')
+```
+
+Let us observe, what the different trees predict, by comparing the predictions to the causal function and the observed response. On top, we show the underlying causal step function $f^0(X)$ against the 5 covariates used for splitting partitions. On the bottom, we see the observed response $Y$. The spectral deconfounded regression tree $f^{SDTree}(X)$ predicts almost the same response as the true underlying function. The plain classical regression tree, on the other hand, results in a prediction close to the observed $\mathbf{Y}$.
+
+```{r pred, echo=FALSE, message=FALSE}
+library(tidyverse)
+
+f_X_tree <- plain_tree$predictions
+f_X_tree_deconfounded <- causal_tree$predictions
+
+# gather results
+results <- data.frame(Y = dat$Y, f_X = dat$f_X, f_X_tree = f_X_tree,
+                      f_X_tree_deconfounded = f_X_tree_deconfounded)
+
+X_j  <- dat$X[, dat$j]
+colnames(X_j) <- dat$j
+
+results <- cbind(results, X_j)
+
+results <- gather(results, key = "method", value = "pred", Y, f_X, 
+    f_X_tree, f_X_tree_deconfounded)
+results <- gather(results, key = 'j', value = 'X', -method, -pred)
+
+results$method <- as.factor(results$method)
+levels(results$method) <- c('f^0*(X)', 'f^Tree*(X)', 'f^SDTree*(X)', 'Y')
+
+results <- results %>% mutate(method = fct_relevel(method, 'f^0*(X)', 'f^SDTree*(X)', 'f^Tree*(X)', 'Y'))
+
+gg_res <- ggplot(results, aes(x = X, y = pred)) +
+  geom_point(size = 0.05) +
+  facet_grid(method~j, labeller = label_parsed) +
+  theme_bw() + 
+  labs(x = expression(X[j]), y = expression(widehat(f(X))))
+
+gg_res
+```
+
+Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and on the bottom are the two tree estimates. On the left is the spectral deconfounded regression tree and on the right is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">text</span>. Besides $X_{320}$, the spectral deconfounded regression tree uses all covariates for splits with a causal relationship with $Y$. Since $X_{584}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the spectral deconfounded regression tree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom right. Here, we only find two of the causal relevant covariates. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > -0.9$ or $X_{430} \leq -2.7$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
+
+```{r plot_tree,  echo=FALSE, message=FALSE}
+library(igraph)
+library(data.tree)
+labels <- c(tree = expression(f^0*(X)), tree_model = expression(f^Tree*(X)), 
+            deconfounded_tree_model = expression(f^SDTree*(X)))
+
+
+splitt_names <- function(node){
+    node$name <- paste('X', node$j, ' <= ', round(node$s, 3), sep = '')
+}
+
+leave_names <- function(node){
+    new_name <- as.character(round(node$value, 1))
+    if(new_name %in% node$Get('name', filterFun = isLeaf)){
+        new_name <- paste(new_name, '')
+    }
+    node$name <- new_name
+}
+
+tree <- dat$tree
+tree$Do(splitt_names, filterFun = isNotLeaf)
+tree$Do(leave_names, filterFun = isLeaf)
+data_tree <- as.igraph.Node(dat$tree, directed = T)
+
+get_node_j <- function(node){
+    node_name <- names(node)
+    node_name <- unlist(strsplit(node_name, split = 'X\\.|X| |<|=|>'))
+    if(length(node_name) > 1){
+        return(as.numeric(node_name[2]))
+    }else {
+        return(0)
+    }
+}
+
+get_labels <- function(tree, rpart_tree = F){
+    node_mask <- c()
+    for(i in 1:length(tree)){
+        node_mask <- append(node_mask, get_node_j(tree[[i]]))
+    }
+    node_shape <- rep('none', length(node_mask))
+    node_shape[node_mask == 0] <- 'circle'
+    vertex_label_color <- rep('black', length(node_mask))
+    vertex_label_color[node_mask %in% dat$j] <- '#b0193c'
+    arrow_lable <- rep(c('yes', 'no'), length(node_mask) - 1)
+    return(list(node_shape = node_shape, vertex_label_color = vertex_label_color, arrow_lable = arrow_lable))
+}
+
+layout(matrix(c(1, 1, 2, 3), 2, 2, byrow = TRUE))
+par(mai = 0.25*c(1, 1, 1, 1))
+
+tree_labels <- get_labels(data_tree)
+plot(data_tree, layout = layout.reingold.tilford(data_tree, root = 1), vertex.shape = tree_labels$node_shape, 
+     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
+     edge.label = tree_labels$arrow_lable, edge.label.color = '#000000', edge.label.cex = 0.8, main = expression(f^0*(X)))
+
+# plain tree
+tree <- causal_tree$tree
+tree$Do(splitt_names, filterFun = isNotLeaf)
+tree$Do(leave_names, filterFun = isLeaf)
+deconfounded_tree <- as.igraph.Node(tree, directed = T)
+
+tree_labels <- get_labels(deconfounded_tree)
+plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root = 1), vertex.shape = tree_labels$node_shape, 
+     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
+     edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8, main = labels$deconfounded_tree_model)
+
+# deconfounded tree
+tree <- plain_tree$tree
+tree$Do(splitt_names, filterFun = isNotLeaf)
+tree$Do(leave_names, filterFun = isLeaf)
+deconfounded_tree <- as.igraph.Node(tree, directed = T)
+tree_labels <- get_labels(deconfounded_tree)
+plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root = 1), vertex.shape = tree_labels$node_shape, 
+     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
+     edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8, main = labels$tree_model)
+
+```
+

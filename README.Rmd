@@ -54,7 +54,7 @@ fit <- SDForest(Y ~ ., train_data)
 fit
 ```
 
-You can also estimate just one Spectral Deconfounded Regression Tree using the `SDTree` function.
+You can also estimate just one Spectral Deconfounded Regression Tree using the `SDTree` function. See also `vignette("SDTree")`.
 
 ```{r SDTree}
 causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
