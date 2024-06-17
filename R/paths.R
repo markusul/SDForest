@@ -236,7 +236,7 @@ plotOOB <- function(object, sqrt_scale = FALSE){
         ggplot2::geom_line() + 
         ggplot2::theme_bw()
     
-    if(log_scale){
+    if(sqrt_scale){
       gg_sde <- gg_sde + ggplot2::scale_x_sqrt()
       gg_mse <- gg_mse + ggplot2::scale_x_sqrt()
     }
