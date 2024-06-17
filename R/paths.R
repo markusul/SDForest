@@ -57,6 +57,9 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
 #' @param X The training data, if NULL the data from the forest object is used.
 #' @param Y The training response variable, if NULL the data from the forest object is used.
 #' @param Q The transformation matrix, if NULL the data from the forest object is used.
+#' @param copy Whether the tree should be copied for the regularization path.
+#' If FALSE, the pruning is done in place and will change the SDForest.
+#' This might be reasonable, if the SDForest is to large to copy.
 #' @param ... Further arguments passed to or from other methods.
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
@@ -80,13 +83,17 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
 #' plot(paths, plotly = TRUE)
 #' }
 #' @export
-regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, ...){
+regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL, 
+                             copy = TRUE, ...){
   if(is.null(cp_seq)) cp_seq <- get_cp_seq(object)
   cp_seq <- sort(cp_seq)
-  object$forest <- lapply(object$forest, function(tree){
-    tree$tree <- data.tree::Clone(tree$tree)
-    return(tree)
-    })
+  
+  if(copy){
+    object$forest <- lapply(object$forest, function(tree){
+      tree$tree <- data.tree::Clone(tree$tree)
+      return(tree)
+      })
+  }
 
   res <- pbapply::pblapply(cp_seq, function(cp){
     pruned_object <- prune(object, cp, X, Y, Q, pred = FALSE)
