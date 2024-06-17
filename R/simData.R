@@ -177,7 +177,7 @@ simulate_data_step <- function(q, p, n, m, make_tree = FALSE){
   
   # generate tree
   if(make_tree){
-    tree <- Node$new(name = '1', value = 0)
+    tree <- data.tree::Node$new(name = '1', value = 0)
   }
   
   # partitions of observations
