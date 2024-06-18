@@ -20,7 +20,8 @@ If NULL, tries to extract the dataset from the model object.}
 \item{subSample}{Number of samples to draw from the original data for the empirical 
 partial dependence. If NULL, all the observations are used.}
 
-\item{mc.cores}{Number of cores to use for parallel computation.}
+\item{mc.cores}{Number of cores to use for parallel computation. 
+Parallel computing is only supported for unix.}
 }
 \value{
 An object of class \code{partDependence} containing
