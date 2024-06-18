@@ -94,7 +94,7 @@ The tree contains the information about all the splits and the resulting estimat
 \description{
 Estimates a regression tree using spectral deconfounding. 
 A regression tree is part of the function class of step functions
-\eqn{f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m}, , where ($R_m$) with 
+\eqn{f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m}, where ($R_m$) with 
 \eqn{m = 1, \ldots, M} are regions dividing the space of \eqn{\mathbb{R}^p} 
 into \eqn{M} rectangular parts. Each region has response level \eqn{c_m \in \mathbb{R}}.
 For the training data, we can write the step function as \eqn{f(\mathbf{X}) = \mathcal{P} c} 
@@ -119,7 +119,7 @@ and acts as a regularization parameter.
 \examples{
 set.seed(42)
 # simulation of confounded data
-sim_data <- simulate_data_nonlinear(q = 2, p = 150, n = 100, m = 2)
+sim_data <- simulate_data_step(q = 2, p = 150, n = 100, m = 2)
 X <- sim_data$X
 Y <- sim_data$Y
 train_data <- data.frame(X, Y)
