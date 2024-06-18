@@ -40,7 +40,7 @@ Given the data, we can estimate both the deconfounded regression tree and the cl
 
 ```{r fit}
 causal_tree <- SDTree(x = dat$X, y = dat$Y)
-plain_tree <- SDTree(x = dat$X, y = dat$Y, Q_type = 'no_deconfounding')
+plain_tree <- SDTree(x = dat$X, y = dat$Y, Q_type = 'no_deconfounding', cp =)
 ```
 
 Let us observe, what the different trees predict, by comparing the predictions to the causal function and the observed response. On top, we show the underlying causal step function $f^0(X)$ against the 5 covariates used for splitting partitions. On the bottom, we see the observed response $Y$. The spectral deconfounded regression tree $f^{SDTree}(X)$ predicts almost the same response as the true underlying function. The plain classical regression tree, on the other hand, results in a prediction close to the observed $\mathbf{Y}$.
@@ -128,7 +128,7 @@ get_labels <- function(tree, rpart_tree = F){
     return(list(node_shape = node_shape, vertex_label_color = vertex_label_color, arrow_lable = arrow_lable))
 }
 
-layout(matrix(c(1, 1, 2, 3), 2, 2, byrow = TRUE))
+#layout(matrix(c(1, 1, 2, 3), 2, 2, byrow = TRUE))
 par(mai = 0.25*c(1, 1, 1, 1))
 
 tree_labels <- get_labels(data_tree)
@@ -151,11 +151,11 @@ plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root
 tree <- plain_tree$tree
 tree$Do(splitt_names, filterFun = isNotLeaf)
 tree$Do(leave_names, filterFun = isLeaf)
-deconfounded_tree <- as.igraph.Node(tree, directed = T)
-tree_labels <- get_labels(deconfounded_tree)
-plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root = 1), vertex.shape = tree_labels$node_shape, 
-     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
-     edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8, main = labels$tree_model)
+tree <- as.igraph.Node(tree, directed = T)
+tree_labels <- get_labels(tree)
+plot(tree, layout = layout.reingold.tilford(tree, root = 1), vertex.shape = tree_labels$node_shape, 
+    vertex.label.color = tree_labels$vertex_label_color, vertex.size = 14, vertex.color = 'lightblue', edge.arrow.size = 0.3, 
+    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.6, main = labels$tree_model, vertex.label.cex = 0.71)
 
 ```
 
