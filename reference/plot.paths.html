@@ -31,7 +31,6 @@ the stability selection path can be visualized."><meta property="og:image" conte
 <li class="nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/runtime.html">runtime</a>
     <a class="dropdown-item" href="../articles/SDTree.html">SDTree</a>
   </div>
 </li>
@@ -59,7 +58,7 @@ the stability selection path can be visualized.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for paths</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>, plotly <span class="op">=</span> <span class="cn">FALSE</span>, selection <span class="op">=</span> <span class="cn">NULL</span>, log_scale <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>, plotly <span class="op">=</span> <span class="cn">FALSE</span>, selection <span class="op">=</span> <span class="cn">NULL</span>, sqrt_scale <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -77,8 +76,8 @@ the stability selection path can be visualized.</p>
 Can be used to plot only a subset of the covariates in case of many covariates.</p></dd>
 
 
-<dt>log_scale</dt>
-<dd><p>If TRUE the y-axis is on a log scale.</p></dd>
+<dt>sqrt_scale</dt>
+<dd><p>If TRUE the y-axis is on a square root scale.</p></dd>
 
 
 <dt>...</dt>

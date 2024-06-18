@@ -16,9 +16,6 @@
     <loc>https://markusul.github.io/SDForest/articles/index.html</loc>
   </url>
   <url>
-    <loc>https://markusul.github.io/SDForest/articles/runtime.html</loc>
-  </url>
-  <url>
     <loc>https://markusul.github.io/SDForest/authors.html</loc>
   </url>
   <url>
@@ -110,6 +107,9 @@
   </url>
   <url>
     <loc>https://markusul.github.io/SDForest/reference/simulate_data_nonlinear.html</loc>
+  </url>
+  <url>
+    <loc>https://markusul.github.io/SDForest/reference/simulate_data_step.html</loc>
   </url>
   <url>
     <loc>https://markusul.github.io/SDForest/reference/stabilitySelection.SDForest.html</loc>

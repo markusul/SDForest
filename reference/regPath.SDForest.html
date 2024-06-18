@@ -29,7 +29,6 @@ and the out-of-bag performance for different complexity parameters."><meta prope
 <li class="nav-item dropdown">
   <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" role="button" aria-expanded="false" aria-haspopup="true" id="dropdown-articles">Articles</a>
   <div class="dropdown-menu" aria-labelledby="dropdown-articles">
-    <a class="dropdown-item" href="../articles/runtime.html">runtime</a>
     <a class="dropdown-item" href="../articles/SDTree.html">SDTree</a>
   </div>
 </li>
@@ -56,7 +55,7 @@ and the out-of-bag performance for different complexity parameters.</p>
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for SDForest</span></span>
-<span><span class="fu">regPath</span><span class="op">(</span><span class="va">object</span>, cp_seq <span class="op">=</span> <span class="cn">NULL</span>, X <span class="op">=</span> <span class="cn">NULL</span>, Y <span class="op">=</span> <span class="cn">NULL</span>, Q <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">regPath</span><span class="op">(</span><span class="va">object</span>, cp_seq <span class="op">=</span> <span class="cn">NULL</span>, X <span class="op">=</span> <span class="cn">NULL</span>, Y <span class="op">=</span> <span class="cn">NULL</span>, Q <span class="op">=</span> <span class="cn">NULL</span>, copy <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -80,6 +79,12 @@ If NULL, the sequence is calculated automatically using only relevant values.</p
 
 <dt>Q</dt>
 <dd><p>The transformation matrix, if NULL the data from the forest object is used.</p></dd>
+
+
+<dt>copy</dt>
+<dd><p>Whether the tree should be copied for the regularization path.
+If FALSE, the pruning is done in place and will change the SDForest.
+This might be reasonable, if the SDForest is to large to copy.</p></dd>
 
 
 <dt>...</dt>
