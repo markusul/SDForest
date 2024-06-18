@@ -123,11 +123,11 @@ regression tree, on the other hand, results in a prediction close to the
 observed <span class="math inline">\(\mathbf{Y}\)</span>.</p>
 <p><img src="SDTree_files/figure-html/pred-1.png" width="700"></p>
 <p>Now, we can directly look at the estimated tree structures. On top is
-the true underlying random regression tree, and on the bottom are the
-two tree estimates. On the left is the spectral deconfounded regression
-tree and on the right is the plain classical regression tree. The nodes
-that choose a covariate for a split, that is also used in the true
-underlying causal function, are marked in <span style="color: #b0193c;">text</span>. Besides <span class="math inline">\(X_{320}\)</span>, the spectral deconfounded
+the true underlying random regression tree, and below are the two tree
+estimates. In the middle is the spectral deconfounded regression tree
+and on the bottom is the plain classical regression tree. The nodes that
+choose a covariate for a split, that is also used in the true underlying
+causal function, are marked in <span style="color: #b0193c;">text</span>. Besides <span class="math inline">\(X_{320}\)</span>, the spectral deconfounded
 regression tree uses all covariates for splits with a causal
 relationship with <span class="math inline">\(Y\)</span>. Since <span class="math inline">\(X_{584}\)</span> only splits three observations
 into the node with a response level of 49.6, it seems reasonable that
