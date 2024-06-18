@@ -79,7 +79,7 @@ gg_res <- ggplot(results, aes(x = X, y = pred)) +
 gg_res
 ```
 
-Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and on the bottom are the two tree estimates. On the left is the spectral deconfounded regression tree and on the right is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">text</span>. Besides $X_{320}$, the spectral deconfounded regression tree uses all covariates for splits with a causal relationship with $Y$. Since $X_{584}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the spectral deconfounded regression tree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom right. Here, we only find two of the causal relevant covariates. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > -0.9$ or $X_{430} \leq -2.7$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
+Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and below are the two tree estimates. In the middle is the spectral deconfounded regression tree and on the bottom is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">text</span>. Besides $X_{320}$, the spectral deconfounded regression tree uses all covariates for splits with a causal relationship with $Y$. Since $X_{584}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the spectral deconfounded regression tree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom right. Here, we only find two of the causal relevant covariates. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > -0.9$ or $X_{430} \leq -2.7$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
 
 ```{r plot_tree,  echo=FALSE, message=FALSE}
 library(igraph)
@@ -147,7 +147,7 @@ plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root
      vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
      edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8, main = labels$deconfounded_tree_model)
 
-# deconfounded tree
+par(mar = c(0, 0, 2, 0))
 tree <- plain_tree$tree
 tree$Do(splitt_names, filterFun = isNotLeaf)
 tree$Do(leave_names, filterFun = isLeaf)
@@ -155,7 +155,7 @@ tree <- as.igraph.Node(tree, directed = T)
 tree_labels <- get_labels(tree)
 plot(tree, layout = layout.reingold.tilford(tree, root = 1), vertex.shape = tree_labels$node_shape, 
     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 14, vertex.color = 'lightblue', edge.arrow.size = 0.3, 
-    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.6, main = labels$tree_model, vertex.label.cex = 0.71)
+    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.6, main = labels$tree_model, vertex.label.cex = 0.70)
 
 ```
 
