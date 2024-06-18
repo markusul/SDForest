@@ -1,7 +1,20 @@
 #' Spectral Deconfounded Random Forest
 #' 
-#' Estimate regression Random Forest using spectral deconfounding.
-#' # TODO: add more details
+#' Estimate regression Random Forest using spectral deconfounding \insertCite{Ulmer}{SDForest}.
+#' The spectral deconfounded Random Forest combines SDTrees in the same way, 
+#' as in the original Random Forest \insertCite{Breiman2001RandomForests}{SDForest}.
+#' The idea is to combine multiple regression trees into an ensemble in order to 
+#' decrease variance and get a smooth function. Ensembles work best if the different 
+#' models are independent of each other. To decorrelate the regression trees as much 
+#' as possible from each other, we have two mechanisms. The first one is bagging 
+#' \insertCite{Breiman1996BaggingPredictors}{SDForest}, where we train each regression 
+#' tree on an independent bootstrap sample of the observations, e.g., we draw a 
+#' random sample of size \eqn{n} with replacement from the observations. 
+#' The second mechanic to decrease the correlation is that only a random subset 
+#' of the covariates is available for each split. Before each split, 
+#' we sample \eqn{\text{mtry} \leq p} from all the covariates and choose the one 
+#' that reduces the loss the most only from those.
+#' \deqn{\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t(X^{boot})}
 #' @references
 #'  \insertAllCited{}
 #' @author Markus Ulmer

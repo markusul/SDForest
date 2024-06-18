@@ -93,7 +93,28 @@ The tree contains the information about all the splits and the resulting estimat
 }
 \description{
 Estimates a regression tree using spectral deconfounding. 
-# TODO: add more details
+A regression tree is part of the function class of step functions
+\eqn{f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m}, , where ($R_m$) with 
+\eqn{m = 1, \ldots, M} are regions dividing the space of \eqn{\mathbb{R}^p} 
+into \eqn{M} rectangular parts. Each region has response level \eqn{c_m \in \mathbb{R}}.
+For the training data, we can write the step function as \eqn{f(\mathbf{X}) = \mathcal{P} c} 
+where \eqn{\mathcal{P} \in \{0, 1\}^{n \times M}} is an indicator matrix encoding 
+to which region an observation belongs and \eqn{c \in \mathbb{R}^M} is a vector 
+containing the levels corresponding to the different regions. This function then minimizes
+\deqn{(\hat{\mathcal{P}}, \hat{c}) = \text{argmin}_{\mathcal{P}' \in \{0, 1\}^{n \times M}, c' \in \mathbb{R}^ {M}} \frac{||Q(\mathbf{Y} - \mathcal{P'} c')||_2^2}{n}}
+We find \eqn{\hat{\mathcal{P}}} by using the tree structure and repeated splitting of the leaves, 
+similar to the original cart algorithm \insertCite{Breiman2017ClassificationTrees}{SDForest}.
+Since comparing all possibilities for \eqn{\mathcal{P}} is impossible, we let a tree grow greedily. 
+Given the current tree, we iterate over all leaves and all possible splits. 
+We choose the one that reduces the spectral loss the most and estimate after each split 
+all the leave estimates
+\eqn{\hat{c} = \text{argmin}_{c' \in \mathbb{R}^M} \frac{||Q\mathbf{Y} - Q\mathcal{P} c'||_2^2}{n}} 
+which is just a linear regression problem. This is repeated until the loss decreases 
+less than a minimum loss decrease after a split. 
+The minimum loss decrease equals a cost-complexity parameter \eqn{cp} times 
+the initial loss when only an overall mean is estimated. 
+The cost-complexity parameter \eqn{cp} controls the complexity of a regression tree 
+and acts as a regularization parameter.
 }
 \examples{
 set.seed(42)
