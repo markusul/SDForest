@@ -1,0 +1,61 @@
+---
+title: "Runtime"
+output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+vignette: >
+  %\VignetteIndexEntry{Runtime}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+For this package, we have written methods to estimate regressions trees and random forests to minimize the spectral objective:
+
+$$\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf{X}))||_2^2}{n}$$
+With the spectral transformation, for every potential split, we have to multiply a n times n matrix with a vector of size n and calculate a scalar product of two vectors of size n. The algorithm gets slow, especially for large n. Furthermore, the package is fully written in \R for now. There might be a faster cpp version in the future, but for now, there are a few ways to increase the computations if you apply the methods to larger data sets.
+
+## Computations
+
+Some speedup can be achieved by taking advantage of modern hardware.
+
+### Multicore
+
+When estimating an SDForest, the most obvious way to increase the computations is to fit the individual trees on different cores in parallel. Parallel computing is supported for both Unix and Windows. Depending on how your system is set up, some linear algebra libraries might already run in parallel. In this case, the speed improvement from choosing more than one core to run on might not be that large.
+
+```{r core, eval=FALSE}
+# fits the individual SDTrees in parallel on 22 cores
+fit <- SDForest(x = X, y = Y, mc.cores = 22)
+```
+
+### GPU
+
+Especially if we have many observations, it might be reasonable to perform the matrix multiplications on a GPU. We can evaluate many potential splits simultaneously by multiplying an n times n matrix with an n times potential split matrix on a GPU. We use [GPUmatrix](https://cran.r-project.org/web/packages/GPUmatrix/vignettes/Vignette.html) [@Lobato-Fernandez2024GPUmatrix:GPU] to do the calculations on the GPU. We also refer to their website to set up your GPU properly. The number of splits that can be evaluated in parallel in this way highly depends on your GPU size and can be controlled using the `mem_size` parameter. The default value of 1e+7 should not result in a memory overflow on a GPU with 24G VRAM. For us, this worked well on a GeForce RTX 3090.
+
+```{r gpu, eval=FALSE}
+# runs the matrix operations on a gpu if available
+fit <- SDForest(x = X, y = Y, gpu = T, mem_size = 1e+7)
+tree <- SDTree(x = X, y = Y, gpu = T, mem_size = 1e+7)
+```
+
+## Approximations
+
+In a few places, approximations perform almost as well as if we run the whole procedure. Reasonable split points to divide the space of $\mathbb{R}^p$ are, in principle, all values between the observed ones. In practice and with many observations, the number of potential splits grows too large. We, therefore, evaluate maximal `max_candidates` splits of the potential ones and choose them according to the quantiles of the potential ones.
+
+```{r candidates, eval=FALSE}
+# approximation of candidate splits
+fit <- SDForest(x = X, y = Y, max_candidates = 100)
+tree <- SDTree(x = X, y = Y, max_candidates = 50)
+```
+
+If we have many observations, we can reduce computing time by only sampling `max_size` observations from the data instead of $n$. This can dramatically reduce computing time compared to a full bootstrap sample but could also decrease performance.
+
+```{r subsample, eval=FALSE}
+# draws maximal 500 samples from the data for each tree
+fit <- SDForest(x = X, y = Y, max_size = 500)
+```
