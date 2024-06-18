@@ -46,7 +46,8 @@ plain_tree <- SDTree(x = dat$X, y = dat$Y, Q_type = 'no_deconfounding')
 Let us observe, what the different trees predict, by comparing the predictions to the causal function and the observed response. On top, we show the underlying causal step function $f^0(X)$ against the 5 covariates used for splitting partitions. On the bottom, we see the observed response $Y$. The spectral deconfounded regression tree $f^{SDTree}(X)$ predicts almost the same response as the true underlying function. The plain classical regression tree, on the other hand, results in a prediction close to the observed $\mathbf{Y}$.
 
 ```{r pred, echo=FALSE, message=FALSE}
-library(tidyverse)
+library(tidyr)
+library(ggplot2)
 
 f_X_tree <- plain_tree$predictions
 f_X_tree_deconfounded <- causal_tree$predictions
@@ -66,8 +67,8 @@ results <- gather(results, key = 'j', value = 'X', -method, -pred)
 
 results$method <- as.factor(results$method)
 levels(results$method) <- c('f^0*(X)', 'f^Tree*(X)', 'f^SDTree*(X)', 'Y')
+results$method <- factor(results$method, levels = c('f^0*(X)', 'f^SDTree*(X)', 'f^Tree*(X)', 'Y'))
 
-results <- results %>% mutate(method = fct_relevel(method, 'f^0*(X)', 'f^SDTree*(X)', 'f^Tree*(X)', 'Y'))
 
 gg_res <- ggplot(results, aes(x = X, y = pred)) +
   geom_point(size = 0.05) +
