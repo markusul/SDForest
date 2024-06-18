@@ -1,0 +1,78 @@
+---
+title: "Algorithm"
+output: rmarkdown::html_vignette
+bibliography: REFERENCES.bib
+vignette: >
+  %\VignetteIndexEntry{Algorithm}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+A regression tree is part of the function class of step functions $f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m$, where ($R_m$) with $m = 1, \ldots, M$ are regions dividing the space of $\mathbb{R}^p$ into $M$ rectangular parts. Each region has response level $c_m \in \mathbb{R}$. For the training data, we can write the step function as $f(\mathbf{X}) = \mathcal{P} c$ where $\mathcal{P} \in \{0, 1\}^{n \times M}$ is an indicator matrix encoding to which region an observation belongs and $c \in \mathbb{R}^M$ is a vector containing the levels corresponding to the different regions. This function then minimizes $$(\hat{\mathcal{P}}, \hat{c}) = \text{argmin}_{\mathcal{P}' \in \{0, 1\}^{n \times M}, c' \in \mathbb{R}^ {M}} \frac{||Q(\mathbf{Y} - \mathcal{P'} c')||_2^2}{n}$$
+We find $\hat{\mathcal{P}}$ by using the tree structure and repeated splitting of the leaves, similar to the original cart algorithm [@Breiman2017ClassificationTrees]. Since comparing all possibilities for $\mathcal{P}$ is impossible, we let a tree grow greedily. Given the current tree, we iterate over all leaves and all possible splits. We choose the one that reduces the spectral loss the most, using the SDTree subroutine, and estimate after each split all the leave estimates $\hat{c} = \text{argmin}_{c' \in \mathbb{R}^M} \frac{||Q\mathbf{Y} - Q\mathcal{P} c'||_2^2}{n}$ which is just a linear regression problem. This is repeated until the loss decreases less than a minimum loss decrease after a split. The minimum loss decrease equals a cost-complexity parameter $cp$ times the initial loss when only an overall mean is estimated. The cost-complexity parameter $cp$ controls the complexity of a regression tree and acts as a regularization parameter.
+
+![](figures/SDTreeAlg.jpg)
+
+### SDTree subroutine
+
+At step $m$, the tree has $m$ leaves. We encode this by a matrix $\mathcal{P}\in \mathbb R^{n\times m}$. We write $e_1, \ldots, e_m$ for the columns of $\mathcal{P}$. The matrix $\mathcal{P}$ has the property that if $1\leq l<t\leq m$, either $e_l$ and $e_t$ have disjoint support or the support of $e_t$ is contained in the support of $e_l$. To find the best $(m+1)$th split, we consider a large number of candidate split encoded by a new column $e_{m+1}$, which has a $1$ in the $i$th entry if the $i$th sample point $x_i$ lies in the new leaf. We want to find the new column such that $\|Q\mathcal{P}_{m+1}\hat\beta_{m+1}-QY\|_2^2$ is minimal among the candidate splits, with $\mathcal{P}_{m+1} = (\mathcal{P}_m, e_{m+1})\in \mathbb R^{n\times ({m+1})}$ and $\hat\beta_{m+1}$ is the least squares estimator of $QY$ vs. $Q\mathcal{P}_{m+1}$. The goal of this note is to show, how we can efficiently find the best split $e_{m+1}$ without having to estimate a linear model "from scratch" each time.
+
+By induction, assume that we are given a QR-decomposition of the matrix $Q\mathcal{P}_m$, i.e. there exists a matrices $U_m\in \mathbb R^{n\times m}$ and $R_m\in \mathbb R^{m\times m}$ such that the columns $u_1,\ldots, u_m$ of $U_m$ are orthonormal and $R_m$ is an upper triangular matrix and
+$$Q\mathcal{P}_m = U_mR_m.$$
+For a candidate split encoded by $e_{m+1}$, let $w_{m+1}=Qe_{m+1}$. Define
+$$u_{m+1}' = w_{m+1}- (w_{m+1}^T u_1)u_1-\ldots - (w_{m+1}^T u_m)u_m.$$
+Then, define $u_{m+1} = u_{m+1}'/\|u_{m+1}'\|$. Note that Note that $u_{m+1}$ is orthogonal to $u_1,\ldots, u_m$. Moreover, $w_{m+1}$ is in the span of $u_1,\ldots, u_{m+1}$ and $w_{m+1} = (w_{m+1}^T u_1)u_1+\ldots+(w_{m+1}^T u_{m+1})u_{m+1}$. Define $r_{m+1} = (w_{m+1}^T u_1,\ldots, w_{m+1}^T u_{m+1})^T\in \mathbb R^{m+1}$. In total, we can write
+$$Q\mathcal{P}_{m+1} =  U_{m+1} R_{m+1},$$
+where $U_{m+1}$ has orthonormal columns $u_1,\ldots, u_{m+1}$ and
+$$R_{m+1} = \begin{pmatrix}
+    R_m & r_{m+1}\\
+    0 & \vdots
+\end{pmatrix}$$
+is an upper triangular matrix.
+The least squares estimator $\hat\beta_{m+1}=\arg\min_\beta\|Q\mathcal{P}_{m+1}\beta-QY\|^2$ is given by
+\begin{align*}
+    \hat\beta_{m+1} &= ((Q\mathcal{P}_{m+1})^TQ\mathcal{P}_{m+1})^{-1}(Q\mathcal{P}_{m+1})^T QY\\
+    &= (R_{m+1}^TU_{m+1}^TU_{m+1}R_{m+1})^{-1}R_{m+1}^TU_{m+1}^T QY\\
+    &=R_{m+1}^{-1}U_{m+1}^T QY
+\end{align*}
+We are interested in choosing $e_{m+1}$ such that $\|Q\mathcal{P}_{m+1}\hat\beta_{m+1}-QY\|_2^2$ is minimal. Note that
+\begin{align*}
+    \|Q\mathcal{P}_{m+1}\hat\beta_{m+1}-QY\|_2^2 &= \|U_{m+1}R_{m+1}R_{m+1}^{-1} U_{m+1}^T QY-QY\|_2^2 \\
+    &= \|U_{m+1}U_{m+1}^TQY-QY\|_2^2\\
+    &=(QY)^T(I-U_{m+1}U_{m+1}^T)^2QY\\
+    &=(QY)^T(I-U_{m+1}U_{m+1}^T)QY\\
+    &=\|QY\|^2-\|U_{m+1}^TQY\|^2\\
+    &=\|QY\|^2-\|U_m^TQY\|^2-(u_{m+1}^TQY)^2
+\end{align*}
+Hence, we need to choose $e_{m+1}$ such that $(u_{m+1}^TQY)^2$ is maximal. 
+
+Hence, the algorithm to find the optimal split $e_{m+1}$ has the following steps:
+
+For all candidate splits $s$, let $e_{m+1}^s$ be the encoding of this split. For all $s$, do
+\begin{enumerate}
+    \item $w_{m+1} = Q e_{m+1}^s$
+    \item $u_{m+1}' =  w_{m+1}- (w_{m+1}^T u_1)u_1-\ldots - (w_{m+1}^T u_m)u_m$
+    \item Store $\alpha_s = (u_{m+1}'^TQY)^2/\|u_{m+1}'\|^2$
+\end{enumerate}
+Choose $s$, such that $\alpha_s$ is maximal. Then save $u_{m+1}=u_{m+1}'/\|u_{m+1}'\|$ with the $u_{m+1}'$ from the optimal $s$.
+
+This can again be made faster (note $Q^T = Q$):
+For all candidate splits $s$, let $e_{m+1} = e_{m+1}^s$ be the encoding of this split. For all $s$, do
+\begin{enumerate}
+    \item $u_{m+1}' =  Qe_{m+1}- (e_{m+1}^T Q u_1)u_1-\ldots - (e_{m+1}^T Q u_m)u_m$
+    \item Store $\alpha_s = (u_{m+1}'^TQY)^2/\|u_{m+1}'\|^2$
+\end{enumerate}
+Choose $s$, such that $\alpha_s$ is maximal. Then save $u_{m+1}=u_{m+1}'/\|u_{m+1}'\|$ with the $u_{m+1}'$ from the optimal $s$. This should be faster since $Qu_1, \ldots, Qu_m$ only have to be calculated once.
+
+This can again be rewritten. We use $(e_{m+1}^TQu_j)u_j=u_j u_j^TQ e_{m+1}$. Hence, we can replace the first line by
+\begin{enumerate}
+    \item $u_{m+1}' = \left(Q -\sum_{l=1}^m u_l u_l^T Q\right) e_{m+1}$
+\end{enumerate}
+Hence, $\left(Q-\sum_{l=1}^m u_l u_l^T Q\right)$ is always the same and only needs to be updated by subtracting $u_{m+1} u_{m+1}^T Q$, once the best split is decided. Hence, what is remained to do for each candidate split is really just the matrix vector product $\left(Q -\sum_{l=1}^m u_l u_l^T Q\right) e_{m+1}$ and the scalar product $(u_{m+1}'^TQY)^2/\|u_{m+1}'\|^2$ in step 2.
