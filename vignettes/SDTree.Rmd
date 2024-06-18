@@ -147,6 +147,11 @@ plot(deconfounded_tree, layout = layout.reingold.tilford(deconfounded_tree, root
      vertex.label.color = tree_labels$vertex_label_color, vertex.size = 25, vertex.color = 'lightblue', edge.arrow.size = 0.5, 
      edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.8, main = labels$deconfounded_tree_model)
 
+
+splitt_names <- function(node){
+    node$name <- paste('X', node$j, ' <= ', round(node$s, 2), sep = '')
+}
+
 par(mar = c(0, 0, 2, 0))
 tree <- plain_tree$tree
 tree$Do(splitt_names, filterFun = isNotLeaf)
@@ -155,7 +160,7 @@ tree <- as.igraph.Node(tree, directed = T)
 tree_labels <- get_labels(tree)
 plot(tree, layout = layout.reingold.tilford(tree, root = 1), vertex.shape = tree_labels$node_shape, 
     vertex.label.color = tree_labels$vertex_label_color, vertex.size = 14, vertex.color = 'lightblue', edge.arrow.size = 0.3, 
-    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.6, main = labels$tree_model, vertex.label.cex = 0.70)
+    edge.label = tree_labels$arrow_lable, edge.label.color = 'black', edge.label.cex = 0.6, main = labels$tree_model, vertex.label.cex = 0.55)
 
 ```
 
