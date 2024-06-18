@@ -17,7 +17,8 @@
 #' If NULL, tries to extract the dataset from the model object.
 #' @param subSample Number of samples to draw from the original data for the empirical 
 #' partial dependence. If NULL, all the observations are used.
-#' @param mc.cores Number of cores to use for parallel computation.
+#' @param mc.cores Number of cores to use for parallel computation. 
+#' Parallel computing is only supported for unix.
 #' @return An object of class \code{partDependence} containing
 #' \item{preds_mean}{The average prediction for each value of the variable of interest.}
 #' \item{x_seq}{The sequence of values for the variable of interest.}
