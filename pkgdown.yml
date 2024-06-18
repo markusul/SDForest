@@ -2,10 +2,11 @@ pandoc: 3.1.11
 pkgdown: 2.0.9
 pkgdown_sha: ~
 articles:
+  Algorithm: Algorithm.html
   Runtime: Runtime.html
   SDForest: SDForest.html
   SDTree: SDTree.html
-last_built: 2024-06-18T12:44Z
+last_built: 2024-06-18T13:39Z
 urls:
   reference: https://markusul.github.io/SDForest/reference
   article: https://markusul.github.io/SDForest/articles
