@@ -1,6 +1,6 @@
 #' Spectral Deconfounded Random Forest
 #' 
-#' Estimate regression Random Forest using spectral deconfounding \insertCite{Ulmer}{SDForest}.
+#' Estimate regression Random Forest using spectral deconfounding.
 #' The spectral deconfounded Random Forest combines SDTrees in the same way, 
 #' as in the original Random Forest \insertCite{Breiman2001RandomForests}{SDForest}.
 #' The idea is to combine multiple regression trees into an ensemble in order to 
@@ -127,8 +127,9 @@
 #' # pruning of forest according to optimal out-of-bag performance
 #' fit <- prune(fit, cp = path$cp_min)
 #' 
-#' # partial functional dependence of y on the first causal parent
-#' dep <- partDependence(fit, sim_data$j[1])
+#' # partial functional dependence of y on the most important covariate
+#' most_imp <- which.max(fit$var_importance)
+#' dep <- partDependence(fit, most_imp)
 #' plot(dep, n_examples = 100)
 #' @export
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
