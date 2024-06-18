@@ -112,7 +112,7 @@ seem like a good first try and is also the default value in
 <code>rpart()</code> .</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">causal_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
-<span><span class="va">plain_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">plain_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span>, cp <span class="op">=</span><span class="op">)</span></span></code></pre></div>
 <p>Let us observe, what the different trees predict, by comparing the
 predictions to the causal function and the observed response. On top, we
 show the underlying causal step function <span class="math inline">\(f^0(X)\)</span> against the 5 covariates used for
@@ -143,7 +143,7 @@ deconfounded regression tree first splits with a few irrelevant
 covariates. Therefore, if an observation has <span class="math inline">\(X_{486} &gt; -0.9\)</span> or <span class="math inline">\(X_{430} \leq -2.7\)</span>, which has no meaning
 in the underlying function, no relevant split is left in the
 sub-tree.</p>
-<p><img src="SDTree_files/figure-html/plot_tree-1.png" width="700"></p>
+<p><img src="SDTree_files/figure-html/plot_tree-1.png" width="700"><img src="SDTree_files/figure-html/plot_tree-2.png" width="700"><img src="SDTree_files/figure-html/plot_tree-3.png" width="700"></p>
   </main>
 </div>
 
