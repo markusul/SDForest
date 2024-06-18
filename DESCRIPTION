@@ -28,7 +28,8 @@ Suggests:
     knitr,
     rmarkdown, 
     ranger,
-    qpdf
+    qpdf, 
+    igraph
 RdMacros: Rdpack
 Encoding: UTF-8
 RoxygenNote: 7.3.1

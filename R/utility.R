@@ -11,6 +11,8 @@
 #' @importFrom stats runif
 #' @importFrom stats sd
 #' @importFrom utils lsf.str
+#' @importFrom stats rbeta
+
 
 data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
   if(is.null(formula)){
