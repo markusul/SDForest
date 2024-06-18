@@ -2,7 +2,7 @@
 #' 
 #' Estimates a regression tree using spectral deconfounding. 
 #' A regression tree is part of the function class of step functions
-#' \eqn{f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m}, where ($R_m$) with 
+#' \eqn{f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}} c_m}, where (\eqn{R_m}) with 
 #' \eqn{m = 1, \ldots, M} are regions dividing the space of \eqn{\mathbb{R}^p} 
 #' into \eqn{M} rectangular parts. Each region has response level \eqn{c_m \in \mathbb{R}}.
 #' For the training data, we can write the step function as \eqn{f(\mathbf{X}) = \mathcal{P} c} 
