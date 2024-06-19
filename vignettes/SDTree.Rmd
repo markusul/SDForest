@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In the following, we compare the spectral deconfounded regression tree $f^{SDTree}(X)$ to the classical regression tree $f^{Tree}(X)$ [@Breiman2017ClassificationTree] using simulated data from a confounded process. We simulate the data similar to `simulate_data_nonlinear()` but with a random regression tree, i.e. step-function for the causal relationship $f(X)$.
+In the following, we compare the spectral deconfounded regression tree $f^{SDTree}(X)$ to the classical regression tree $f^{Tree}(X)$ [@Breiman2017ClassificationTrees] using simulated data from a confounded process. We simulate the data similar to `simulate_data_nonlinear()` but with a random regression tree, i.e. step-function for the causal relationship $f(X)$.
 
 ```{r sim}
 library(SDForest)
@@ -36,7 +36,7 @@ m <- 5
 dat <- simulate_data_step(q, p, n, m, make_tree = TRUE)
 ```
 
-Given the data, we can estimate both the deconfounded regression tree and the classical regression tree. Here we estimate both trees with the default parameters. One could choose, for example, the regularization parameter cp in a more principled way than just setting it to 0.01, e.g. `cvSDTree()` or `regPath.SDTree()`. But 0.01 seem like a good first try and is also the default value in `rpart()` [@Therneau2022Rpart:Trees].
+Given the data, we can estimate both the deconfounded regression tree and the classical regression tree. Here we estimate both trees with the default parameters. One could choose, for example, the regularization parameter cp in a more principled way than just setting it to 0.01, e.g. `cvSDTree()` or `regPath.SDTree()`. But 0.01 seem like a good first try and is also the default value in [rpart](https://cran.r-project.org/web/packages/rpart/index.html) [@Therneau2022Rpart:Trees].
 
 ```{r fit}
 causal_tree <- SDTree(x = dat$X, y = dat$Y)
