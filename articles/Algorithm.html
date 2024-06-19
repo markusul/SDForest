@@ -86,19 +86,26 @@
 <span class="math inline">\(f(X) = \sum_{m = 1}^M 1_{\{X \in R_m\}}
 c_m\)</span>, where (<span class="math inline">\(R_m\)</span>) with
 <span class="math inline">\(m = 1, \ldots, M\)</span> are regions
-dividing the space of <span class="math inline">\(\mathbb{R}^p\)</span>
+dividing the space <span class="math inline">\(\mathbb{R}^p\)</span>
 into <span class="math inline">\(M\)</span> rectangular parts. Each
 region has response level <span class="math inline">\(c_m \in
 \mathbb{R}\)</span>. For the training data, we can write the step
 function as <span class="math inline">\(f(\mathbf{X}) = \mathcal{P}
 c\)</span> where <span class="math inline">\(\mathcal{P} \in \{0, 1\}^{n
 \times M}\)</span> is an indicator matrix encoding to which region an
-observation belongs and <span class="math inline">\(c \in
+observation belongs to and <span class="math inline">\(c \in
 \mathbb{R}^M\)</span> is a vector containing the levels corresponding to
-the different regions. This function then minimizes <span class="math display">\[(\hat{\mathcal{P}}, \hat{c}) =
-\text{argmin}_{\mathcal{P}' \in \{0, 1\}^{n \times M}, c' \in
-\mathbb{R}^ {M}} \frac{||Q(\mathbf{Y} - \mathcal{P'}
-c')||_2^2}{n}\]</span> We find <span class="math inline">\(\hat{\mathcal{P}}\)</span> by using the tree
+the different regions. An observation can only belong to one region
+meaning only one entry per row in <span class="math inline">\(\mathcal{P}\)</span> can be 1: <span class="math inline">\(\text{rowSums}(\mathcal{P}) = 1\)</span>.</p>
+<p>This goal is to find</p>
+<p><span class="math display">\[(\hat{\mathcal{P}}, \hat{c}) =
+\text{argmin}_{\substack{\mathcal{P}' \in \{0, 1\}^{n \times M}, \
+c' \in \mathbb{R}^ {M} \\ \text{rowSums}(\mathcal{P'}) = 1}}
+\frac{||Q(\mathbf{Y} - \mathcal{P'} c')||_2^2}{n}\]</span> where
+<span class="math inline">\(Q\)</span> is a spectral transformation
+(<span class="citation">Guo, Ćevid, and Bühlmann (2022)</span>, <span class="citation">Ćevid, Bühlmann, and Meinshausen (2020)</span>).</p>
+<p>Since it is unfeasible to iterate over all possible partitions <span class="math inline">\(\mathcal{P}\)</span>, we try to find a reasonable
+<span class="math inline">\(\hat{\mathcal{P}}\)</span> by using the tree
 structure and repeated splitting of the leaves, similar to the original
 cart algorithm <span class="citation">(Breiman et al. 2017)</span>.
 Since comparing all possibilities for <span class="math inline">\(\mathcal{P}\)</span> is impossible, we let a tree
@@ -200,6 +207,16 @@ in step 2.</p>
 Breiman, Leo, Jerome H. Friedman, Richard A. Olshen, and Charles J.
 Stone. 2017. <em><span>Classification And Regression Trees</span></em>.
 Routledge. <a href="https://doi.org/10.1201/9781315139470" class="external-link">https://doi.org/10.1201/9781315139470</a>.
+</div>
+<div id="ref-Cevid2020SpectralModels" class="csl-entry">
+Ćevid, Domagoj, Peter Bühlmann, and Nicolai Meinshausen. 2020.
+<span>“<span class="nocase">Spectral Deconfounding via Perturbed Sparse
+Linear Models</span>.”</span> <em>J. Mach. Learn. Res.</em> 21 (1).
+</div>
+<div id="ref-Guo2022DoublyConfounding" class="csl-entry">
+Guo, Zijian, Domagoj Ćevid, and Peter Bühlmann. 2022. <span>“<span class="nocase">Doubly debiased lasso: High-dimensional inference under
+hidden confounding</span>.”</span> <em>The Annals of Statistics</em> 50
+(3). <a href="https://doi.org/10.1214/21-AOS2152" class="external-link">https://doi.org/10.1214/21-AOS2152</a>.
 </div>
 </div>
 </div>

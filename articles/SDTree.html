@@ -84,10 +84,10 @@
     
 <p>In the following, we compare the spectral deconfounded regression
 tree <span class="math inline">\(f^{SDTree}(X)\)</span> to the classical
-regression tree <span class="math inline">\(f^{Tree}(X)\)</span> using
-simulated data from an confounded process. We simulate the data similar
-to <code><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear()</a></code> but with a random regression
-tree, i.e. step-function for the causal relationship <span class="math inline">\(f(X)\)</span>.</p>
+regression tree <span class="math inline">\(f^{Tree}(X)\)</span> <span class="citation">(<strong>Breiman2017ClassificationTree?</strong>)</span>
+using simulated data from a confounded process. We simulate the data
+similar to <code><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear()</a></code> but with a random
+regression tree, i.e. step-function for the causal relationship <span class="math inline">\(f(X)\)</span>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
 <span></span>
@@ -111,7 +111,7 @@ default parameters. One could choose, for example, the regularization
 parameter cp in a more principled way than just setting it to 0.01,
 e.g. <code><a href="../reference/cvSDTree.html">cvSDTree()</a></code> or <code><a href="../reference/regPath.SDTree.html">regPath.SDTree()</a></code>. But 0.01
 seem like a good first try and is also the default value in
-<code>rpart()</code> .</p>
+<code>rpart()</code> <span class="citation">(<strong>Therneau2022Rpart:Trees?</strong>)</span>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">causal_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
 <span><span class="va">plain_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span>, cp <span class="op">=</span><span class="op">)</span></span></code></pre></div>
@@ -129,15 +129,17 @@ the true underlying random regression tree, and below are the two tree
 estimates. In the middle is the spectral deconfounded regression tree
 and on the bottom is the plain classical regression tree. The nodes that
 choose a covariate for a split, that is also used in the true underlying
-causal function, are marked in <span style="color: #b0193c;">text</span>. Besides <span class="math inline">\(X_{320}\)</span>, the spectral deconfounded
-regression tree uses all covariates for splits with a causal
-relationship with <span class="math inline">\(Y\)</span>. Since <span class="math inline">\(X_{584}\)</span> only splits three observations
-into the node with a response level of 49.6, it seems reasonable that
-the noise and confounding in the observed data overshadow this effect.
-The order of the splits in the spectral deconfounded regression tree is
-partially different from the true function. <span class="math inline">\(X_{369}\)</span> is used too early resulting in
-having to split with <span class="math inline">\(X_{250}\)</span> and
-<span class="math inline">\(X_{89}\)</span> in both following subtrees.
+causal function, are marked in <span style="color: #b0193c;">red</span>.
+Besides <span class="math inline">\(X_{320}\)</span>, the spectral
+deconfounded regression tree uses all covariates for splits with a
+causal relationship with <span class="math inline">\(Y\)</span>. Since
+<span class="math inline">\(X_{584}\)</span> only splits three
+observations into the node with a response level of 49.6, it seems
+reasonable that the noise and confounding in the observed data
+overshadow this effect. The order of the splits in the spectral
+deconfounded regression tree is partially different from the true
+function. <span class="math inline">\(X_{369}\)</span> is used too early
+resulting in having to split with <span class="math inline">\(X_{250}\)</span> and <span class="math inline">\(X_{89}\)</span> in both following subtrees.
 Estimating the partitions using no deconfounding results in the
 regression tree on the bottom right. Here, we only find two of the
 causal relevant covariates. Especially problematic is that the not

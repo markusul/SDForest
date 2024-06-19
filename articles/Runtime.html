@@ -86,12 +86,11 @@
 trees and random forests to minimize the spectral objective:</p>
 <p><span class="math display">\[\hat{f} = \text{argmin}_{f' \in
 \mathcal{F}} \frac{||Q(\mathbf{Y} -
-f'(\mathbf{X}))||_2^2}{n}\]</span> With the spectral transformation,
-for every potential split, we have to multiply a n times n matrix with a
-vector of size n and calculate a scalar product of two vectors of size
-n. The algorithm gets slow, especially for large n. Furthermore, the
-package is fully written in for now. There might be a faster cpp version
-in the future, but for now, there are a few ways to increase the
+f'(\mathbf{X}))||_2^2}{n}\]</span> The algorithm
+<code><a href="../articles/Algorithm.html">vignette("Algorithm")</a></code> gets slow, especially for large
+n. Furthermore, the package is fully written in <span class="citation">R
+Core Team (2024)</span> for now. There might be a faster cpp version in
+the future, but for now, there are a few ways to increase the
 computations if you apply the methods to larger data sets.</p>
 <div class="section level2">
 <h2 id="computations">Computations<a class="anchor" aria-label="anchor" href="#computations"></a>
@@ -159,6 +158,11 @@ decrease performance.</p>
 Lobato-Fernandez, Cesar, Juan A.Ferrer-Bonsoms, and Angel Rubio. 2024.
 <span>“<span class="nocase">GPUmatrix: Basic Linear Algebra with
 GPU</span>.”</span> <a href="https://CRAN.R-project.org/package=GPUmatrix" class="external-link">https://CRAN.R-project.org/package=GPUmatrix</a>.
+</div>
+<div id="ref-RCoreTeam2024R:Computing" class="csl-entry">
+R Core Team. 2024. <span>“<span class="nocase">R: A Language and
+Environment for Statistical Computing</span>.”</span> Vienna, Austria.
+<a href="https://www.R-project.org/" class="external-link">https://www.R-project.org/</a>.
 </div>
 </div>
 </div>
