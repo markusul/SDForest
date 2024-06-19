@@ -14,7 +14,7 @@
 #' of the covariates is available for each split. Before each split, 
 #' we sample \eqn{\text{mtry} \leq p} from all the covariates and choose the one 
 #' that reduces the loss the most only from those.
-#' \deqn{\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t(X^{boot})}
+#' \deqn{\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t^{boot}(X)}
 #' @references
 #'  \insertAllCited{}
 #' @author Markus Ulmer
