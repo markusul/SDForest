@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In the following, we compare the spectral deconfounded regression tree $f^{SDTree}(X)$ to the classical regression tree $f^{Tree}(X)$ \cite{Breiman2017ClassificationTree} using simulated data from an confounded process. We simulate the data similar to `simulate_data_nonlinear()` but with a random regression tree, i.e. step-function for the causal relationship $f(X)$.
+In the following, we compare the spectral deconfounded regression tree $f^{SDTree}(X)$ to the classical regression tree $f^{Tree}(X)$ [@Breiman2017ClassificationTree] using simulated data from a confounded process. We simulate the data similar to `simulate_data_nonlinear()` but with a random regression tree, i.e. step-function for the causal relationship $f(X)$.
 
 ```{r sim}
 library(SDForest)
@@ -36,7 +36,7 @@ m <- 5
 dat <- simulate_data_step(q, p, n, m, make_tree = TRUE)
 ```
 
-Given the data, we can estimate both the deconfounded regression tree and the classical regression tree. Here we estimate both trees with the default parameters. One could choose, for example, the regularization parameter cp in a more principled way than just setting it to 0.01, e.g. `cvSDTree()` or `regPath.SDTree()`. But 0.01 seem like a good first try and is also the default value in `rpart()` \cite{Therneau2022Rpart:Trees}.
+Given the data, we can estimate both the deconfounded regression tree and the classical regression tree. Here we estimate both trees with the default parameters. One could choose, for example, the regularization parameter cp in a more principled way than just setting it to 0.01, e.g. `cvSDTree()` or `regPath.SDTree()`. But 0.01 seem like a good first try and is also the default value in `rpart()` [@Therneau2022Rpart:Trees].
 
 ```{r fit}
 causal_tree <- SDTree(x = dat$X, y = dat$Y)
@@ -79,7 +79,7 @@ gg_res <- ggplot(results, aes(x = X, y = pred)) +
 gg_res
 ```
 
-Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and below are the two tree estimates. In the middle is the spectral deconfounded regression tree and on the bottom is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">text</span>. Besides $X_{320}$, the spectral deconfounded regression tree uses all covariates for splits with a causal relationship with $Y$. Since $X_{584}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the spectral deconfounded regression tree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom right. Here, we only find two of the causal relevant covariates. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > -0.9$ or $X_{430} \leq -2.7$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
+Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and below are the two tree estimates. In the middle is the spectral deconfounded regression tree and on the bottom is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">red</span>. Besides $X_{320}$, the spectral deconfounded regression tree uses all covariates for splits with a causal relationship with $Y$. Since $X_{584}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the spectral deconfounded regression tree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom right. Here, we only find two of the causal relevant covariates. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > -0.9$ or $X_{430} \leq -2.7$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
 
 ```{r plot_tree,  echo=FALSE, message=FALSE}
 library(igraph)

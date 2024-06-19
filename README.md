@@ -13,8 +13,8 @@ estimating non-linear sparse causal effects in the presence of
 unobserved confounding. SDForest has been shown to be a nice estimate
 for the true causal function in such settings, if we observe many
 covariates, e.g. high-dimensional setting, and we have fairly sparse
-confounding. (**Ulmer?**), (Guo, Ćevid, and Bühlmann 2022), (Ćevid,
-Bühlmann, and Meinshausen 2020)
+confounding. (Guo, Ćevid, and Bühlmann (2022), Ćevid, Bühlmann, and
+Meinshausen (2020))
 
 ![](man/figures/confModel.png)
 

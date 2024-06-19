@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 For this package, we have written methods to estimate regressions trees and random forests to minimize the spectral objective:
 
 $$\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf{X}))||_2^2}{n}$$
-With the spectral transformation, for every potential split, we have to multiply a n times n matrix with a vector of size n and calculate a scalar product of two vectors of size n. The algorithm gets slow, especially for large n. Furthermore, the package is fully written in \R for now. There might be a faster cpp version in the future, but for now, there are a few ways to increase the computations if you apply the methods to larger data sets.
+The algorithm `vignette("Algorithm")` gets slow, especially for large n. Furthermore, the package is fully written in @RCoreTeam2024R:Computing for now. There might be a faster cpp version in the future, but for now, there are a few ways to increase the computations if you apply the methods to larger data sets.
 
 ## Computations
 

@@ -21,7 +21,7 @@ Sys.setenv(OPENSSL_CONF="/dev/null")
 [![R-CMD-check](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. [@Ulmer], [@Guo2022DoublyConfounding], [@Cevid2020SpectralModels]
+Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. (@Guo2022DoublyConfounding, @Cevid2020SpectralModels)
 
 ![](man/figures/confModel.png)
 
