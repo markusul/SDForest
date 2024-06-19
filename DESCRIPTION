@@ -2,9 +2,11 @@ Package: SDForest
 Title: Spectrally Deconfounded Random Forest
 Version: 0.1
 Date: 2024-05-31
-Authors@R: person("Markus", "Ulmer", , "markus.ulmer@stat.math.ethz.ch", role =
-         c("aut", "cre"), comment = c(ORCID = "0000-0001-7783-8475"))
-Maintainer: Markus Ulmer <markus.ulmer@stat.math.ethz.ch>
+Authors@R: c(
+  person("Markus", "Ulmer", email = "markus.ulmer@stat.math.ethz.ch", 
+         role = c("aut", "cre"), comment = c(ORCID = "0000-0001-7783-8475")), 
+  person("Cyrill", "Scheidegger", role = "aut")
+         
 Description: Estimation and analyzation of sparse non-linear causal
     functions in presence of unobserved confounding.
 License: GPL-3 + file LICENSE
