@@ -84,10 +84,10 @@
     
 <p>In the following, we compare the spectral deconfounded regression
 tree <span class="math inline">\(f^{SDTree}(X)\)</span> to the classical
-regression tree <span class="math inline">\(f^{Tree}(X)\)</span> <span class="citation">(<strong>Breiman2017ClassificationTree?</strong>)</span>
-using simulated data from a confounded process. We simulate the data
-similar to <code><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear()</a></code> but with a random
-regression tree, i.e. step-function for the causal relationship <span class="math inline">\(f(X)\)</span>.</p>
+regression tree <span class="math inline">\(f^{Tree}(X)\)</span> <span class="citation">(Breiman et al. 2017)</span> using simulated data from
+a confounded process. We simulate the data similar to
+<code><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear()</a></code> but with a random regression
+tree, i.e. step-function for the causal relationship <span class="math inline">\(f(X)\)</span>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
 <span></span>
@@ -110,8 +110,8 @@ and the classical regression tree. Here we estimate both trees with the
 default parameters. One could choose, for example, the regularization
 parameter cp in a more principled way than just setting it to 0.01,
 e.g. <code><a href="../reference/cvSDTree.html">cvSDTree()</a></code> or <code><a href="../reference/regPath.SDTree.html">regPath.SDTree()</a></code>. But 0.01
-seem like a good first try and is also the default value in
-<code>rpart()</code> <span class="citation">(<strong>Therneau2022Rpart:Trees?</strong>)</span>.</p>
+seem like a good first try and is also the default value in <a href="https://cran.r-project.org/web/packages/rpart/index.html" class="external-link">rpart</a>
+<span class="citation">(Therneau and Atkinson 2022)</span>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">causal_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
 <span><span class="va">plain_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span>, cp <span class="op">=</span><span class="op">)</span></span></code></pre></div>
@@ -148,6 +148,17 @@ covariates. Therefore, if an observation has <span class="math inline">\(X_{486}
 in the underlying function, no relevant split is left in the
 sub-tree.</p>
 <p><img src="SDTree_files/figure-html/plot_tree-1.png" width="700"><img src="SDTree_files/figure-html/plot_tree-2.png" width="700"><img src="SDTree_files/figure-html/plot_tree-3.png" width="700"></p>
+<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
+<div id="ref-Breiman2017ClassificationTrees" class="csl-entry">
+Breiman, Leo, Jerome H. Friedman, Richard A. Olshen, and Charles J.
+Stone. 2017. <em><span>Classification And Regression Trees</span></em>.
+Routledge. <a href="https://doi.org/10.1201/9781315139470" class="external-link">https://doi.org/10.1201/9781315139470</a>.
+</div>
+<div id="ref-Therneau2022Rpart:Trees" class="csl-entry">
+Therneau, Terry, and Beth Atkinson. 2022. <span>“<span class="nocase">rpart: Recursive Partitioning and Regression
+Trees</span>.”</span> <a href="https://CRAN.R-project.org/package=rpart" class="external-link">https://CRAN.R-project.org/package=rpart</a>.
+</div>
+</div>
   </main>
 </div>
 
