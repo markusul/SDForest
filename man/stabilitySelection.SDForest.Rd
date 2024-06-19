@@ -23,7 +23,7 @@ for each complexity parameter.}
 }
 \description{
 This function calculates the stability selection of an SDForest
-\insertCite{Meinshausen2010StabilitySelectionb}{SDForest}.
+\insertCite{Meinshausen2010StabilitySelection}{SDForest}.
 Stability selection is calculated as the fraction of trees in the forest
 that select a variable for a split at each complexity parameter.
 }
