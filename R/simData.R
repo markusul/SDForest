@@ -19,17 +19,18 @@
 #' @param p number of covariates in X
 #' @param n number of observations
 #' @param m number of covariates with a causal effect on Y
+#' @param K number of fourier basis functions K \eqn{K \in \mathbb{N}}, e.g. complexity of causal function
 #' @param eff the number of affected covariates in X by the confounding, if NULL all covariates are affected
 #' @return a list containing the simulated data:
 #' \item{X}{a matrix of covariates}
 #' \item{Y}{a vector of responses}
 #' \item{f_X}{a vector of the true function f(X)}
 #' \item{j}{the indices of the causal covariates in X}
-#' \item{beta}{the parameter vector for the function f(X)}, see \code{\link{f_four}}
+#' \item{beta}{the parameter vector for the function f(X), see \code{\link{f_four}}}
 #' \item{H}{the matrix of confounding covariates}
 #' @seealso \code{\link{f_four}}
 #' @export 
-simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
+simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL){
   #simulate data with confounding and non-linear f_X
   # q: number of confounding covariates in H
   # p: number of covariates in X
@@ -37,7 +38,7 @@ simulate_data_nonlinear <- function(q, p, n, m, eff = NULL){
   # m: number of covariates with a causal effect on Y
 
   # complexity of f_X (number of fourier basis functions) K
-  complexity <- 2
+  complexity <- K
   # random parameter for fourier basis
   beta <- runif(m * complexity * 2, -1, 1)
 
