@@ -249,7 +249,9 @@ The tree contains the information about all the splits and the resulting estimat
 <dd><p>Names of the covariates in the training data.</p></dd>
 
 <dt>var_importance</dt>
-<dd><p>Variable importance of the covariates. see <code><a href="varImp.SDTree.html">varImp.SDTree</a></code></p></dd>
+<dd><p>Variable importance of the covariates.
+The variable importance is calculated as the sum of the decrease in the loss
+function resulting from all splits that use this covariate.</p></dd>
 
 </dl></div>
     <div class="section level2">

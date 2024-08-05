@@ -270,7 +270,10 @@ proposed at each node for each covariate.</p></dd>
 <dd><p>Out-of-bag loss using the spectral transformation.</p></dd>
 
 <dt>var_importance</dt>
-<dd><p>Variable importance.</p></dd>
+<dd><p>Variable importance.
+The variable importance is calculated as the sum of the decrease in the loss
+function resulting from all splits that use this covariate for each tree.
+The mean of the variable importance of all trees result in the variable importance for the forest.</p></dd>
 
 <dt>oob_ind</dt>
 <dd><p>List of indices of trees that did not contain the observation in the training set.</p></dd>
