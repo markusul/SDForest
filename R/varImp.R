@@ -4,8 +4,8 @@ varImp <- function(object) {UseMethod("varImp")}
 #' Extract variable importance of an SDTree
 #' 
 #' This function extracts the variable importance of an SDTree. 
-#' The variable importance is calculated as the sum of the decrease 
-#' in the loss function resulting from all splits that use the variable.
+#' The variable importance is calculated as the sum of the decrease in the loss 
+#' function resulting from all splits that use this covariate.
 #' @author Markus Ulmer
 #' @param object an SDTree object
 #' @return A named vector of variable importance
@@ -34,8 +34,9 @@ varImp.SDTree <- function(object){
 #' Extract variable importance of an SDForest
 #' 
 #' This function extracts the variable importance of an SDForest.
-#' The variable importance is calculated as the mean of the variable importance
-#' of all trees in the forest.
+#' The variable importance is calculated as the sum of the decrease in the loss function 
+#' resulting from all splits that use a covariate for each tree. 
+#' The mean of the variable importance of all trees results in the variable importance for the forest.
 #' @author Markus Ulmer
 #' @param object an SDForest object
 #' @return A named vector of variable importance

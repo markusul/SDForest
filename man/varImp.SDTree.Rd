@@ -14,8 +14,8 @@ A named vector of variable importance
 }
 \description{
 This function extracts the variable importance of an SDTree. 
-The variable importance is calculated as the sum of the decrease 
-in the loss function resulting from all splits that use the variable.
+The variable importance is calculated as the sum of the decrease in the loss 
+function resulting from all splits that use this covariate.
 }
 \examples{
 data(iris)

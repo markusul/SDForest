@@ -70,7 +70,9 @@
 #' \item{tree}{The estimated tree of class \code{Node} from \insertCite{Glur2023Data.tree:Structure}{SDForest}. 
 #' The tree contains the information about all the splits and the resulting estimates.}
 #' \item{var_names}{Names of the covariates in the training data.}
-#' \item{var_importance}{Variable importance of the covariates. see \code{\link{varImp.SDTree}}}
+#' \item{var_importance}{Variable importance of the covariates. 
+#' The variable importance is calculated as the sum of the decrease in the loss 
+#' function resulting from all splits that use this covariate.}
 #' @seealso \code{\link{simulate_data_nonlinear}}, \code{\link{regPath.SDTree}}, 
 #' \code{\link{prune.SDTree}}, \code{\link{partDependence}}
 #' @examples

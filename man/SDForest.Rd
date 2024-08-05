@@ -116,7 +116,10 @@ Object of class \code{SDForest} containing:
 \item{var_names}{Names of the covariates.}
 \item{oob_loss}{Out-of-bag loss. MSE}
 \item{oob_SDloss}{Out-of-bag loss using the spectral transformation.}
-\item{var_importance}{Variable importance.}
+\item{var_importance}{Variable importance.
+The variable importance is calculated as the sum of the decrease in the loss 
+function resulting from all splits that use this covariate for each tree. 
+The mean of the variable importance of all trees result in the variable importance for the forest.}
 \item{oob_ind}{List of indices of trees that did not contain the observation in the training set.}
 \item{oob_predictions}{Out-of-bag predictions.}
 If \code{return_data} is \code{TRUE} the following are also returned:
