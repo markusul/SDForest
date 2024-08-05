@@ -26,6 +26,10 @@ You can install the development version of SDForest from
 ``` r
 # install.packages("devtools")
 devtools::install_github("markusul/SDForest")
+
+# or
+# install.packages('pak')
+# pak::pkg_install('markusul/SDForest')
 ```
 
 ## Usage
