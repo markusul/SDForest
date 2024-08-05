@@ -4,7 +4,7 @@
 \alias{simulate_data_nonlinear}
 \title{Simulate data with linear confounding and non-linear causal effect}
 \usage{
-simulate_data_nonlinear(q, p, n, m, eff = NULL)
+simulate_data_nonlinear(q, p, n, m, K = 2, eff = NULL)
 }
 \arguments{
 \item{q}{number of confounding covariates in H}
@@ -15,6 +15,8 @@ simulate_data_nonlinear(q, p, n, m, eff = NULL)
 
 \item{m}{number of covariates with a causal effect on Y}
 
+\item{K}{number of fourier basis functions K \eqn{K \in \mathbb{N}}, e.g. complexity of causal function}
+
 \item{eff}{the number of affected covariates in X by the confounding, if NULL all covariates are affected}
 }
 \value{
@@ -23,7 +25,7 @@ a list containing the simulated data:
 \item{Y}{a vector of responses}
 \item{f_X}{a vector of the true function f(X)}
 \item{j}{the indices of the causal covariates in X}
-\item{beta}{the parameter vector for the function f(X)}, see \code{\link{f_four}}
+\item{beta}{the parameter vector for the function f(X), see \code{\link{f_four}}}
 \item{H}{the matrix of confounding covariates}
 }
 \description{
