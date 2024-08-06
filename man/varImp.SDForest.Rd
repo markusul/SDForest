@@ -15,9 +15,9 @@ A named vector of variable importance
 }
 \description{
 This function extracts the variable importance of an SDForest.
-The variable importance is calculated as the sum of the decrease in the loss 
-function resulting from all splits that use this covariate for each tree. 
-The mean of the variable importance of all trees result in the variable importance for the forest.
+The variable importance is calculated as the sum of the decrease in the loss function 
+resulting from all splits that use a covariate for each tree. 
+The mean of the variable importance of all trees results in the variable importance for the forest.
 }
 \examples{
 data(iris)
