@@ -21,6 +21,8 @@
 #' @param m number of covariates with a causal effect on Y
 #' @param K number of fourier basis functions K \eqn{K \in \mathbb{N}}, e.g. complexity of causal function
 #' @param eff the number of affected covariates in X by the confounding, if NULL all covariates are affected
+#' @param fixEff if eff is smaller than p: If fixEff = TRUE, the causal parents 
+#' are always affected by confounding if fixEff = FALSE, affected covariates are chosen completely at random.
 #' @return a list containing the simulated data:
 #' \item{X}{a matrix of covariates}
 #' \item{Y}{a vector of responses}
@@ -30,18 +32,16 @@
 #' \item{H}{the matrix of confounding covariates}
 #' @seealso \code{\link{f_four}}
 #' @export 
-simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL){
-  #simulate data with confounding and non-linear f_X
-  # q: number of confounding covariates in H
-  # p: number of covariates in X
-  # n: number of observations
-  # m: number of covariates with a causal effect on Y
+simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL, fixEff = FALSE){
 
   # complexity of f_X (number of fourier basis functions) K
   complexity <- K
   # random parameter for fourier basis
   beta <- runif(m * complexity * 2, -1, 1)
 
+  # random sparse subset of covariates in X
+  js <- sample(1:p, m)
+  
   # random confounding covariates H
   H <- matrix(rnorm(n * q, 0, 1), nrow = n)
 
@@ -49,10 +49,16 @@ simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL){
   Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
 
   if(!is.null(eff)){
+    if(eff > p | eff < 0) stop('eff must be smaller than p or NULL')
+    
     non_effected <- p - eff
-    if(non_effected <= 0) stop('eff must be smaller than p or NULL')
-
-    Gamma[, sample(1:p, non_effected)] <- 0
+    
+    if(fixEff){
+      if(eff < m) stop('Cannot fix confounding on causal parents if eff < m!')
+      Gamma[, sample(c(1:p)[-js], non_effected)] <- 0
+    }else{
+      Gamma[, sample(1:p, non_effected)] <- 0
+    }
   }
 
   # random coefficient vector delta
@@ -66,9 +72,6 @@ simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL){
   }else{
     X <- H %*% Gamma + E
   }
-  
-  # random sparse subset of covariates in X
-  js <- sample(1:p, m)
 
   # generate f_X
   f_X <- apply(X, 1, function(x) f_four(x, beta, js))
