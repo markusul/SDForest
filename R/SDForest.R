@@ -162,14 +162,15 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(gpu && (mc.cores > 1)) 
     warning('gpu and multicore cannot be used together, 
             no gpu is not used for tree estimations')
-  #if(!is.null(leave_out_ind) && !is.null(leave_out_envs)) 
-  #  stop('leave_out_ind and leave_out_envs cannot be used together')
-  #if(!is.null(leave_out_ind) && any(leave_out_ind > n, leave_out_ind < 1)) 
-  #  stop('leave_out_ind must be smaller than n')
-  #if(!is.null(leave_out_envs) && length(leave_out_envs) != n) 
-  #  stop('leave_out_envs must have length n')
-  #if(!is.null(leave_out_envs) && any(is.null(each_trees), each_trees < 1)) 
-  #  stop('each_trees must be larger than 0 if leave_out_envs is used')
+
+  if(!is.null(leave_out_ind) && any(leave_out_ind >= n, leave_out_ind < 1)) 
+    stop('leave_out_ind must be smaller than n')
+  if(!is.null(envs) && length(envs) != n) 
+    stop('envs must have length n')
+  if(!is.null(envs) && !is.null(leave_envs_out_trees) && !is.null(envs_trees))
+    stop('leave_envs_out_trees and envs_trees cannot be used together')
+  if(!is.null(envs) && !(all(!is.null(leave_envs_out_trees), leave_envs_out_trees > 0) | all(!is.null(envs_trees), envs_trees > 0)))
+    stop('either leave_envs_out_trees or envs_trees must be provided larger than 0')
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
@@ -199,12 +200,31 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # bootstrap samples
   #TODO: add support for stratified fitting
+
+# @param envs Vector of environments which can be used for stratified tree fitting.
+# NOT SUPPORTED YET
+# @param leave_envs_out_trees Number of trees that should be estimated while leaving
+# one of the environments out. Results in number of environments times number of trees.
+# NOT SUPPORTED YET
+# @param envs_trees Number of trees that should be estimated for each environment.
+# Results in number of environments times number of trees.
+# NOT SUPPORTED YET
+
   all_ind <- 1:n
   if(!is.null(leave_out_ind)){
     all_ind <- all_ind[-leave_out_ind]
+    if(!is.null(envs)){
+      envs <- envs[-leave_out_ind]
+    }
   }
-  ind <- lapply(1:nTree, function(x)
-    sample(all_ind, min(length(all_ind), max_size), replace = TRUE))
+  
+  if(is.null(envs)){
+    ind <- lapply(1:nTree, function(x)
+      sample(all_ind, min(length(all_ind), max_size), replace = TRUE))
+  }else{
+    ind <- lapply(1:nTree, function(x)
+      sample(all_ind, min(length(all_ind), max_size), replace = TRUE))   
+  }
   
   if(mc.cores > 1){
     if(locatexec::is_unix()){
