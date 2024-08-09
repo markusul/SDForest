@@ -33,7 +33,6 @@
 #' @seealso \code{\link{f_four}}
 #' @export 
 simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL, fixEff = FALSE){
-
   # complexity of f_X (number of fourier basis functions) K
   complexity <- K
   # random parameter for fourier basis
