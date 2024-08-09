@@ -26,8 +26,8 @@ SDForest(
   mem_size = 1e+07,
   leave_out_ind = NULL,
   envs = NULL,
-  leave_envs_out_trees = NULL,
-  envs_trees = NULL,
+  nTree_leave_out = NULL,
+  nTree_env = NULL,
   max_candidates = 100
 )
 }
@@ -95,16 +95,14 @@ the memory is not sufficient or the gpu is to small.}
 
 \item{leave_out_ind}{Indices of observations that should not be used for training.}
 
-\item{envs}{Vector of environments which can be used for stratified tree fitting.
-NOT SUPPORTED YET}
+\item{envs}{Vector of environments of class \code{factor} 
+which can be used for stratified tree fitting.}
 
-\item{leave_envs_out_trees}{Number of trees that should be estimated while leaving
-one of the environments out. Results in number of environments times number of trees.
-NOT SUPPORTED YET}
+\item{nTree_leave_out}{Number of trees that should be estimated while leaving
+one of the environments out. Results in number of environments times number of trees.}
 
-\item{envs_trees}{Number of trees that should be estimated for each environment.
-Results in number of environments times number of trees.
-NOT SUPPORTED YET}
+\item{nTree_env}{Number of trees that should be estimated for each environment.
+Results in number of environments times number of trees.}
 
 \item{max_candidates}{Maximum number of split points that are 
 proposed at each node for each covariate.}
@@ -126,6 +124,17 @@ If \code{return_data} is \code{TRUE} the following are also returned:
 \item{X}{Matrix of covariates.}
 \item{Y}{Vector of responses.}
 \item{Q}{Spectral transformation matrix.}
+If \code{envs} is provided the following are also returned:
+\item{envs}{Vector of environments.}
+\item{nTree_env}{Number of trees for each environment.}
+\item{ooEnv_ind}{List of indices of trees that did not contain the observation or the same environment in the training set
+for each observation.}
+\item{ooEnv_loss}{Out-of-bag loss using only trees that did not contain the observation or the same environment.}
+\item{ooEnv_SDloss}{Out-of-bag loss using the spectral transformation and only trees that did not contain the observation
+or the same environment.}
+\item{ooEnv_predictions}{Out-of-bag predictions using only trees that did not contain the observation or the same environment.}
+\item{nTree_leave_out}{If environments are left out, the environment for each tree, that was left out.}
+\item{nTree_env}{If environments are provided, the environment each tree is trained with.}
 }
 \description{
 Estimate regression Random Forest using spectral deconfounding.
