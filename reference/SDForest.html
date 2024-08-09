@@ -113,8 +113,8 @@ $$\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t^{boot}(X)
 <span>  mem_size <span class="op">=</span> <span class="fl">1e+07</span>,</span>
 <span>  leave_out_ind <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  envs <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  leave_envs_out_trees <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  envs_trees <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nTree_leave_out <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  nTree_env <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  max_candidates <span class="op">=</span> <span class="fl">100</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -230,20 +230,18 @@ the memory is not sufficient or the gpu is to small.</p></dd>
 
 
 <dt id="arg-envs">envs<a class="anchor" aria-label="anchor" href="#arg-envs"></a></dt>
-<dd><p>Vector of environments which can be used for stratified tree fitting.
-NOT SUPPORTED YET</p></dd>
+<dd><p>Vector of environments of class <code>factor</code>
+which can be used for stratified tree fitting.</p></dd>
 
 
-<dt id="arg-leave-envs-out-trees">leave_envs_out_trees<a class="anchor" aria-label="anchor" href="#arg-leave-envs-out-trees"></a></dt>
+<dt id="arg-ntree-leave-out">nTree_leave_out<a class="anchor" aria-label="anchor" href="#arg-ntree-leave-out"></a></dt>
 <dd><p>Number of trees that should be estimated while leaving
-one of the environments out. Results in number of environments times number of trees.
-NOT SUPPORTED YET</p></dd>
+one of the environments out. Results in number of environments times number of trees.</p></dd>
 
 
-<dt id="arg-envs-trees">envs_trees<a class="anchor" aria-label="anchor" href="#arg-envs-trees"></a></dt>
+<dt id="arg-ntree-env">nTree_env<a class="anchor" aria-label="anchor" href="#arg-ntree-env"></a></dt>
 <dd><p>Number of trees that should be estimated for each environment.
-Results in number of environments times number of trees.
-NOT SUPPORTED YET</p></dd>
+Results in number of environments times number of trees.</p></dd>
 
 
 <dt id="arg-max-candidates">max_candidates<a class="anchor" aria-label="anchor" href="#arg-max-candidates"></a></dt>
@@ -290,6 +288,33 @@ The mean of the variable importance of all trees results in the variable importa
 
 <dt>Q</dt>
 <dd><p>Spectral transformation matrix.</p></dd>
+
+</dl><p>If <code>envs</code> is provided the following are also returned:</p>
+<dl><dt>envs</dt>
+<dd><p>Vector of environments.</p></dd>
+
+<dt>nTree_env</dt>
+<dd><p>Number of trees for each environment.</p></dd>
+
+<dt>ooEnv_ind</dt>
+<dd><p>List of indices of trees that did not contain the observation or the same environment in the training set
+for each observation.</p></dd>
+
+<dt>ooEnv_loss</dt>
+<dd><p>Out-of-bag loss using only trees that did not contain the observation or the same environment.</p></dd>
+
+<dt>ooEnv_SDloss</dt>
+<dd><p>Out-of-bag loss using the spectral transformation and only trees that did not contain the observation
+or the same environment.</p></dd>
+
+<dt>ooEnv_predictions</dt>
+<dd><p>Out-of-bag predictions using only trees that did not contain the observation or the same environment.</p></dd>
+
+<dt>nTree_leave_out</dt>
+<dd><p>If environments are left out, the environment for each tree, that was left out.</p></dd>
+
+<dt>nTree_env</dt>
+<dd><p>If environments are provided, the environment each tree is trained with.</p></dd>
 
 </dl></div>
     <div class="section level2">
