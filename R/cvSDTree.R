@@ -132,6 +132,7 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
     c_hat <- as.numeric(c_hat)
   }
   loss_start <- sum((Y_tilde - c_hat) ** 2) / n
+  loss_start <- as.numeric(loss_start)
 
   # validation set size
   len_test <- floor(n / n_cv)
@@ -165,16 +166,16 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
     Y_train <- Y[-cv_ind]
     A_train <- A[-cv_ind, ]
 
-    X_cv <- X[cv_ind, ]
+    X_cv <- as.matrix(X[cv_ind, ])
     Y_cv <- Y[cv_ind]
-
+    
     # estimate tree with the training set
     res <- SDTree(x = X_train, y = Y_train, max_leaves = max_leaves, cp = 0, 
                   min_sample = min_sample, Q_type = Q_type, 
                   trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
                   A = A_train, gamma = gamma, gpu = gpu, mem_size = mem_size, 
                   max_candidates = max_candidates)
-
+    
     # validation performance if we prune with the different ts
     if(mc.cores > 1){
       perf <- parallel::mclapply(t_seq, function(t) 
@@ -182,19 +183,18 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
         mc.cores = mc.cores, mc.preschedule = FALSE)
     }else{
       perf <- lapply(t_seq, function(t) 
-        pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t))
+        as.numeric(pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t)))
     }
     
     return(perf)
   })
-  
+
   # collect performance for different min loss decreases
   perf <- matrix(unlist(perf), ncol = n_cv, byrow = FALSE)
-  
   cp_table <- matrix(c(t_seq / loss_start, apply(perf, 1, mean), 
                        apply(perf, 1, sd)), ncol = 3, byrow = FALSE)
   colnames(cp_table) <- c('cp', 'SDLoss mean', 'SDLoss sd')
-
+  
   loss_unique <- unique(cp_table[, 2])
   cp_table <- lapply(loss_unique, function(loss){
     idx <- which(cp_table[, 2] == loss)
