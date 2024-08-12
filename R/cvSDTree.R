@@ -93,6 +93,12 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
   if(n_cv > 5 & n < p) 
     warning('if n < p and to many folds are used, Q_validation might differ 
             to much from Q_trainig, consider using less folds')
+  
+  if(gpu && (mc.cores > 1)) {
+    mc.cores <- 1
+    warning('gpu and multicore cannot be used together, 
+            set mc.cores to 1')
+    }
 
   # estimate spectral transformation
   if(!is.null(A)){
