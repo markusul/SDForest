@@ -221,7 +221,7 @@ simulate_data_step <- function(q, p, n, m, make_tree = FALSE){
         leave <- tree
       }else{
         leaves <- tree$leaves
-        leave <- leaves[[which(tree$Get('name', filterFun = isLeaf) == branch)]]
+        leave <- leaves[[which(tree$Get('name', filterFun = data.tree::isLeaf) == branch)]]
       }
       leave$j <- j
       leave$s <- s
