@@ -74,7 +74,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
          { # pca
            d_pca <- rep(1, length(sv$d))
            if(q_hat <= 0) 
-             stop("the assumed confounding dimension must be larger than zero")
+             stop("the assumed confounding dimension must be larger than zero, increase q_hat")
            d_pca[1:q_hat] <- 0
            diag(n) - U %*% diag(1 - d_pca) %*% t(U)
             },
