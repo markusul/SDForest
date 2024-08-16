@@ -130,7 +130,7 @@ f_four <- function(x, beta, js){
 #' \deqn{Y = f(X) + H \delta + \nu}
 #' \deqn{X = H \Gamma + E}
 #' where \eqn{f(X)} is a random regression tree with \eqn{m} random splits of the data. 
-#' Resultin in a random step-function with \eqn{m+1} levels, i.e. leaf-levels.
+#' Resulting in a random step-function with \eqn{m+1} levels, i.e. leaf-levels.
 #' \deqn{f(x_i) = \sum_{k = 1}^K 1_{\{x_i \in R_k\}} c_k}
 #' \eqn{E}, \eqn{\nu} are random error terms and 
 #' \eqn{H \in \mathbb{R}^{n \times q}} is a matrix of random confounding covariates.
