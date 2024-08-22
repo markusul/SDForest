@@ -4,7 +4,7 @@
 \alias{get_Q}
 \title{Estimation of spectral transformation}
 \usage{
-get_Q(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE)
+get_Q(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE, scaling = TRUE)
 }
 \arguments{
 \item{X}{Numerical covariates of class \code{matrix}.}
@@ -21,6 +21,8 @@ and 'no_deconfounding' to the Identity.}
 
 \item{gpu}{If \code{TRUE}, the calculations are performed on the GPU. 
 If it is properly set up.}
+
+\item{scaling}{Whether X should be scaled before calculating the spectral transformation.}
 }
 \value{
 Q of class \code{matrix}, the spectral transformation matrix.

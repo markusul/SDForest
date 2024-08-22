@@ -16,6 +16,7 @@
 #' @param q_hat Assumed confounding dimension, only needed for pca.
 #' @param gpu If \code{TRUE}, the calculations are performed on the GPU. 
 #' If it is properly set up.
+#' @param scaling Whether X should be scaled before calculating the spectral transformation.
 #' @return Q of class \code{matrix}, the spectral transformation matrix.
 #' @examples
 #' set.seed(1)
@@ -24,7 +25,7 @@
 #' Q_pca <- get_Q(X, 'pca', q_hat = 5)
 #' Q_plain <- get_Q(X, 'no_deconfounding')
 #' @export
-get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
+get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE, scaling = TRUE){
   if(gpu) ifelse(GPUmatrix::installTorch(), 
                  gpu_type <- 'torch', 
                  gpu_type <- 'tensorflow')
@@ -35,6 +36,9 @@ get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE){
     return(Q)
   }
   
+  if(scaling){
+    X <- scale(X)
+  }
   
   svd_error <- function(X, f = 1, count = 1){
     tryCatch({
