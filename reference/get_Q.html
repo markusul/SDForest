@@ -46,7 +46,7 @@ shrinking the leading singular values of the covariates.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_Q</span><span class="op">(</span><span class="va">X</span>, <span class="va">type</span>, trim_quantile <span class="op">=</span> <span class="fl">0.5</span>, q_hat <span class="op">=</span> <span class="fl">0</span>, gpu <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_Q</span><span class="op">(</span><span class="va">X</span>, <span class="va">type</span>, trim_quantile <span class="op">=</span> <span class="fl">0.5</span>, q_hat <span class="op">=</span> <span class="fl">0</span>, gpu <span class="op">=</span> <span class="cn">FALSE</span>, scaling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -79,6 +79,10 @@ and 'no_deconfounding' to the Identity.</p></dd>
 <dt id="arg-gpu">gpu<a class="anchor" aria-label="anchor" href="#arg-gpu"></a></dt>
 <dd><p>If <code>TRUE</code>, the calculations are performed on the GPU.
 If it is properly set up.</p></dd>
+
+
+<dt id="arg-scaling">scaling<a class="anchor" aria-label="anchor" href="#arg-scaling"></a></dt>
+<dd><p>Whether X should be scaled before calculating the spectral transformation.</p></dd>
 
 </dl></div>
     <div class="section level2">
