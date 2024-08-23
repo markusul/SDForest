@@ -37,9 +37,6 @@ simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL, fixEff = FALS
   complexity <- K
   # random parameter for fourier basis
   beta <- runif(m * complexity * 2, -1, 1)
-
-  # random sparse subset of covariates in X
-  js <- sample(1:p, m)
   
   # random confounding covariates H
   H <- matrix(rnorm(n * q, 0, 1), nrow = n)
@@ -47,6 +44,9 @@ simulate_data_nonlinear <- function(q, p, n, m, K = 2, eff = NULL, fixEff = FALS
   # random correlation matrix cov(X, H)
   Gamma <- matrix(rnorm(q * p, 0, 1), nrow = q)
 
+  # random sparse subset of covariates in X
+  js <- sample(1:p, m)
+  
   if(!is.null(eff)){
     if(eff > p | eff < 0) stop('eff must be smaller than p or NULL')
     
