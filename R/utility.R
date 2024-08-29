@@ -19,21 +19,18 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
     if(is.null(x) | is.null(y)){
       stop("Error: Either data or x and y is required.")
     }else {
-      if(is.vector(x)){
-        x <- matrix(x, ncol = 1)
+      if(!is.matrix(x)){
+        stop("Error: x must be a matrix!")
       }
-      x <- apply(x, 2, function(x){if (is.character(x)) as.numeric(factor(x))
-        else if(!is.numeric(x))  as.numeric(x)
-        else x})
+      if(!is.numeric(x)){
+        stop("Error: x must contain numerical values! Use formula for categorical predictors.")
+      }
       if (!is.numeric(y)) stop("Error: y must be numeric. Only regression is supported at the moment.")
       if(any(is.na(x)) | any(is.na(y))){
         stop("Error: Missing values are not allowed.")
       }
       if(any(is.infinite(x)) | any(is.infinite(y))){
         stop("Error: Infinite values are not allowed.")
-      }
-      if(!is.numeric(y)){
-        stop("Error: Only regression is suported at the moment. Y must be numeric.")
       }
       return(list(X = as.matrix(x), Y = as.numeric(y)))
     }
@@ -49,6 +46,10 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       temp <- Call[c(1L, indx)]      # only keep the arguments we wanted
       temp[[1L]] <- quote(stats::model.frame) # change the function called
       m <- eval.parent(temp)
+      
+      # ordinal covariates to numeric
+      ord <- names(m)[sapply(m, is.ordered)]
+      m[ord] <- lapply(m[ord], as.integer)
       
       Terms <- attr(m, "terms")
       if(any(attr(Terms, "order") > 1L)) stop("Trees cannot handle interaction terms")
