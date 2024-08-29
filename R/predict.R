@@ -18,9 +18,11 @@
 #' @export
 predict.SDTree <- function(object, newdata, ...){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
-  if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+  
+  X <- data.handler(~., newdata)$X
+  if(!all(object$var_names %in% names(X))) stop('newdata must contain all covariates used for training')
 
-  X <- as.matrix(newdata[, object$var_names])
+  X <- X[, object$var_names]
   if(any(is.na(X))) stop('X must not contain missing values')
   
   predict_outsample(object$tree, X)
@@ -49,9 +51,11 @@ predict.SDForest <- function(object, newdata, ...){
   # using the mean over all trees as the prediction
   # check data type
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
-  if(!all(object$var_names %in% names(newdata))) stop('newdata must contain all covariates used for training')
+  
+  X <- data.handler(~., newdata)$X
+  if(!all(object$var_names %in% names(X))) stop('newdata must contain all covariates used for training')
 
-  X <- as.matrix(newdata[, object$var_names])
+  X <- X[, object$var_names]
   if(any(is.na(X))) stop('X must not contain missing values')
 
   pred <- do.call(cbind, lapply(object$forest, function(x){predict_outsample(x$tree, X)}))
