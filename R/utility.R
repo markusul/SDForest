@@ -60,10 +60,10 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
       if(any(is.infinite(X)) | any(is.infinite(Y))){
         stop("Error: Infinite values are not allowed.")
       }
-      if(!is.numeric(Y)){
+      if(!is.null(Y) & !is.numeric(Y)){
         stop("Error: Only regression is suported at the moment. Y must be numeric.")
       }
-      list(X = X, Y = as.numeric(Y))
+      list(X = X, Y = Y)
     }
   }
 }
