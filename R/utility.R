@@ -19,6 +19,7 @@ data.handler <- function(formula = NULL, data = NULL, x = NULL, y = NULL){
     if(is.null(x) | is.null(y)){
       stop("Error: Either data or x and y is required.")
     }else {
+      if(is.vector(x)) x <- as.matrix(x)
       if(!is.matrix(x)){
         stop("Error: x must be a matrix!")
       }
