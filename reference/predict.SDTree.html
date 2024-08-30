@@ -85,14 +85,20 @@ the covariates for which to predict the response.</p></dd>
 <span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sign.html" class="external-link">sign</a></span><span class="op">(</span><span class="va">X</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span><span class="op">)</span> <span class="op">*</span> <span class="fl">3</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">model</span>, newdata <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [1] -2.638193  3.314347 -2.638193  2.379640  2.379640 -3.705198  3.314347</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [8]  2.379640  2.379640 -2.638193  3.314347  3.314347 -3.705198 -3.705198</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [15]  3.314347 -2.638193 -3.705198  2.379640  3.314347  3.314347  3.314347</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [22]  3.314347  3.314347 -3.705198  3.314347 -3.705198 -3.705198 -2.638193</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [29] -2.638193  3.314347  2.379640 -3.705198  3.314347 -2.638193 -3.705198</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [36] -2.638193 -2.638193 -2.638193  3.314347  2.379640 -2.638193 -2.638193</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [43]  2.379640  3.314347 -2.638193 -2.638193  3.314347  2.379640 -2.638193</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [50]  3.314347</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         1         2         3         4         5         6         7         8 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.638193  3.314347 -2.638193  2.379640  2.379640 -3.705198  3.314347  2.379640 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>         9        10        11        12        13        14        15        16 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  2.379640 -2.638193  3.314347  3.314347 -3.705198 -3.705198  3.314347 -2.638193 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        17        18        19        20        21        22        23        24 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -3.705198  2.379640  3.314347  3.314347  3.314347  3.314347  3.314347 -3.705198 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        25        26        27        28        29        30        31        32 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.314347 -3.705198 -3.705198 -2.638193 -2.638193  3.314347  2.379640 -3.705198 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        33        34        35        36        37        38        39        40 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  3.314347 -2.638193 -3.705198 -2.638193 -2.638193 -2.638193  3.314347  2.379640 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        41        42        43        44        45        46        47        48 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.638193 -2.638193  2.379640  3.314347 -2.638193 -2.638193  3.314347  2.379640 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        49        50 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> -2.638193  3.314347 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
