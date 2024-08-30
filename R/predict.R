@@ -20,7 +20,7 @@ predict.SDTree <- function(object, newdata, ...){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
   
   X <- data.handler(~., newdata)$X
-  if(!all(object$var_names %in% names(X))) stop('newdata must contain all covariates used for training')
+  if(!all(object$var_names %in% colnames(X))) stop('newdata must contain all covariates used for training')
 
   X <- X[, object$var_names]
   if(any(is.na(X))) stop('X must not contain missing values')
@@ -53,7 +53,7 @@ predict.SDForest <- function(object, newdata, ...){
   if(!is.data.frame(newdata)) stop('newdata must be a data.frame')
   
   X <- data.handler(~., newdata)$X
-  if(!all(object$var_names %in% names(X))) stop('newdata must contain all covariates used for training')
+  if(!all(object$var_names %in% colnames(X))) stop('newdata must contain all covariates used for training')
 
   X <- X[, object$var_names]
   if(any(is.na(X))) stop('X must not contain missing values')
