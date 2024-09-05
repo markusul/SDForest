@@ -12,11 +12,12 @@
 <link rel="apple-touch-icon" type="image/png" sizes="120x120" href="../apple-touch-icon-120x120.png">
 <link rel="apple-touch-icon" type="image/png" sizes="76x76" href="../apple-touch-icon-76x76.png">
 <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="../apple-touch-icon-60x60.png">
-<script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="../katex-auto.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="SDTree">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><link href="../deps/KaTex-0.16.10/katex.min.css" rel="stylesheet">
+<script src="../deps/KaTex-0.16.10/katex.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="SDTree">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -72,14 +73,11 @@
     
     
 <p>In the following, we compare the spectral deconfounded regression
-tree
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>f</mi><mrow><mi>S</mi><mi>D</mi><mi>T</mi><mi>r</mi><mi>e</mi><mi>e</mi></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f^{SDTree}(X)</annotation></semantics></math>
-to the classical regression tree
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>f</mi><mrow><mi>T</mi><mi>r</mi><mi>e</mi><mi>e</mi></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f^{Tree}(X)</annotation></semantics></math><span class="citation">(Breiman et al. 2017)</span> using simulated data
-from a confounded process. We simulate the data similar to
+tree <span class="math inline">f^{SDTree}(X)</span> to the classical
+regression tree <span class="math inline">f^{Tree}(X)</span> <span class="citation">(Breiman et al. 2017)</span> using simulated data from
+a confounded process. We simulate the data similar to
 <code><a href="../reference/simulate_data_nonlinear.html">simulate_data_nonlinear()</a></code> but with a random regression
-tree, i.e. step-function for the causal relationship
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f(X)</annotation></semantics></math>.</p>
+tree, i.e. step-function for the causal relationship <span class="math inline">f(X)</span>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
 <span></span>
@@ -109,17 +107,12 @@ seem like a good first try and is also the default value in <a href="https://cra
 <span><span class="va">plain_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">X</span>, y <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, Q_type <span class="op">=</span> <span class="st">'no_deconfounding'</span>, cp <span class="op">=</span><span class="op">)</span></span></code></pre></div>
 <p>Let us observe, what the different trees predict, by comparing the
 predictions to the causal function and the observed response. On top, we
-show the underlying causal step function
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>f</mi><mn>0</mn></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f^0(X)</annotation></semantics></math>
-against the 5 covariates used for splitting partitions. On the bottom,
-we see the observed response
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>.
-The spectral deconfounded regression tree
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>f</mi><mrow><mi>S</mi><mi>D</mi><mi>T</mi><mi>r</mi><mi>e</mi><mi>e</mi></mrow></msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>X</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">f^{SDTree}(X)</annotation></semantics></math>
-predicts almost the same response as the true underlying function. The
-plain classical regression tree, on the other hand, results in a
-prediction close to the observed
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>𝐘</mi><annotation encoding="application/x-tex">\mathbf{Y}</annotation></semantics></math>.</p>
+show the underlying causal step function <span class="math inline">f^0(X)</span> against the 5 covariates used for
+splitting partitions. On the bottom, we see the observed response <span class="math inline">Y</span>. The spectral deconfounded regression tree
+<span class="math inline">f^{SDTree}(X)</span> predicts almost the same
+response as the true underlying function. The plain classical regression
+tree, on the other hand, results in a prediction close to the observed
+<span class="math inline">\mathbf{Y}</span>.</p>
 <p><img src="SDTree_files/figure-html/pred-1.png" width="700"></p>
 <p>Now, we can directly look at the estimated tree structures. On top is
 the true underlying random regression tree, and below are the two tree
@@ -127,33 +120,22 @@ estimates. In the middle is the spectral deconfounded regression tree
 and on the bottom is the plain classical regression tree. The nodes that
 choose a covariate for a split, that is also used in the true underlying
 causal function, are marked in <span style="color: #b0193c;">red</span>.
-Besides
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>320</mn></msub><annotation encoding="application/x-tex">X_{320}</annotation></semantics></math>,
-the spectral deconfounded regression tree uses all covariates for splits
-with a causal relationship with
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>.
-Since
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>584</mn></msub><annotation encoding="application/x-tex">X_{584}</annotation></semantics></math>
-only splits three observations into the node with a response level of
-49.6, it seems reasonable that the noise and confounding in the observed
-data overshadow this effect. The order of the splits in the spectral
-deconfounded regression tree is partially different from the true
-function.
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>369</mn></msub><annotation encoding="application/x-tex">X_{369}</annotation></semantics></math>
-is used too early resulting in having to split with
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>250</mn></msub><annotation encoding="application/x-tex">X_{250}</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>X</mi><mn>89</mn></msub><annotation encoding="application/x-tex">X_{89}</annotation></semantics></math>
-in both following subtrees. Estimating the partitions using no
-deconfounding results in the regression tree on the bottom right. Here,
-we only find two of the causal relevant covariates. Especially
-problematic is that the not deconfounded regression tree first splits
-with a few irrelevant covariates. Therefore, if an observation has
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>486</mn></msub><mo>&gt;</mo><mo>−</mo><mn>0.9</mn></mrow><annotation encoding="application/x-tex">X_{486} &gt; -0.9</annotation></semantics></math>
-or
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>X</mi><mn>430</mn></msub><mo>≤</mo><mo>−</mo><mn>2.7</mn></mrow><annotation encoding="application/x-tex">X_{430} \leq -2.7</annotation></semantics></math>,
-which has no meaning in the underlying function, no relevant split is
-left in the sub-tree.</p>
+Besides <span class="math inline">X_{320}</span>, the spectral
+deconfounded regression tree uses all covariates for splits with a
+causal relationship with <span class="math inline">Y</span>. Since <span class="math inline">X_{584}</span> only splits three observations into
+the node with a response level of 49.6, it seems reasonable that the
+noise and confounding in the observed data overshadow this effect. The
+order of the splits in the spectral deconfounded regression tree is
+partially different from the true function. <span class="math inline">X_{369}</span> is used too early resulting in having
+to split with <span class="math inline">X_{250}</span> and <span class="math inline">X_{89}</span> in both following subtrees. Estimating
+the partitions using no deconfounding results in the regression tree on
+the bottom right. Here, we only find two of the causal relevant
+covariates. Especially problematic is that the not deconfounded
+regression tree first splits with a few irrelevant covariates.
+Therefore, if an observation has <span class="math inline">X_{486} &gt;
+-0.9</span> or <span class="math inline">X_{430} \leq -2.7</span>, which
+has no meaning in the underlying function, no relevant split is left in
+the sub-tree.</p>
 <p><img src="SDTree_files/figure-html/plot_tree-1.png" width="700"><img src="SDTree_files/figure-html/plot_tree-2.png" width="700"><img src="SDTree_files/figure-html/plot_tree-3.png" width="700"></p>
 <div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
 <div id="ref-Breiman2017ClassificationTrees" class="csl-entry">
