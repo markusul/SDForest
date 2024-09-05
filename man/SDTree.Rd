@@ -2,7 +2,7 @@
 % Please edit documentation in R/SDTree.R
 \name{SDTree}
 \alias{SDTree}
-\title{Spectral Deconfounded Tree}
+\title{Spectrally Deconfounded Tree}
 \usage{
 SDTree(
   formula = NULL,

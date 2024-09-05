@@ -2,7 +2,7 @@
 % Please edit documentation in R/SDForest.R
 \name{SDForest}
 \alias{SDForest}
-\title{Spectral Deconfounded Random Forest}
+\title{Spectrally Deconfounded Random Forests}
 \usage{
 SDForest(
   formula = NULL,
@@ -138,7 +138,7 @@ or the same environment.}
 }
 \description{
 Estimate regression Random Forest using spectral deconfounding.
-The spectral deconfounded Random Forest combines SDTrees in the same way, 
+The spectrally deconfounded Random Forest (SDForest) combines SDTrees in the same way, 
 as in the original Random Forest \insertCite{Breiman2001RandomForests}{SDForest}.
 The idea is to combine multiple regression trees into an ensemble in order to 
 decrease variance and get a smooth function. Ensembles work best if the different 
@@ -151,7 +151,7 @@ The second mechanic to decrease the correlation is that only a random subset
 of the covariates is available for each split. Before each split, 
 we sample \eqn{\text{mtry} \leq p} from all the covariates and choose the one 
 that reduces the loss the most only from those.
-\deqn{\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t^{boot}(X)}
+\deqn{\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t(X)}
 }
 \examples{
 set.seed(42)

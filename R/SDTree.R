@@ -1,4 +1,4 @@
-#' Spectral Deconfounded Tree
+#' Spectrally Deconfounded Tree
 #' 
 #' Estimates a regression tree using spectral deconfounding. 
 #' A regression tree is part of the function class of step functions
