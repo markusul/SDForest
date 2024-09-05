@@ -30,8 +30,8 @@
 #' of the form \code{y ~ x1 + x2 + ...} where \code{y} is a numeric response and 
 #' \code{x1, x2, ...} are vectors of covariates. Interactions are not supported.
 #' @param data Training data of class \code{data.frame} containing the variables in the model.
-#' @param x Predictor data, alternative to \code{formula} and \code{data}.
-#' @param y Response vector, alternative to \code{formula} and \code{data}.
+#' @param x Matrix of covariates, alternative to \code{formula} and \code{data}.
+#' @param y Vector of responses, alternative to \code{formula} and \code{data}.
 #' @param max_leaves Maximum number of leaves for the grown tree.
 #' @param cp Complexity parameter, minimum loss decrease to split a node. 
 #' A split is only performed if the loss decrease is larger than \code{cp * initial_loss}, 

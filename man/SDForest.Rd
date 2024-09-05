@@ -38,9 +38,9 @@ of the form \code{y ~ x1 + x2 + ...} where \code{y} is a numeric response and
 
 \item{data}{Training data of class \code{data.frame} containing the variables in the model.}
 
-\item{x}{Predictor data, alternative to \code{formula} and \code{data}.}
+\item{x}{Matrix of covariates, alternative to \code{formula} and \code{data}.}
 
-\item{y}{Response vector, alternative to \code{formula} and \code{data}.}
+\item{y}{Vector of responses, alternative to \code{formula} and \code{data}.}
 
 \item{nTree}{Number of trees to grow.}
 
