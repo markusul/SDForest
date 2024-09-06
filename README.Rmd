@@ -16,12 +16,12 @@ Sys.setenv(OPENSSL_CONF="/dev/null")
 ```
 
 # SDForest
-
+  
 <!-- badges: start -->
 [![R-CMD-check](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/markusul/SDForest/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. (@Guo2022DoublyConfounding, @Cevid2020SpectralModels)
+Spectrally Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse direct effects in the presence of unobserved confounding. SDForest has shown to be a good estimate for the true direct effect, if we observe many covariates, e.g. high-dimensional setting, and we have fairly dense confounding (@Ulmer, @Guo2022DoublyConfounding, @Cevid2020SpectralModels). Even if the assumptions are violated, there is not much to lose and SDForest will, in general, estimate a function closer to $f^0$ than classical Random Forests.
 
 ![](man/figures/confModel.png)
 
@@ -40,7 +40,7 @@ devtools::install_github("markusul/SDForest")
 
 ## Usage
 
-This is a basic example on how to estimate the causal effect of $X$ on $Y$ using SDForest. You can learn more about analyzing sparse causal effects estimated by SDForest in `vignette("SDForest")`.
+This is a basic example on how to estimate the direct effect of $X$ on $Y$ using SDForest. You can learn more about analyzing sparse direct effects estimated by SDForest in `vignette("SDForest")`.
 
 ```{r SDForest}
 library(SDForest)
@@ -51,20 +51,20 @@ sim_data <- simulate_data_nonlinear(q = 2, p = 50, n = 100, m = 2)
 X <- sim_data$X
 Y <- sim_data$Y
 train_data <- data.frame(X, Y)
-# causal parents
+# parents
 sim_data$j
 
 fit <- SDForest(Y ~ ., train_data)
 fit
 ```
 
-You can also estimate just one Spectral Deconfounded Regression Tree using the `SDTree` function. See also `vignette("SDTree")`.
+You can also estimate just one Spectrally Deconfounded Regression Tree using the `SDTree` function. See also `vignette("SDTree")`.
 
 ```{r SDTree}
-causal_Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
+Tree <- SDTree(Y ~ ., train_data, cp = 0.03)
 
-# plot the causal tree
-causal_Tree
-plot(causal_Tree)
+# plot the tree
+Tree
+plot(Tree)
 ```
 

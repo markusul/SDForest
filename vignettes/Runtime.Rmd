@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 For this package, we have written methods to estimate regressions trees and random forests to minimize the spectral objective:
 
 $$\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf{X}))||_2^2}{n}$$
-The algorithm `vignette("Algorithm")` gets slow, especially for large n. Furthermore, the package is fully written in @RCoreTeam2024R:Computing for now. There might be a faster cpp version in the future, but for now, there are a few ways to increase the computations if you apply the methods to larger data sets.
+The package is currently fully written in @RCoreTeam2024R:Computing for now and it gets quite slow for larger sample sizes. There might be a faster cpp version in the future, but for now, there are a few ways to increase the computations if you apply the methods to larger data sets.
 
 ## Computations
 
@@ -26,7 +26,7 @@ Some speedup can be achieved by taking advantage of modern hardware.
 
 ### Multicore
 
-When estimating an SDForest, the most obvious way to increase the computations is to fit the individual trees on different cores in parallel. Parallel computing is supported for both Unix and Windows. Depending on how your system is set up, some linear algebra libraries might already run in parallel. In this case, the speed improvement from choosing more than one core to run on might not be that large.
+When estimating an SDForest, the most obvious way to increase the computations is to fit the individual trees on different cores in parallel. Parallel computing is supported for both Unix and Windows. Depending on how your system is set up, some linear algebra libraries might already run in parallel. In this case, the speed improvement from choosing more than one core to run on might not be that large. Be aware of potential RAM-overflows.
 
 ```{r core, eval=FALSE}
 # fits the individual SDTrees in parallel on 22 cores
