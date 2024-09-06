@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Spectrally Deconfounded Random Forest • SDForest</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -12,62 +12,80 @@
 <link rel="apple-touch-icon" type="image/png" sizes="120x120" href="apple-touch-icon-120x120.png">
 <link rel="apple-touch-icon" type="image/png" sizes="76x76" href="apple-touch-icon-76x76.png">
 <link rel="apple-touch-icon" type="image/png" sizes="60x60" href="apple-touch-icon-60x60.png">
-<script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
-<link href="deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Spectrally Deconfounded Random Forest">
-<meta name="description" content="Estimation and analyzation of sparse non-linear causal functions in presence of unobserved confounding.">
+<!-- jquery --><script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script><!-- Bootstrap --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha256-bZLfwXAP04zRMK2BjiO8iu9pf4FbLqX6zitd+tIvLhE=" crossorigin="anonymous">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha256-nuL8/2cJ5NDSSwnKD8VqreErSWHtnEP9E7AySL+1ev4=" crossorigin="anonymous"></script><!-- bootstrap-toc --><link rel="stylesheet" href="bootstrap-toc.css">
+<script src="bootstrap-toc.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
+<!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- pkgdown --><link href="pkgdown.css" rel="stylesheet">
+<script src="pkgdown.js"></script><meta property="og:title" content="Spectrally Deconfounded Random Forest">
 <meta property="og:description" content="Estimation and analyzation of sparse non-linear causal functions in presence of unobserved confounding.">
 <meta property="og:image" content="https://markusul.github.io/SDForest/logo.png">
+<!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
+<script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+<script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+<![endif]-->
 </head>
-<body>
-    <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
+<body data-spy="scroll" data-target="#toc">
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <div class="container template-home">
+      <header><div class="navbar navbar-default navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <span class="navbar-brand">
+        <a class="navbar-link" href="index.html">SDForest</a>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.1</span>
+      </span>
+    </div>
 
-    <a class="navbar-brand me-2" href="index.html">SDForest</a>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+<li>
+  <a href="articles/SDForest.html">Get started</a>
+</li>
+<li>
+  <a href="reference/index.html">Reference</a>
+</li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Articles
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1</small>
-
-
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="articles/SDForest.html">Get started</a></li>
-<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
-<li class="nav-item dropdown">
-  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/Algorithm.html">Algorithm</a></li>
-    <li><a class="dropdown-item" href="articles/Runtime.html">Runtime</a></li>
-    <li><a class="dropdown-item" href="articles/SDTree.html">SDTree</a></li>
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu">
+<li>
+      <a href="articles/Runtime.html">Runtime</a>
+    </li>
+    <li>
+      <a href="articles/SDTree.html">SDTree</a>
+    </li>
   </ul>
 </li>
       </ul>
-<ul class="navbar-nav">
-<li class="nav-item"><form class="form-inline" role="search">
- <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
-</form></li>
-      </ul>
+<ul class="nav navbar-nav navbar-right"></ul>
 </div>
-
-
+<!--/.nav-collapse -->
   </div>
-</nav><div class="container template-home">
-<div class="row">
-  <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="sdforest">SDForest<a class="anchor" aria-label="anchor" href="#sdforest"></a>
-</h1>
+<!--/.container -->
 </div>
+<!--/.navbar -->
+
+
+
+      </header><div class="row">
+  <div class="contents col-md-9">
+<div class="section level1">
+<div class="page-header"><h1 id="sdforest">SDForest<a class="anchor" aria-label="anchor" href="#sdforest"></a>
+</h1></div>
 <!-- badges: start -->
 
-<p>Spectral Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse causal effects in the presence of unobserved confounding. SDForest has been shown to be a nice estimate for the true causal function in such settings, if we observe many covariates, e.g. high-dimensional setting, and we have fairly sparse confounding. (Guo, Ćevid, and Bühlmann (2022), Ćevid, Bühlmann, and Meinshausen (2020))</p>
+<p>Spectrally Deconfounded Random Forests (SDForest) is a method for estimating non-linear sparse direct effects in the presence of unobserved confounding. SDForest has shown to be a good estimate for the true direct effect, if we observe many covariates, e.g. high-dimensional setting, and we have fairly dense confounding ((<strong>Ulmer?</strong>), Guo, Ćevid, and Bühlmann (2022), Ćevid, Bühlmann, and Meinshausen (2020)). Even if the assumptions are violated, there is not much to lose and SDForest will, in general, estimate a function closer to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>f</mi><mn>0</mn></msup><annotation encoding="application/x-tex">f^0</annotation></semantics></math> than classical Random Forests.</p>
 <p><img src="reference/figures/confModel.png"></p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
@@ -84,7 +102,7 @@
 <div class="section level2">
 <h2 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a>
 </h2>
-<p>This is a basic example on how to estimate the causal effect of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math> on <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math> using SDForest. You can learn more about analyzing sparse causal effects estimated by SDForest in <code><a href="articles/SDForest.html">vignette("SDForest")</a></code>.</p>
+<p>This is a basic example on how to estimate the direct effect of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math> on <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math> using SDForest. You can learn more about analyzing sparse direct effects estimated by SDForest in <code><a href="articles/SDForest.html">vignette("SDForest")</a></code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://markusul.github.io/SDForest/">SDForest</a></span><span class="op">)</span></span>
 <span></span>
@@ -94,35 +112,33 @@
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">X</span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">sim_data</span><span class="op">$</span><span class="va">Y</span></span>
 <span><span class="va">train_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span><span class="va">X</span>, <span class="va">Y</span><span class="op">)</span></span>
-<span><span class="co"># causal parents</span></span>
+<span><span class="co"># parents</span></span>
 <span><span class="va">sim_data</span><span class="op">$</span><span class="va">j</span></span>
-<span><span class="co">#&gt; [1] 16 40</span></span></code></pre></div>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span></span>
+<span><span class="co">#&gt; [1] 25 24</span></span>
+<span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDForest.html">SDForest</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span><span class="op">)</span></span>
 <span><span class="va">fit</span></span>
 <span><span class="co">#&gt; SDForest result</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; Number of trees:  100 </span></span>
 <span><span class="co">#&gt; Number of covariates:  50 </span></span>
-<span><span class="co">#&gt; OOB loss:  0.06 </span></span>
-<span><span class="co">#&gt; OOB spectral loss:  0.03</span></span></code></pre></div>
-<p>You can also estimate just one Spectral Deconfounded Regression Tree using the <code>SDTree</code> function. See also <code><a href="articles/SDTree.html">vignette("SDTree")</a></code>.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">causal_Tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDTree.html">SDTree</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span>, cp <span class="op">=</span> <span class="fl">0.03</span><span class="op">)</span></span>
+<span><span class="co">#&gt; OOB loss:  0.16 </span></span>
+<span><span class="co">#&gt; OOB spectral loss:  0.05</span></span></code></pre></div>
+<p>You can also estimate just one Spectrally Deconfounded Regression Tree using the <code>SDTree</code> function. See also <code><a href="articles/SDTree.html">vignette("SDTree")</a></code>.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/SDTree.html">SDTree</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">.</span>, <span class="va">train_data</span>, cp <span class="op">=</span> <span class="fl">0.03</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># plot the causal tree</span></span>
-<span><span class="va">causal_Tree</span></span>
-<span><span class="co">#&gt;   levelName     value          s  j       label decision n_samples</span></span>
-<span><span class="co">#&gt; 1 1         0.8398920  0.5322484 40 X40 &lt;= 0.53                100</span></span>
-<span><span class="co">#&gt; 2  ¦--1     0.6672222 -0.4974688 40 X40 &lt;= -0.5       no        73</span></span>
-<span><span class="co">#&gt; 3  ¦   ¦--1 0.5876494         NA NA         0.6       no        44</span></span>
-<span><span class="co">#&gt; 4  ¦   °--4 0.7491725         NA NA         0.7      yes        29</span></span>
-<span><span class="co">#&gt; 5  °--2     1.1482966  2.4494222 40 X40 &lt;= 2.45      yes        27</span></span>
-<span><span class="co">#&gt; 6      ¦--2 1.0937407         NA NA         1.1       no        21</span></span>
-<span><span class="co">#&gt; 7      °--3 1.6619968         NA NA         1.7      yes         6</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">causal_Tree</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># plot the tree</span></span>
+<span><span class="va">Tree</span></span>
+<span><span class="co">#&gt;   levelName     value          s  j        label decision n_samples</span></span>
+<span><span class="co">#&gt; 1 1         0.8295434  0.5186858 24  X24 &lt;= 0.52                100</span></span>
+<span><span class="co">#&gt; 2  ¦--1     0.6425567 -2.0062213 25 X25 &lt;= -2.01       no        63</span></span>
+<span><span class="co">#&gt; 3  ¦   ¦--1 0.1525245         NA NA          0.2       no         9</span></span>
+<span><span class="co">#&gt; 4  ¦   °--3 0.6613778         NA NA          0.7      yes        54</span></span>
+<span><span class="co">#&gt; 5  °--2     1.1811389  1.5229617 24  X24 &lt;= 1.52      yes        37</span></span>
+<span><span class="co">#&gt; 6      ¦--2 1.0361679         NA NA            1       no        19</span></span>
+<span><span class="co">#&gt; 7      °--4 1.4544461         NA NA          1.5      yes        18</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">Tree</span><span class="op">)</span></span></code></pre></div>
 <p><img src="reference/figures/README-SDTree-1.png" width="100%"></p>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-Cevid2020SpectralModels" class="csl-entry">
@@ -134,7 +150,10 @@ Guo, Zijian, Domagoj Ćevid, and Peter Bühlmann. 2022. “<span class="nocase">
 </div>
 </div>
 </div>
-  </main><aside class="col-md-3"><div class="license">
+  </div>
+
+  <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
+    <div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li>
@@ -166,20 +185,23 @@ Guo, Zijian, Domagoj Ćevid, and Peter Bühlmann. 2022. “<span class="nocase">
 </ul>
 </div>
 
-  </aside>
+  </div>
 </div>
 
 
-    <footer><div class="pkgdown-footer-left">
-  <p>Developed by Markus Ulmer, Cyrill Scheidegger.</p>
+      <footer><div class="copyright">
+  <p></p>
+<p>Developed by Markus Ulmer, Cyrill Scheidegger.</p>
 </div>
 
-<div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+<div class="pkgdown">
+  <p></p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
 </div>
 
-    </footer>
+      </footer>
 </div>
+
 
 
 
