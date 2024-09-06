@@ -16,7 +16,7 @@
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><script src="../deps/MathJax-3.2.2/tex-chtml.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Runtime">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Runtime">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -73,14 +73,12 @@
     
 <p>For this package, we have written methods to estimate regressions
 trees and random forests to minimize the spectral objective:</p>
-<p><span class="math display">\[\hat{f} = \text{argmin}_{f' \in
-\mathcal{F}} \frac{||Q(\mathbf{Y} -
-f'(\mathbf{X}))||_2^2}{n}\]</span> The algorithm
-<code><a href="../articles/Algorithm.html">vignette("Algorithm")</a></code> gets slow, especially for large
-n. Furthermore, the package is fully written in <span class="citation">R
-Core Team (2024)</span> for now. There might be a faster cpp version in
-the future, but for now, there are a few ways to increase the
-computations if you apply the methods to larger data sets.</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>f</mi><mo accent="true">̂</mo></mover><mo>=</mo><msub><mtext mathvariant="normal">argmin</mtext><mrow><mi>f</mi><mi>′</mi><mo>∈</mo><mi>ℱ</mi></mrow></msub><mfrac><mrow><mrow><mo stretchy="true" form="prefix">|</mo><mo stretchy="true" form="postfix">|</mo></mrow><mi>Q</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝐘</mi><mo>−</mo><mi>f</mi><mi>′</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>𝐗</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><msubsup><mrow><mo stretchy="true" form="prefix">|</mo><mo stretchy="true" form="postfix">|</mo></mrow><mn>2</mn><mn>2</mn></msubsup></mrow><mi>n</mi></mfrac></mrow><annotation encoding="application/x-tex">\hat{f} = \text{argmin}_{f' \in \mathcal{F}} \frac{||Q(\mathbf{Y} - f'(\mathbf{X}))||_2^2}{n}</annotation></semantics></math>
+The algorithm <code><a href="../articles/Algorithm.html">vignette("Algorithm")</a></code> gets slow, especially
+for large n. Furthermore, the package is fully written in <span class="citation">R Core Team (2024)</span> for now. There might be a
+faster cpp version in the future, but for now, there are a few ways to
+increase the computations if you apply the methods to larger data
+sets.</p>
 <div class="section level2">
 <h2 id="computations">Computations<a class="anchor" aria-label="anchor" href="#computations"></a>
 </h2>
@@ -124,11 +122,11 @@ VRAM. For us, this worked well on a GeForce RTX 3090.</p>
 </h2>
 <p>In a few places, approximations perform almost as well as if we run
 the whole procedure. Reasonable split points to divide the space of
-<span class="math inline">\(\mathbb{R}^p\)</span> are, in principle, all
-values between the observed ones. In practice and with many
-observations, the number of potential splits grows too large. We,
-therefore, evaluate maximal <code>max_candidates</code> splits of the
-potential ones and choose them according to the quantiles of the
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>ℝ</mi><mi>p</mi></msup><annotation encoding="application/x-tex">\mathbb{R}^p</annotation></semantics></math>
+are, in principle, all values between the observed ones. In practice and
+with many observations, the number of potential splits grows too large.
+We, therefore, evaluate maximal <code>max_candidates</code> splits of
+the potential ones and choose them according to the quantiles of the
 potential ones.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># approximation of candidate splits</span></span>
@@ -136,9 +134,9 @@ potential ones.</p>
 <span><span class="va">tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span>, max_candidates <span class="op">=</span> <span class="fl">50</span><span class="op">)</span></span></code></pre></div>
 <p>If we have many observations, we can reduce computing time by only
 sampling <code>max_size</code> observations from the data instead of
-<span class="math inline">\(n\)</span>. This can dramatically reduce
-computing time compared to a full bootstrap sample but could also
-decrease performance.</p>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>n</mi><annotation encoding="application/x-tex">n</annotation></semantics></math>.
+This can dramatically reduce computing time compared to a full bootstrap
+sample but could also decrease performance.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># draws maximal 500 samples from the data for each tree</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/SDForest.html">SDForest</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span>, max_size <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></code></pre></div>
