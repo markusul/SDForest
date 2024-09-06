@@ -1,6 +1,6 @@
 url: https://markusul.github.io/SDForest/
 
 template:
-  bootstrap: 5
-  params:
+  bootstrap: 3
+  options: 
     math-rendering: katex
