@@ -140,12 +140,9 @@ If <code>FALSE</code> all possible splits in all the leaves are reevaluated afte
 
 <dt id="arg-q-type">Q_type<a class="anchor" aria-label="anchor" href="#arg-q-type"></a></dt>
 <dd><p>Type of deconfounding, one of 'trim', 'pca', 'no_deconfounding'.
-'trim' corresponds to the Trim transform (Ćevid et al. 2020)
-
-as implemented in the Doubly debiased lasso (Guo et al. 2022)
-,
-'pca' to the PCA transformation(Paul et al. 2008)
-.
+'trim' corresponds to the Trim transform Cevid2020SpectralModelsSDForest
+as implemented in the Doubly debiased lasso Guo2022DoublyConfoundingSDForest,
+'pca' to the PCA transformationPaul2008PreconditioningProblemsSDForest.
 See <code><a href="get_Q.html">get_Q</a></code>.</p></dd>
 
 
@@ -221,18 +218,7 @@ only the one with the largest complexity parameter is shown.</p></dd>
 </dl></div>
     <div id="references">
     <h2>References</h2>
-    <p>Ćevid D, Bühlmann P, Meinshausen N (2020).
-“Spectral Deconfounding via Perturbed Sparse Linear Models.”
-<em>J. Mach. Learn. Res.</em>, <b>21</b>(1).
-ISSN 1532-4435.<br><br> Guo Z, Ćevid D, Bühlmann P (2022).
-“Doubly debiased lasso: High-dimensional inference under hidden confounding.”
-<em>The Annals of Statistics</em>, <b>50</b>(3).
-ISSN 0090-5364, <a href="https://doi.org/10.1214/21-AOS2152" class="external-link">doi:10.1214/21-AOS2152</a>
-.<br><br> Paul D, Bair E, Hastie T, Tibshirani R (2008).
-““Preconditioning” for feature selection and regression in high-dimensional problems.”
-<em>The Annals of Statistics</em>, <b>36</b>(4).
-ISSN 0090-5364, <a href="https://doi.org/10.1214/009053607000000578" class="external-link">doi:10.1214/009053607000000578</a>
-.</p>
+    <p></p>
     </div>
     <div id="see-also">
     <h2>See also</h2>
@@ -283,7 +269,7 @@ ISSN 0090-5364, <a href="https://doi.org/10.1214/009053607000000578" class="exte
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.0.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.1.1.</p>
 </div>
 
       </footer></div>
