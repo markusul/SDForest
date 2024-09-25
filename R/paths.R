@@ -208,7 +208,7 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, sqrt_scale = FALSE, 
   }
   
   if(x$type == "stability"){
-    gg_path <- gg_path + ylab(expression(Pi))
+    gg_path <- gg_path + ggplot2::ylab(expression(Pi))
   }
 
   if(plotly){
