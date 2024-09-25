@@ -68,6 +68,7 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
 #' \item{loss_path}{A \code{matrix} with the out-of-bag performance
 #' for each complexity parameter.}
 #' \item{cp_min}{The complexity parameter with the lowest out-of-bag performance.}
+#' \item{type}{Path type}
 #' @seealso \code{\link{plot.paths}} \code{\link{plotOOB}} \code{\link{regPath.SDTree}} \code{\link{prune}} \code{\link{get_cp_seq}} \code{\link{SDForest}}
 #' @aliases regPath
 #' @examples
@@ -107,7 +108,8 @@ regPath.SDForest <- function(object, cp_seq = NULL, X = NULL, Y = NULL, Q = NULL
   loss_path <- t(sapply(res, function(x) c(x$oob_SDloss, x$oob_loss)))
   colnames(loss_path) <- c('oob SDE', 'oob MSE')
   paths <- list(cp = cp_seq, varImp_path = varImp_path, loss_path = loss_path,
-                cp_min = cp_seq[which.min(loss_path[, 1])])
+                cp_min = cp_seq[which.min(loss_path[, 1])], 
+                type = "regularization")
   class(paths) <- 'paths'
   
   paths
@@ -133,6 +135,7 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the stability selection
+#' \item{type}{Path type}
 #' for each complexity parameter.}
 #' @seealso \code{\link{plot.paths}} \code{\link{regPath}} \code{\link{prune}} \code{\link{get_cp_seq}} \code{\link{SDForest}}
 #' @aliases stabilitySelection
@@ -157,7 +160,7 @@ stabilitySelection.SDForest <- function(object, cp_seq = NULL, ...){
   imp <- lapply(imp, function(x)matrix(as.numeric(x), ncol = ncol(x)))
   imp <- Reduce('+', imp) / length(object$forest)
   colnames(imp) <- object$var_names
-  paths <- list(cp = cp_seq, varImp_path = imp)
+  paths <- list(cp = cp_seq, varImp_path = imp, type = "stability")
   class(paths) <- 'paths'
   
   paths
@@ -202,6 +205,10 @@ plot.paths <- function(x, plotly = FALSE, selection = NULL, sqrt_scale = FALSE, 
   
   if(sqrt_scale){
     gg_path <- gg_path + ggplot2::scale_y_sqrt()
+  }
+  
+  if(x$type == "stability"){
+    gg_path <- gg_path + ylab(expression(Pi))
   }
 
   if(plotly){

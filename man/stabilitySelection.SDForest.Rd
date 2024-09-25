@@ -19,6 +19,7 @@ If NULL, the sequence is calculated automatically using only relevant values.}
 An object of class \code{paths} containing
 \item{cp}{The sequence of complexity parameters.}
 \item{varImp_path}{A \code{matrix} with the stability selection
+\item{type}{Path type}
 for each complexity parameter.}
 }
 \description{

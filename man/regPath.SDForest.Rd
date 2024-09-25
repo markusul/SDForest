@@ -33,6 +33,7 @@ for each complexity parameter.}
 \item{loss_path}{A \code{matrix} with the out-of-bag performance
 for each complexity parameter.}
 \item{cp_min}{The complexity parameter with the lowest out-of-bag performance.}
+\item{type}{Path type}
 }
 \description{
 This function calculates the variable importance of an SDForest
