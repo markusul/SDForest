@@ -137,8 +137,8 @@ stabilitySelection <- function(object, ...) UseMethod('stabilitySelection')
 #' @return An object of class \code{paths} containing
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the stability selection
-#' \item{type}{Path type}
 #' for each complexity parameter.}
+#' \item{type}{Path type}
 #' @seealso \code{\link{plot.paths}} \code{\link{regPath}} \code{\link{prune}} \code{\link{get_cp_seq}} \code{\link{SDForest}}
 #' @aliases stabilitySelection
 #' @examples
