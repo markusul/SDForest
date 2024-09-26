@@ -22,7 +22,8 @@ SDTree(
   gamma = 0.5,
   gpu = FALSE,
   mem_size = 1e+07,
-  max_candidates = 100
+  max_candidates = 100,
+  Q_scale = TRUE
 )
 }
 \arguments{
@@ -82,6 +83,10 @@ the memory is not sufficient or the gpu is to small.}
 
 \item{max_candidates}{Maximum number of split points that are 
 proposed at each node for each covariate.}
+
+\item{Q_scale}{Should data be scaled to estimate the spectral transformation? 
+Default is \code{TRUE} to not reduce the signal of high variance covariates, 
+and we do not know of a scenario where this hurts.}
 }
 \value{
 Object of class \code{SDTree} containing

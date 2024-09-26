@@ -69,6 +69,9 @@
 #' Results in number of environments times number of trees.
 #' @param max_candidates Maximum number of split points that are 
 #' proposed at each node for each covariate.
+#' @param Q_scale Should data be scaled to estimate the spectral transformation? 
+#' Default is \code{TRUE} to not reduce the signal of high variance covariates, 
+#' and we do not know of a scenario where this hurts.
 #' @return Object of class \code{SDForest} containing:
 #' \item{predictions}{Vector of predictions for each observation.}
 #' \item{forest}{List of SDTree objects.}
@@ -150,7 +153,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
                      A = NULL, gamma = 7, max_size = NULL, gpu = FALSE, 
                      return_data = TRUE, mem_size = 1e+7, leave_out_ind = NULL, 
                      envs = NULL, nTree_leave_out = NULL, nTree_env = NULL, 
-                     max_candidates = 100){
+                     max_candidates = 100, Q_scale = TRUE){
   if(gpu) ifelse(GPUmatrix::installTorch(), 
                  gpu_type <- 'torch', 
                  gpu_type <- 'tensorflow')
@@ -194,7 +197,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -261,7 +264,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
                mtry = mtry, A = A[i, ], gamma = gamma, mem_size = mem_size, 
-               max_candidates = max_candidates)
+               max_candidates = max_candidates, Q_scale = Q_scale)
         }, 
         mc.cores = mc.cores)
     }else{
@@ -276,7 +279,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
         SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
                Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
                mtry = mtry, A = A[i, ], gamma = gamma, mem_size = mem_size, 
-               max_candidates = max_candidates))
+               max_candidates = max_candidates, Q_scale = Q_scale))
       parallel::stopCluster(cl = cl)
     }
   }else{
@@ -284,7 +287,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
              Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
              mtry = mtry, A = A[i, ], gamma = gamma, gpu = gpu, 
-             mem_size = mem_size, max_candidates = max_candidates))
+             mem_size = mem_size, max_candidates = max_candidates, Q_Scale = Q_scale))
   }
 
   # ensemble predictions for each observation

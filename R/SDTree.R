@@ -65,6 +65,9 @@
 #' the memory is not sufficient or the gpu is to small.
 #' @param max_candidates Maximum number of split points that are 
 #' proposed at each node for each covariate.
+#' @param Q_scale Should data be scaled to estimate the spectral transformation? 
+#' Default is \code{TRUE} to not reduce the signal of high variance covariates, 
+#' and we do not know of a scenario where this hurts.
 #' @return Object of class \code{SDTree} containing
 #' \item{predictions}{Predictions for the training set.}
 #' \item{tree}{The estimated tree of class \code{Node} from \insertCite{Glur2023Data.tree:Structure}{SDForest}. 
@@ -105,7 +108,8 @@
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, 
                    cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
-                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100){
+                   A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100, 
+                   Q_scale = TRUE){
   if(gpu) ifelse(GPUmatrix::installTorch(), 
                  gpu_type <- 'torch', 
                  gpu_type <- 'tensorflow')
@@ -148,7 +152,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   }
 
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')

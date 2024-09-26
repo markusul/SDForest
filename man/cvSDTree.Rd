@@ -25,7 +25,8 @@ cvSDTree(
   max_candidates = 100,
   n_cv = 3,
   cp_seq = NULL,
-  mc.cores = 1
+  mc.cores = 1,
+  Q_scale = TRUE
 )
 }
 \arguments{
@@ -96,6 +97,10 @@ substantially smaller than the training data.}
 if \code{NULL} a sequence from 0 to 0.6 with stepsize 0.002 is used.}
 
 \item{mc.cores}{Number of cores to use for parallel computation.}
+
+\item{Q_scale}{Should data be scaled to estimate the spectral transformation? 
+Default is \code{TRUE} to not reduce the signal of high variance covariates, 
+and we do not know of a scenario where this hurts.}
 }
 \value{
 A list containing

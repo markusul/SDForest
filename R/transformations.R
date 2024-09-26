@@ -36,9 +36,7 @@ get_Q <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE, scaling 
     return(Q)
   }
   
-  if(scaling){
-    X <- scale(X)
-  }
+  X <- scale(X, center = TRUE, scale = scaling)
   
   svd_error <- function(X, f = 1, count = 1){
     tryCatch({

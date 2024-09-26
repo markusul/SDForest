@@ -53,6 +53,9 @@
 #' @param cp_seq Sequence of complexity parameters cp to compare using cross-validation, 
 #' if \code{NULL} a sequence from 0 to 0.6 with stepsize 0.002 is used.
 #' @param mc.cores Number of cores to use for parallel computation.
+#' @param Q_scale Should data be scaled to estimate the spectral transformation? 
+#' Default is \code{TRUE} to not reduce the signal of high variance covariates, 
+#' and we do not know of a scenario where this hurts.
 #' @return A list containing
 #' \item{cp_min}{The optimal complexity parameter.}
 #' \item{cp_table}{A table containing the complexity parameter, 
@@ -72,7 +75,8 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
                      max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, 
                      fast = TRUE, Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, 
                      Q = NULL, A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, 
-                     max_candidates = 100, n_cv = 3, cp_seq = NULL, mc.cores = 1){
+                     max_candidates = 100, n_cv = 3, cp_seq = NULL, mc.cores = 1, 
+                     Q_scale = TRUE){
   ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
   input_data <- data.handler(formula = formula, data = data, x = x, y = y)
   X <- input_data$X
@@ -114,7 +118,7 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
   }
 
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu)
+    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
@@ -165,7 +169,7 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
       if(gpu) W_cv <- gpu.matrix(W_cv, type = gpu_type)
     }
     Q_cv <- get_Q(as.matrix(W_cv %*% X[cv_ind, ]), 
-                  Q_type, trim_quantile, q_hat, gpu)
+                  Q_type, trim_quantile, q_hat, gpu, Q_scale)
     Q_cv <- Q_cv %*% W_cv
 
     X_train <- X[-cv_ind, ]
@@ -180,7 +184,7 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
                   min_sample = min_sample, Q_type = Q_type, 
                   trim_quantile = trim_quantile, q_hat = q_hat, mtry = mtry, 
                   A = A_train, gamma = gamma, gpu = gpu, mem_size = mem_size, 
-                  max_candidates = max_candidates)
+                  max_candidates = max_candidates, Q_scale = Q_scale)
     
     # validation performance if we prune with the different ts
     if(mc.cores > 1){
