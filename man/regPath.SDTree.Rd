@@ -19,6 +19,7 @@ An object of class \code{paths} containing
 \item{cp}{The sequence of complexity parameters.}
 \item{varImp_path}{A \code{matrix} with the variable importance
 for each complexity parameter.}
+\item{type}{Path type}
 }
 \description{
 This function calculates the variable importance of an SDTree

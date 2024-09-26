@@ -14,6 +14,7 @@ regPath <- function(object, ...) UseMethod('regPath')
 #' \item{cp}{The sequence of complexity parameters.}
 #' \item{varImp_path}{A \code{matrix} with the variable importance
 #' for each complexity parameter.}
+#' \item{type}{Path type}
 #' @seealso \code{\link{plot.paths}} \code{\link{prune}} \code{\link{get_cp_seq}} \code{\link{SDTree}}
 #' @examples
 #' set.seed(1)
@@ -40,7 +41,8 @@ regPath.SDTree <- function(object, cp_seq = NULL, ...){
   varImp_path <- t(sapply(res, function(x)x$var_importance))
   colnames(varImp_path) <- object$var_names
 
-  paths <- list(cp = cp_seq, varImp_path = varImp_path)
+  paths <- list(cp = cp_seq, varImp_path = varImp_path, 
+                type = "regularization")
   class(paths) <- 'paths'
   
   paths
