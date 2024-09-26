@@ -287,7 +287,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       SDTree(x = X[i, ], y = Y[i], cp = cp, min_sample = min_sample, 
              Q_type = Q_type, trim_quantile = trim_quantile, q_hat = q_hat, 
              mtry = mtry, A = A[i, ], gamma = gamma, gpu = gpu, 
-             mem_size = mem_size, max_candidates = max_candidates, Q_Scale = Q_scale))
+             mem_size = mem_size, max_candidates = max_candidates, Q_scale = Q_scale))
   }
 
   # ensemble predictions for each observation
