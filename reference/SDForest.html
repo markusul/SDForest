@@ -112,7 +112,8 @@ $$\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t(X)$$</p>
 <span>  envs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nTree_leave_out <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nTree_env <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  max_candidates <span class="op">=</span> <span class="fl">100</span></span>
+<span>  max_candidates <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  Q_scale <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -241,6 +242,12 @@ Results in number of environments times number of trees.</p></dd>
 <dt id="arg-max-candidates">max_candidates<a class="anchor" aria-label="anchor" href="#arg-max-candidates"></a></dt>
 <dd><p>Maximum number of split points that are
 proposed at each node for each covariate.</p></dd>
+
+
+<dt id="arg-q-scale">Q_scale<a class="anchor" aria-label="anchor" href="#arg-q-scale"></a></dt>
+<dd><p>Should data be scaled to estimate the spectral transformation?
+Default is <code>TRUE</code> to not reduce the signal of high variance covariates,
+and we do not know of a scenario where this hurts.</p></dd>
 
 </dl></div>
     <div id="value">

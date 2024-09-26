@@ -85,7 +85,8 @@ separately to ensure independence of the validation set.</p>
 <span>  max_candidates <span class="op">=</span> <span class="fl">100</span>,</span>
 <span>  n_cv <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  cp_seq <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  mc.cores <span class="op">=</span> <span class="fl">1</span></span>
+<span>  mc.cores <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  Q_scale <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -201,6 +202,12 @@ if <code>NULL</code> a sequence from 0 to 0.6 with stepsize 0.002 is used.</p></
 
 <dt id="arg-mc-cores">mc.cores<a class="anchor" aria-label="anchor" href="#arg-mc-cores"></a></dt>
 <dd><p>Number of cores to use for parallel computation.</p></dd>
+
+
+<dt id="arg-q-scale">Q_scale<a class="anchor" aria-label="anchor" href="#arg-q-scale"></a></dt>
+<dd><p>Should data be scaled to estimate the spectral transformation?
+Default is <code>TRUE</code> to not reduce the signal of high variance covariates,
+and we do not know of a scenario where this hurts.</p></dd>
 
 </dl></div>
     <div id="value">
