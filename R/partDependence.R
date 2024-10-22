@@ -36,16 +36,18 @@
 #' @export
 partDependence <- function(object, j, X = NULL, subSample = NULL, mc.cores = 1){
   j_name <- j
-  if(is.character(j)){
-    j <- which(names(X) == j)
-  }
-  
+
   if(is.null(X)){
     X <- object$X
     if(is.null(X)) stop('X must be provided if it is not part of the object')
     
   }
   X <- data.frame(X)
+
+  if(is.character(j)){
+    j <- which(names(X) == j)
+  }
+  
   if(!is.null(subSample)) X <- X[sample(1:nrow(X), subSample), ]
   
   if(!is.numeric(j)) stop('j must be a numeric or character')
