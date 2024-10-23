@@ -157,3 +157,64 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   # return spectral loss
   sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val)
 }
+
+# more efficient transformations
+get_Qf <- function(X, type, trim_quantile = 0.5, q_hat = 0, scaling = TRUE){
+  if(type == 'no_deconfounding') {
+    return(function(v) v)
+  }
+  X <- scale(X, center = TRUE, scale = scaling)
+  
+  svd_error <- function(X, f = 1, count = 1){
+    tryCatch({
+      svd(X * f)
+    }, error = function(e) {
+      warning(paste(e, ':X multipied by number close to 1'))
+      if(count > 5) stop('svd did not converge')
+      return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
+  }
+  
+  if(ncol(X) == 1){
+    warning('only one covariate, no deconfounding possible')
+    return(function(v) v)
+  }
+  
+  modes <- c('trim' = 1, 'pca' = 2, 'no_deconfounding' = 3)
+  if(!(type %in% names(modes))) stop(paste("type must be one of:", 
+                                           paste(names(modes), collapse = ', ')))
+  
+  # number of observations
+  n <- dim(X)[1]
+  
+  # calculate deconfounding matrix
+  sv <- svd_error(X)
+  U <- sv$u
+  switch(modes[type], 
+         {#trim
+           tau <- quantile(sv$d, trim_quantile)
+           D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+           D_tilde[is.na(D_tilde)] <- 1
+           q <- sum(D_tilde != 1)
+           D_tilde <- D_tilde[1:q]
+           },
+         {# pca
+           if(q_hat <= 0) 
+             stop("the assumed confounding dimension must be larger than zero, increase q_hat")
+           D_tilde <- rep(0, q_hat)
+           q <- q_hat
+           }
+         )
+  
+  Uq <- U[, 1:q]
+  Qf <- function(v){
+    v + Uq %*% (t(Uq) %*% v * D_tilde) - Uq %*% (t(Uq) %*% v)
+  }
+  return(Qf)
+}
+
+Qf_temp <- function(v, Ue, Qf){
+  Qf(v) - rowSums(apply(Ue, 2, function(u) u %*% (t(u) %*% Qf(v))))
+}
+
+
+

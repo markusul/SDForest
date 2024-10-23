@@ -152,25 +152,31 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   }
 
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    #Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    Qf <- get_Qf(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, Q_scale)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
-  Q <- Q %*% W
+  #Q <- Q %*% W
 
   # calculate first estimate
   E <- matrix(1, n, 1)
 
-  E_tilde <- matrix(rowSums(Q))
+  #E_tilde <- matrix(rowSums(Q))
+  E_tilde <- Qf(E)
   if(gpu){
     E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
   }
+  
+  Ue <- E_tilde / sqrt(sum(E_tilde ** 2))
+  
+  #u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
+  #Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
+  #Q_temp <- Qf(diag(n)) - u_start %*% (t(u_start) %*% Qf(diag(n)))
 
-  u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
-  Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
-
-  Y_tilde <- Q %*% Y
+  Y_tilde <- Qf(Y)
+  #Y_tilde <- Q %*% Y
   
   # solve linear model
   if(gpu && gpu_type == 'tensorflow'){
@@ -244,7 +250,9 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
         }
         if(gpu) E_next <- gpu.matrix(E_next, type = gpu_type)
 
-        U_next_prime <- Q_temp %*% E_next
+        #U_next_prime <- Q_temp %*% E_next
+        U_next_prime <- Qf_temp(E_next, Ue, Qf)
+        
         U_next_size <- colSums(U_next_prime ** 2)
         dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
         dloss[is.na(dloss)] <- 0
@@ -287,7 +295,8 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
     E_tilde_branch <- E_tilde[, best_branch]
     suppressWarnings({
-    E_tilde[, best_branch] <- Q %*% E[, best_branch]
+    #E_tilde[, best_branch] <- Q %*% E[, best_branch]
+      E_tilde[, best_branch] <- Qf(E[, best_branch])
     })
     E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
@@ -297,10 +306,13 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       c_hat <- qr.coef(qr(E_tilde), Y_tilde)
     }
 
-    u_next_prime <- Q_temp %*% E[, i + 1]
-    u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
-
-    Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
+    #u_next_prime <- Q_temp %*% E[, i + 1]
+    u_next_prime <- Qf_temp(E[, i + 1], Ue, Qf)
+    
+    #u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
+    Ue <- cbind(Ue, u_next_prime / sqrt(sum(u_next_prime ** 2)))
+    #Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
+    #Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Qf(diag(n)))
 
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
