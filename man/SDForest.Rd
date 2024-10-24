@@ -17,7 +17,7 @@ SDForest(
   Q_type = "trim",
   trim_quantile = 0.5,
   q_hat = 0,
-  Q = NULL,
+  Qf = NULL,
   A = NULL,
   gamma = 7,
   max_size = NULL,
@@ -72,7 +72,7 @@ only needed for trim, see \code{\link{get_Q}}.}
 \item{q_hat}{Assumed confounding dimension, only needed for pca, 
 see \code{\link{get_Q}}.}
 
-\item{Q}{Spectral transformation, if \code{NULL} 
+\item{Qf}{Spectral transformation, if \code{NULL} 
 it is internally estimated using \code{\link{get_Q}}.}
 
 \item{A}{Numerical Anchor of class \code{matrix}. See \code{\link{get_W}}.}
@@ -128,7 +128,7 @@ The mean of the variable importance of all trees results in the variable importa
 If \code{return_data} is \code{TRUE} the following are also returned:
 \item{X}{Matrix of covariates.}
 \item{Y}{Vector of responses.}
-\item{Q}{Spectral transformation matrix.}
+\item{Q}{Spectral transformation.}
 If \code{envs} is provided the following are also returned:
 \item{envs}{Vector of environments.}
 \item{nTree_env}{Number of trees for each environment.}

@@ -16,7 +16,7 @@
 
 \item{Y}{The training response variable, if NULL the data from the forest object is used.}
 
-\item{Q}{The transformation matrix, if NULL the data from the forest object is used.}
+\item{Q}{The transformation function, if NULL the data from the forest object is used.}
 
 \item{pred}{If TRUE the predictions are calculated, if FALSE only the out-of-bag statistics are calculated.
 This can set to FALSE to save computation time if only the out-of-bag statistics are needed.}
