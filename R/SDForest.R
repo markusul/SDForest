@@ -45,7 +45,7 @@
 #' only needed for trim, see \code{\link{get_Q}}.
 #' @param q_hat Assumed confounding dimension, only needed for pca, 
 #' see \code{\link{get_Q}}.
-#' @param Q Spectral transformation, if \code{NULL} 
+#' @param Qf Spectral transformation, if \code{NULL} 
 #' it is internally estimated using \code{\link{get_Q}}.
 #' @param A Numerical Anchor of class \code{matrix}. See \code{\link{get_W}}.
 #' @param gamma Strength of distributional robustness, \eqn{\gamma \in [0, \infty]}. 
@@ -87,7 +87,7 @@
 #' If \code{return_data} is \code{TRUE} the following are also returned:
 #' \item{X}{Matrix of covariates.}
 #' \item{Y}{Vector of responses.}
-#' \item{Q}{Spectral transformation matrix.}
+#' \item{Q}{Spectral transformation.}
 #' If \code{envs} is provided the following are also returned:
 #' \item{envs}{Vector of environments.}
 #' \item{nTree_env}{Number of trees for each environment.}
@@ -149,7 +149,7 @@
 #' @export
 SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 100, 
                      cp = 0, min_sample = 5, mtry = NULL, mc.cores = 1, 
-                     Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
+                     Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Qf = NULL, 
                      A = NULL, gamma = 7, max_size = NULL, gpu = FALSE, 
                      return_data = TRUE, mem_size = 1e+7, leave_out_ind = NULL, 
                      envs = NULL, nTree_leave_out = NULL, nTree_env = NULL, 
@@ -196,11 +196,11 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     Wf <- function(v) v
   }
 
-  if(is.null(Q)){
+  if(is.null(Qf)){
     Qf <- get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
   }else{
-    if(!is.matrix(Q)) stop('Q must be a matrix')
-    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
+    if(!is.function(Qf)) stop('Q must be a function')
+    if(length(Qf(rnorm(n))) == n) stop('Q must map from n to n')
   }
 
   if(!is.null(A)){

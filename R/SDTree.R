@@ -53,7 +53,7 @@
 #' only needed for trim, see \code{\link{get_Q}}.
 #' @param q_hat Assumed confounding dimension, only needed for pca, 
 #' see \code{\link{get_Q}}.
-#' @param Q Spectral transformation, if \code{NULL} 
+#' @param Qf Spectral transformation, if \code{NULL} 
 #' it is internally estimated using \code{\link{get_Q}}.
 #' @param A Numerical Anchor of class \code{matrix}. See \code{\link{get_W}}.
 #' @param gamma Strength of distributional robustness, \eqn{\gamma \in [0, \infty]}. 
@@ -107,7 +107,7 @@
 #' @export
 SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves = NULL, 
                    cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
-                   Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
+                   Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Qf = NULL, 
                    A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100, 
                    Q_scale = TRUE, type = 1){
   if(gpu) ifelse(GPUmatrix::installTorch(), 
@@ -151,15 +151,15 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
     Wf <- function(v) v
   }
 
-  if(is.null(Q)){
+  if(is.null(Qf)){
     if(type == 1){
       Q <- get_Q(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
     }else{
       Qf <- get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
     }
   }else{
-    if(!is.matrix(Q)) stop('Q must be a matrix')
-    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
+    if(!is.function(Qf)) stop('Q must be a function')
+    if(length(Qf(rnorm(n))) == n) stop('Q must map from n to n')
   }
 
   if(!is.null(A)){

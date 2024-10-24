@@ -43,7 +43,7 @@ prune.SDTree <- function(object, cp, ...){
 #' @param cp Complexity parameter, the higher the value the more nodes are pruned.
 #' @param X The training data, if NULL the data from the forest object is used.
 #' @param Y The training response variable, if NULL the data from the forest object is used.
-#' @param Q The transformation matrix, if NULL the data from the forest object is used.
+#' @param Q The transformation function, if NULL the data from the forest object is used.
 #' @param pred If TRUE the predictions are calculated, if FALSE only the out-of-bag statistics are calculated.
 #' This can set to FALSE to save computation time if only the out-of-bag statistics are needed.
 #' @param ... Further arguments passed to or from other methods.
