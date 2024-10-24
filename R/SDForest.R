@@ -187,23 +187,25 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
 
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
+    if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    W <- get_W(A, gamma, gpu)
+    #W <- get_W(A, gamma, gpu)
+    Wf <- get_Wf(A, gamma, gpu)
   }else {
-    W <- diag(n)
-    if(gpu) W <- gpu.matrix(W, type = gpu_type)
+    Wf <- function(v) v
   }
 
-  # estimate spectral transformation
   if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    Qf <- get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
 
-  Q <- Q %*% W
+  if(!is.null(A)){
+    Qf <- function(v) Qf(Wf(v))
+  }
 
   # mtry
   if(is.null(mtry)){
@@ -307,8 +309,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     return(mean(predictions))
   })
 
-  Y_tilde <- Q %*% Y
-  oob_SDloss <- loss(Y_tilde, Q %*% oob_predictions)
+  Y_tilde <- Qf(Y)
+  oob_SDloss <- loss(Y_tilde, Qf(oob_predictions))
   oob_loss <- loss(Y, oob_predictions)
 
 
@@ -337,7 +339,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
       return(mean(predictions))
     })
 
-    ooEnv_SDloss <- loss(Y_tilde, Q %*% ooEnv_predictions)
+    ooEnv_SDloss <- loss(Y_tilde, Qf(ooEnv_predictions))
     ooEnv_loss <- loss(Y, ooEnv_predictions)
   }
 
@@ -367,7 +369,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
   if(return_data){
     output$X <- as.matrix(X)
     output$Y <- as.matrix(Y)
-    output$Q <- as.matrix(Q)
+    output$Q <- Qf
   }
 
   if(!is.null(envs)){

@@ -23,7 +23,8 @@ SDTree(
   gpu = FALSE,
   mem_size = 1e+07,
   max_candidates = 100,
-  Q_scale = TRUE
+  Q_scale = TRUE,
+  type = 1
 )
 }
 \arguments{

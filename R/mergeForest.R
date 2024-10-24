@@ -28,7 +28,7 @@ mergeForest <- function(fit1, fit2){
   # check if both forests are trained on the same data
   # if so, combine predictions and oob_predictions
   if(all(dim(fit1$X) == dim(fit2$X)) && 
-     all(fit1$X == fit2$X, fit1$Y == fit2$Y, fit1$Q == fit2$Q, 
+     all(fit1$X == fit2$X, fit1$Y == fit2$Y, fit1$Q(fit2$Y) == fit2$Q(fit1$Y), 
          !is.null(fit1$X), !is.null(fit1$Y), !is.null(fit1$Q))){
     
     # weighted average of predictions
@@ -52,7 +52,7 @@ mergeForest <- function(fit1, fit2){
     })
 
     # calculate oob_loss and oob_SDloss
-    fit1$oob_SDloss <- loss(fit1$Q %*% fit1$Y, fit1$Q %*% fit1$oob_predictions)
+    fit1$oob_SDloss <- loss(fit1$Q(fit1$Y), fit1$Q(fit1$oob_predictions))
     fit1$oob_loss <- loss(fit1$Y, fit1$oob_predictions)
   }else{
     warning('forests migth be trained on different data')

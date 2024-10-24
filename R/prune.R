@@ -65,11 +65,11 @@ prune.SDForest <- function(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE
   n <- length(Y)
 
   if(is.null(Q)) {
-    Q <- diag(n)
+    Q <- function(v) v
     warning('Q was not provided, using Identity matrix')
   }
 
-  if(any(c(nrow(X), n, nrow(Q)) != length(object$predictions))){
+  if(any(c(nrow(X), n) != length(object$predictions))){
     stop("The data has to correspond to the data used for training the forest.")
   }
   if(ncol(X) != length(object$var_names)){
@@ -78,7 +78,7 @@ prune.SDForest <- function(object, cp, X = NULL, Y = NULL, Q = NULL, pred = TRUE
 
   oob_predictions <- predictOOB(object, X)
   object$oob_predictions <- oob_predictions
-  object$oob_SDloss <- loss(Q %*% Y, Q %*% oob_predictions)
+  object$oob_SDloss <- loss(Q(Y), Q(oob_predictions))
   object$oob_loss <- loss(Y, oob_predictions)
 
   if(pred){

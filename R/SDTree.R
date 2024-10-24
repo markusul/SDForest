@@ -109,7 +109,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
                    cp = 0.01, min_sample = 5, mtry = NULL, fast = TRUE,
                    Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, Q = NULL, 
                    A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, max_candidates = 100, 
-                   Q_scale = TRUE){
+                   Q_scale = TRUE, type = 1){
   if(gpu) ifelse(GPUmatrix::installTorch(), 
                  gpu_type <- 'torch', 
                  gpu_type <- 'tensorflow')
@@ -139,44 +139,61 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   if(max_candidates < 1) stop('max_candidates must be at least 1')
 
   # estimate spectral transformation
+
   if(!is.null(A)){
     if(is.null(gamma)) stop('gamma must be provided if A is provided')
     if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    W <- get_W(A, gamma, gpu)
+    #W <- get_W(A, gamma, gpu)
+    Wf <- get_Wf(A, gamma, gpu)
   }else {
-    
-    W <- diag(n)
-    if(gpu) W <- gpu.matrix(W, type = gpu_type)
+    Wf <- function(v) v
   }
 
   if(is.null(Q)){
-    #Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
-    Qf <- get_Qf(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, Q_scale)
+    if(type == 1){
+      Q <- get_Q(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    }else{
+      Qf <- get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    }
   }else{
     if(!is.matrix(Q)) stop('Q must be a matrix')
     if(any(dim(Q) != n)) stop('Q must have dimension n x n')
   }
-  #Q <- Q %*% W
+
+  if(!is.null(A)){
+    Qf <- function(v) Qf(Wf(v))
+  }
 
   # calculate first estimate
   E <- matrix(1, n, 1)
 
-  #E_tilde <- matrix(rowSums(Q))
-  E_tilde <- Qf(E)
+  if(type == 1){
+    E_tilde <- matrix(rowSums(Q))
+  }else{
+    E_tilde <- Qf(E)
+  }
+
   if(gpu){
     E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
   }
   
-  Ue <- E_tilde / sqrt(sum(E_tilde ** 2))
-  
-  #u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
-  #Q_temp <- Q - u_start %*% (t(u_start) %*% Q)
-  #Q_temp <- Qf(diag(n)) - u_start %*% (t(u_start) %*% Qf(diag(n)))
+  if(type == 1){
+    u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
+    Q_temp <- Q - u_start %*% crossprod(u_start, Q)
+  }else if (type == 2){
+    u_start <- E_tilde / sqrt(sum(E_tilde ** 2))
+    Q_temp <- Qf(diag(n)) - u_start %*% (t(u_start) %*% Qf(diag(n)))
+  }else{
+    Ue <- E_tilde / sqrt(sum(E_tilde ** 2))
+  }
 
-  Y_tilde <- Qf(Y)
-  #Y_tilde <- Q %*% Y
+  if(type == 1){
+    Y_tilde <- Q %*% Y
+  }else{
+    Y_tilde <- Qf(Y)
+  }
   
   # solve linear model
   if(gpu && gpu_type == 'tensorflow'){
@@ -213,7 +230,7 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
                          function(x){sum(E[, x]) < min_sample*2})
       potential_splits <- potential_splits[!to_small]
     }
-
+    
     #iterate over new to estimate splits
     for(branch in potential_splits){
       E_branch <- E[, branch]
@@ -250,8 +267,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
         }
         if(gpu) E_next <- gpu.matrix(E_next, type = gpu_type)
 
-        #U_next_prime <- Q_temp %*% E_next
-        U_next_prime <- Qf_temp(E_next, Ue, Qf)
+        if(type == 1 | type == 2){
+          U_next_prime <- Q_temp %*% E_next
+        }else{
+          U_next_prime <- Qf_temp(E_next, Ue, Qf)
+        }
         
         U_next_size <- colSums(U_next_prime ** 2)
         dloss <- as.numeric(crossprod(U_next_prime, Y_tilde))**2 / U_next_size
@@ -295,8 +315,11 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
 
     E_tilde_branch <- E_tilde[, best_branch]
     suppressWarnings({
-    #E_tilde[, best_branch] <- Q %*% E[, best_branch]
+    if(type == 1){
+      E_tilde[, best_branch] <- Q %*% E[, best_branch]
+    }else{
       E_tilde[, best_branch] <- Qf(E[, best_branch])
+    }
     })
     E_tilde <- cbind(E_tilde, matrix(E_tilde_branch - E_tilde[, best_branch]))
 
@@ -306,14 +329,23 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
       c_hat <- qr.coef(qr(E_tilde), Y_tilde)
     }
 
-    #u_next_prime <- Q_temp %*% E[, i + 1]
-    u_next_prime <- Qf_temp(E[, i + 1], Ue, Qf)
     
-    #u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
-    Ue <- cbind(Ue, u_next_prime / sqrt(sum(u_next_prime ** 2)))
-    #Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
-    #Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Qf(diag(n)))
-
+    if(type == 1 | type == 2){
+      u_next_prime <- Q_temp %*% E[, i + 1]
+    }else{
+      u_next_prime <- Qf_temp(E[, i + 1], Ue, Qf)
+    }
+    
+    if(type == 1){
+      u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
+      Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Q)
+    }else if(type == 2){
+      u_next <- u_next_prime / sqrt(sum(u_next_prime ** 2))
+      Q_temp <- Q_temp - u_next %*% (t(u_next) %*% Qf(diag(n)))
+    }else {
+      Ue <- cbind(Ue, u_next_prime / sqrt(sum(u_next_prime ** 2)))
+    }
+    
     # check if loss decrease is larger than minimum loss decrease
     # and if linear model could be estimated
     if(sum(is.na(as.matrix(c_hat))) > 0){
@@ -403,6 +435,5 @@ SDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, max_leaves =
   res <- list(predictions = f_X_hat, tree = tree, 
               var_names = var_names, var_importance = var_imp)
   class(res) <- 'SDTree'
-  
   res
 }
