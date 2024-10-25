@@ -101,7 +101,7 @@ $$\widehat{f(X)} = \frac{1}{N_{tree}} \sum_{t = 1}^{N_{tree}} SDTree_t(X)$$</p>
 <span>  Q_type <span class="op">=</span> <span class="st">"trim"</span>,</span>
 <span>  trim_quantile <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  q_hat <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  Q <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  Qf <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  A <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gamma <span class="op">=</span> <span class="fl">7</span>,</span>
 <span>  max_size <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -184,7 +184,7 @@ only needed for trim, see <code><a href="get_Q.html">get_Q</a></code>.</p></dd>
 see <code><a href="get_Q.html">get_Q</a></code>.</p></dd>
 
 
-<dt id="arg-q">Q<a class="anchor" aria-label="anchor" href="#arg-q"></a></dt>
+<dt id="arg-qf">Qf<a class="anchor" aria-label="anchor" href="#arg-qf"></a></dt>
 <dd><p>Spectral transformation, if <code>NULL</code>
 it is internally estimated using <code><a href="get_Q.html">get_Q</a></code>.</p></dd>
 
@@ -288,7 +288,7 @@ The mean of the variable importance of all trees results in the variable importa
 <dd><p>Vector of responses.</p></dd>
 
 <dt>Q</dt>
-<dd><p>Spectral transformation matrix.</p></dd>
+<dd><p>Spectral transformation.</p></dd>
 
 </dl><p>If <code>envs</code> is provided the following are also returned:</p>
 <dl><dt>envs</dt>
@@ -355,8 +355,8 @@ or the same environment.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Number of trees:  100 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Number of covariates:  150 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> OOB loss:  0.66 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> OOB spectral loss:  0.07 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> OOB loss:  0.67 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> OOB spectral loss:  0.08 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># comparison of variable importance</span></span></span>
 <span class="r-in"><span><span class="va">imp_ranger</span> <span class="op">&lt;-</span> <span class="va">fit_ranger</span><span class="op">$</span><span class="va">variable.importance</span></span></span>
