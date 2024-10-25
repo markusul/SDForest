@@ -155,7 +155,7 @@ pruned_loss <- function(tree, X_val, Y_val, Q_val, t){
   f_X_hat_val <- predict_outsample(tree_t, X_val)
   
   # return spectral loss
-  sum((Q_val %*% Y_val - Q_val %*% f_X_hat_val) ** 2) / length(Y_val)
+  sum((Q_val(Y_val) - Q_val(f_X_hat_val)) ** 2) / length(Y_val)
 }
 
 # more efficient transformations

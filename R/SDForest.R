@@ -190,21 +190,20 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    #W <- get_W(A, gamma, gpu)
     Wf <- get_Wf(A, gamma, gpu)
   }else {
     Wf <- function(v) v
   }
 
   if(is.null(Qf)){
-    Qf <- get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    if(!is.null(A)){
+      Qf <- function(v) get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)(Wf(v))
+    }else{
+      Qf <- get_Qf(X, Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    }
   }else{
     if(!is.function(Qf)) stop('Q must be a function')
     if(length(Qf(rnorm(n))) == n) stop('Q must map from n to n')
-  }
-
-  if(!is.null(A)){
-    Qf <- function(v) Qf(Wf(v))
   }
 
   # mtry

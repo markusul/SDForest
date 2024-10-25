@@ -33,7 +33,7 @@
 #' only needed for trim and DDL_trim, see \code{\link{get_Q}}.
 #' @param q_hat Assumed confounding dimension, only needed for pca, 
 #' see \code{\link{get_Q}}.
-#' @param Q Spectral transformation, if \code{NULL} 
+#' @param Qf Spectral transformation, if \code{NULL} 
 #' it is internally estimated using \code{\link{get_Q}}.
 #' @param A Numerical Anchor of class \code{matrix}. See \code{\link{get_W}}.
 #' @param gamma Strength of distributional robustness, \eqn{\gamma \in [0, \infty]}. 
@@ -74,7 +74,7 @@
 cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL, 
                      max_leaves = NULL, cp = 0.01, min_sample = 5, mtry = NULL, 
                      fast = TRUE, Q_type = 'trim', trim_quantile = 0.5, q_hat = 0, 
-                     Q = NULL, A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, 
+                     Qf = NULL, A = NULL, gamma = 0.5, gpu = FALSE, mem_size = 1e+7, 
                      max_candidates = 100, n_cv = 3, cp_seq = NULL, mc.cores = 1, 
                      Q_scale = TRUE){
   ifelse(GPUmatrix::installTorch(), gpu_type <- 'torch', gpu_type <- 'tensorflow')
@@ -110,29 +110,31 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
     if(is.vector(A)) A <- matrix(A)
     if(!is.matrix(A)) stop('A must be a matrix')
     if(nrow(A) != n) stop('A must have n rows')
-    W <- get_W(A, gamma, gpu)
+    Wf <- get_Wf(A, gamma, gpu)
   }else {
-    
-    W <- diag(n)
-    if(gpu) W <- gpu.matrix(W, type = gpu_type)
+    Wf <- function(v) v
   }
-
-  if(is.null(Q)){
-    Q <- get_Q(as.matrix(W %*% X), Q_type, trim_quantile, q_hat, gpu, Q_scale)
+  
+  if(is.null(Qf)){
+    if(!is.null(A)){
+      Qf <- function(v) get_Qf(Wf(X), Q_type, trim_quantile, q_hat, gpu, Q_scale)(Wf(v))
+    }else{
+      Qf <- get_Qf(X, Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    }
   }else{
-    if(!is.matrix(Q)) stop('Q must be a matrix')
-    if(any(dim(Q) != n)) stop('Q must have dimension n x n')
+    if(!is.function(Qf)) stop('Q must be a function')
+    if(length(Qf(rnorm(n))) == n) stop('Q must map from n to n')
   }
-  Q <- Q %*% W
   
   # estimating initial loss with only a stump
   # to map optimal minimal loss decrease to a cp value
   E <- matrix(1, n, 1)
-  E_tilde <- matrix(rowSums(Q))
+  E_tilde <- Qf(E)
   if(gpu){
     E_tilde <- gpu.matrix(E_tilde, type = gpu_type)
   }
-  Y_tilde <- Q %*% Y
+  Ue <- E_tilde / sqrt(sum(E_tilde ** 2))
+  Y_tilde <- Qf(Y)
 
   # solve linear model
   if(gpu_type == 'tensorflow'){
@@ -163,14 +165,16 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
       if(is.vector(A)) A <- matrix(A)
       if(!is.matrix(A)) stop('A must be a matrix')
       if(nrow(A) != n) stop('A must have n rows')
-      W_cv <- get_W(A[cv_ind, ], gamma, gpu)
+      Wf_cv <- get_Wf(A[cv_ind, ], gamma, gpu)
     }else {
-      W_cv <- diag(length(cv_ind))
-      if(gpu) W_cv <- gpu.matrix(W_cv, type = gpu_type)
+      Wf_cv <- function(v) v
     }
-    Q_cv <- get_Q(as.matrix(W_cv %*% X[cv_ind, ]), 
-                  Q_type, trim_quantile, q_hat, gpu, Q_scale)
-    Q_cv <- Q_cv %*% W_cv
+    
+    if(!is.null(A)){
+      Qf_cv <- function(v) get_Qf(Wf_cv(X[cv_ind, ]), Q_type, trim_quantile, q_hat, gpu, Q_scale)(Wf_cv(v))
+    }else{
+      Qf_cv <- get_Qf(X[cv_ind, ], Q_type, trim_quantile, q_hat, gpu, Q_scale)
+    }
 
     X_train <- X[-cv_ind, ]
     Y_train <- Y[-cv_ind]
@@ -189,11 +193,11 @@ cvSDTree <- function(formula = NULL, data = NULL, x = NULL, y = NULL,
     # validation performance if we prune with the different ts
     if(mc.cores > 1){
       perf <- parallel::mclapply(t_seq, function(t) 
-        pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t), 
+        pruned_loss(res$tree, X_cv, Y_cv, Qf_cv, t), 
         mc.cores = mc.cores, mc.preschedule = FALSE)
     }else{
       perf <- lapply(t_seq, function(t) 
-        as.numeric(pruned_loss(res$tree, X_cv, Y_cv, Q_cv, t)))
+        as.numeric(pruned_loss(res$tree, X_cv, Y_cv, Qf_cv, t)))
     }
     
     return(perf)

@@ -17,7 +17,7 @@ cvSDTree(
   Q_type = "trim",
   trim_quantile = 0.5,
   q_hat = 0,
-  Q = NULL,
+  Qf = NULL,
   A = NULL,
   gamma = 0.5,
   gpu = FALSE,
@@ -69,7 +69,7 @@ only needed for trim and DDL_trim, see \code{\link{get_Q}}.}
 \item{q_hat}{Assumed confounding dimension, only needed for pca, 
 see \code{\link{get_Q}}.}
 
-\item{Q}{Spectral transformation, if \code{NULL} 
+\item{Qf}{Spectral transformation, if \code{NULL} 
 it is internally estimated using \code{\link{get_Q}}.}
 
 \item{A}{Numerical Anchor of class \code{matrix}. See \code{\link{get_W}}.}
