@@ -169,13 +169,13 @@ get_Qf <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE, scaling
   }
   X <- scale(X, center = TRUE, scale = scaling)
   
-  svd_error <- function(X, f = 1, count = 1){
+  svd_error <- function(X, q, f = 1, count = 1){
     tryCatch({
-      svd(X * f)
+      svd(X * f, nv = 0, nu = q)
     }, error = function(e) {
       warning(paste(e, ':X multipied by number close to 1'))
       if(count > 5) stop('svd did not converge')
-      return(svd_error(X, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
+      return(svd_error(X, q, 1 + 0.0000000000000001 * 10 ^ count, count + 1))})
   }
   
   if(ncol(X) == 1){
@@ -190,28 +190,38 @@ get_Qf <- function(X, type, trim_quantile = 0.5, q_hat = 0, gpu = FALSE, scaling
   # number of observations
   n <- dim(X)[1]
   
+  # needed number of singular values
+  q <- q_hat
+  if(type == 'trim'){
+    q <- floor(quantile(1:min(dim(X)), 1-trim_quantile))
+  }
+  
   # calculate deconfounding matrix
-  sv <- svd_error(X)
-  U <- sv$u
-  if(gpu) U <- gpu.matrix(U, type = gpu_type)
+  sv <- svd_error(X, q)
+  Uq <- sv$u[, 1:q]
+
+  if(gpu) Uq <- gpu.matrix(Uq, type = gpu_type)
 
   switch(modes[type], 
          {#trim
-           tau <- quantile(sv$d, trim_quantile)
-           D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
-           D_tilde[is.na(D_tilde)] <- 1
-           q <- sum(D_tilde != 1)
-           D_tilde <- D_tilde[1:q]
+           D_tilde <- sv$d[1:q]
+           D_tilde <- D_tilde[q] / D_tilde
+           
+           #tau <- quantile(sv$d, trim_quantile)
+           #D_tilde <- unlist(lapply(sv$d, FUN = function(x)min(x, tau))) / sv$d
+           #D_tilde[is.na(D_tilde)] <- 1
+           #q <- sum(D_tilde != 1)
+           #D_tilde <- D_tilde[1:q]
            },
          {# pca
            if(q_hat <= 0) 
              stop("the assumed confounding dimension must be larger than zero, increase q_hat")
            D_tilde <- rep(0, q_hat)
-           q <- q_hat
+           #q <- q_hat
            }
          )
   
-  Uq <- U[, 1:q]
+  
   Qf <- function(v){
     UqV <- crossprod(Uq, v)
     v + Uq %*% (UqV * (D_tilde - 1))
