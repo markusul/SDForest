@@ -181,8 +181,8 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     stop('envs must be a factor of length n')
   if(!is.null(envs) && !is.null(nTree_leave_out) && !is.null(nTree_env))
     stop('nTree_leave_out and nTree_env cannot be used together')
-  if(!is.null(envs) && !(all(!is.null(nTree_leave_out), nTree_leave_out > 0) | 
-                         all(!is.null(nTree_env), nTree_env > 0)))
+  if(!is.null(envs) && !(all(!is.null(nTree_leave_out), sum(nTree_leave_out) > 0) | 
+                         all(!is.null(nTree_env), sum(nTree_env) > 0)))
     stop('either nTree_leave_out or nTree_env must be provided larger than 0')
 
   if(!is.null(A)){
@@ -235,6 +235,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
         stop('if nTree_env is a vector, it must have the same length as 
              levels(envs) and the names must be the levels of envs')
       }
+      nTree_env <- nTree_env[nTree_env != 0]
     }else {
       nTree_env <- rep(nTree_env, nEnv)
       names(nTree_env) <- levels(envs)
