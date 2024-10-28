@@ -105,41 +105,45 @@ If you intend to keep the original tree, make a copy of it before pruning.</p>
 <span class="r-in"><span><span class="va">tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="SDTree.html">SDTree</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">X</span>, y <span class="op">=</span> <span class="va">Y</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">pruned_tree</span> <span class="op">&lt;-</span> <span class="fu"><a href="prune.SDForest.html">prune</a></span><span class="op">(</span><span class="fu"><a href="copy.SDForest.html">copy</a></span><span class="op">(</span><span class="va">tree</span><span class="op">)</span>, <span class="fl">0.2</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">tree</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                    levelName        value           s  j       label decision</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1                         -0.023180294  1.14111763 19 X19 &lt;= 1.14         </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2   ¦--1                     -0.141832617  0.34537161  3  X3 &lt;= 0.35       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3   ¦   ¦--1                  0.059413265 -0.77654438  6 X6 &lt;= -0.78       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4   ¦   ¦   ¦--1             -0.829336723          NA NA        -0.8       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5   ¦   ¦   °--4              0.209165300  0.55785195 11 X11 &lt;= 0.56      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6   ¦   ¦       ¦--4         -0.007902778  0.33514911 20 X20 &lt;= 0.34       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7   ¦   ¦       ¦   ¦--4      0.277097572  0.26853017 17 X17 &lt;= 0.27       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8   ¦   ¦       ¦   ¦   ¦--4  0.629359018          NA NA         0.6       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 9   ¦   ¦       ¦   ¦   °--8 -0.121703564          NA NA        -0.1      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10  ¦   ¦       ¦   °--7     -0.436583926          NA NA        -0.4      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11  ¦   ¦       °--6          0.900286010          NA NA         0.9      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 12  ¦   °--3                 -0.835357400  0.09259939  4  X4 &lt;= 0.09      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 13  ¦       ¦--3             -1.453742836          NA NA        -1.5       no</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 14  ¦       °--5             -0.152590731          NA NA        -0.2      yes</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 15  °--2                      0.828549713          NA NA         0.8      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                    levelName       value          s  j        label decision</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1  1                         -0.02318029 -0.9360458 18 X18 &lt;= -0.94         </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2   ¦--1                     -0.82144298         NA NA         -0.8       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3   °--2                      0.11830631  1.1747212 11  X11 &lt;= 1.17      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4       ¦--2                 -0.04377221 -0.8334158 14 X14 &lt;= -0.83       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5       ¦   ¦--2             -0.49673179 -0.5164064  2  X2 &lt;= -0.52       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6       ¦   ¦   ¦--2          0.37452367         NA NA          0.4       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7       ¦   ¦   °--6         -0.87881615         NA NA         -0.9      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8       ¦   °--4              0.21907376 -0.5683324 12 X12 &lt;= -0.57      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 9       ¦       ¦--4         -0.63163773         NA NA         -0.6       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10      ¦       °--5          0.49121674 -0.8210675 17 X17 &lt;= -0.82      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11      ¦           ¦--5      1.03080482         NA NA            1       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 12      ¦           °--7      0.22148711  0.1536351 19  X19 &lt;= 0.15      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 13      ¦               ¦--7 -0.14858259         NA NA         -0.1       no</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 14      ¦               °--8  0.49877485         NA NA          0.5      yes</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 15      °--3                  1.46730949         NA NA          1.5      yes</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    n_samples</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1         50</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2         44</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3         34</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4          5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5         29</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6         22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7         13</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 8          7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2          8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3         42</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4         37</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5         14</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 6          5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 7          9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 8         23</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 9          6</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 10         9</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 11         7</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 12        10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 10        17</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 11         5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 12        12</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 13         5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 14         5</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 15         6</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 14         7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 15         5</span>
 <span class="r-in"><span><span class="va">pruned_tree</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   levelName       value        s  j label decision n_samples</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1         1 -0.02318029 1.141118 19     0       NA        50</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   levelName       value          s  j        label decision n_samples</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1 1         -0.02318029 -0.9360458 18 X18 &lt;= -0.94                 50</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2  ¦--1     -0.82144298         NA NA         -0.8       no         8</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3  °--2      0.11830631  1.1747212 11  X11 &lt;= 1.17      yes        42</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 4      ¦--2 -0.04377221 -0.8334158 14            0       no        37</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 5      °--3  1.46730949         NA NA          1.5      yes         5</span>
 </code></pre></div>
     </div>
   </div>
