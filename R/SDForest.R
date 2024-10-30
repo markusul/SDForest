@@ -243,7 +243,7 @@ SDForest <- function(formula = NULL, data = NULL, x = NULL, y = NULL, nTree = 10
     tree_env <- rep(names(nTree_env), nTree_env)
 
     nTree <- sum(nTree_env)
-    print(paste0("Fitting stratified trees resultin in ", nTree, " trees."))
+    print(paste0("Fitting stratified trees resulting in ", nTree, " trees."))
 
     ind <- lapply(names(nTree_env), function(env_l) {
       lapply(1:nTree_env[env_l], function(x) {
