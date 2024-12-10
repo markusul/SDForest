@@ -81,7 +81,7 @@ gg_res
 
 Now, we can directly look at the estimated tree structures. On top is the true underlying random regression tree, and below are the two tree estimates. In the middle is the SDTree and on the bottom is the plain classical regression tree. The nodes that choose a covariate for a split, that is also used in the true underlying causal function, are marked in <span style="color: #b0193c;">red</span>. Besides $X_{320}$, the SDTree uses all the parents of $Y$ for splits. Since $X_{320}$ only splits three observations into the node with a response level of 49.6, it seems reasonable that the noise and confounding in the observed data overshadow this effect. The order of the splits in the SDTree is partially different from the true function. $X_{369}$ is used too early resulting in having to split with $X_{250}$ and $X_{89}$ in both following subtrees. Estimating the partitions using no deconfounding results in the regression tree on the bottom. Here, we only find two of the parents of $Y$. Especially problematic is that the not deconfounded regression tree first splits with a few irrelevant covariates. Therefore, if an observation has $X_{486} > 0.07$ or $X_{430} \leq -2.66$, which has no meaning in the underlying function, no relevant split is left in the sub-tree.
 
-```{r plot_tree,  echo=FALSE, message=FALSE}
+```{r plot_tree,  echo=FALSE, message=FALSE, warning=FALSE}
 library(igraph)
 library(data.tree)
 labels <- c(tree = expression(f^0*(X)), tree_model = expression(f^Tree*(X)), 
