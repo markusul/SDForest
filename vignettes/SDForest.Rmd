@@ -25,7 +25,7 @@ set.seed(42)
 # simulation of confounded data
 q <- 2    # dimension of confounding
 p <- 350  # number of overved covariates
-n <- 500  # number of obervations
+n <- 400  # number of obervations
 m <- 1    # number of causal parents in covariates
 
 sim_data <- simulate_data_nonlinear(q = q, p = p, n = n, m = m)
