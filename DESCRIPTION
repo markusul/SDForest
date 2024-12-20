@@ -1,5 +1,5 @@
-Package: SDModels
-Title: Spectrally Deconfounded Models, Random Forest
+Package: SDForest
+Title: Spectrally Deconfounded Random Forest
 Version: 0.1
 Date: 2024-05-31
 Authors@R: c(
